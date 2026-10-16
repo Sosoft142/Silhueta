@@ -1,4 +1,4 @@
-# Silhueta · versão 1.7
+# Silhueta · versão 1.8
 
 Aplicativo web instalável (PWA) para acompanhar medidas corporais, composição corporal, nutrição e evolução.
 
@@ -45,3 +45,11 @@ Não depende de servidor próprio, não sincroniza automaticamente com Google Sh
 - A migração identifica o antigo registro de demonstração de **70 kg na semana zero**, mesmo quando a data foi alterada junto com o projeto ou quando um backup Gist reintroduz esse dado. A remoção registra a exclusão nos relógios de sincronização, para impedir que versões antigas a restaurem.
 - Registros semanais com medidas adicionais (por exemplo, cintura ou quadril) e pesagens diferentes de 70 kg não são removidos por essa regra. Se você registrou deliberadamente **70 kg como única medida da semana inicial em uma versão antiga**, confira o registro após atualizar, pois sua origem não pode ser distinguida automaticamente do exemplo original.
 - Antes da migração, é recomendável exportar um backup JSON em **Como usar**.
+
+## Revisão técnica da versão 1.8
+
+- **Data da medição preservada:** alterar o início do projeto não modifica mais a data efetivamente registrada para a semana 0.
+- **Reiniciar este aparelho:** a opção agora desconecta o token e apaga somente os dados locais. O backup Gist existente não é apagado nem sobrescrito por um estado vazio. Aguarda a conclusão de operações de sincronização em andamento.
+- **PWA offline:** cache versionado para 1.8 e ícones de instalação incluídos entre os recursos armazenados.
+- **Testes locais:** navegação e screenshots em 320, 390, 768, 1080 e 1440 px; perfil, medições, nutrição, exportação JSON/CSV, modal, barra lateral, migração de dados fictícios, tombstones e mesclagem de campos independentes.
+- **Limitação conhecida:** os Gists são criptografados com uma chave derivada do token usado ao criá-los. Antes de substituir ou revogar o token, exporte um backup JSON dos seus dados. O teste de comunicação com um Gist real depende do token do próprio usuário.
