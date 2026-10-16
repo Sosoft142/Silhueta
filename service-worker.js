@@ -1,4 +1,4 @@
-const VERSION='silhueta-app-v1.6.0';
+const VERSION='silhueta-app-v1.7.0';
 const CORE=['./','./index.html','./manifest.webmanifest','./icons/icon.svg'];
 self.addEventListener('install',e=>e.waitUntil(caches.open(VERSION).then(cache=>cache.addAll(CORE)).then(()=>self.skipWaiting())));
 self.addEventListener('activate',e=>e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(key=>key!==VERSION).map(key=>caches.delete(key)))).then(()=>self.clients.claim())));
