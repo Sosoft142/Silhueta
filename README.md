@@ -1,4 +1,4 @@
-# Silhueta · versão 1.5
+# Silhueta · versão 1.6 — sem dados fictícios
 
 Aplicativo web instalável (PWA) para acompanhar medidas corporais, composição corporal, nutrição e evolução.
 
@@ -28,3 +28,12 @@ No Chrome, abra o site e acesse o menu ⋮ → **Instalar aplicativo** (ou **Adi
 HTML, CSS, JavaScript, localStorage, Service Worker, Web Crypto API e GitHub Gist.
 
 Não depende de servidor próprio, não sincroniza automaticamente com Google Sheets e não coloca credenciais no repositório.
+
+## Dados iniciais: sem exemplos (v1.6)
+
+- Uma instalação nova começa com **perfil, metas nutricionais e medições vazios**. A duração de acompanhamento de 12 meses é a estrutura do projeto, não um dado corporal.
+- O peso preenchido em **Meu perfil** é uma referência e **não é automaticamente registrado como pesagem semanal**. O painel apresenta essa referência, identificada como tal, até uma medição real ser salva.
+- Ao abrir dados legados de versões anteriores, o aplicativo retira os valores originalmente preenchidos como demonstração **somente quando coincidem com os padrões antigos e não há marca de edição**. Valores pessoais diferentes, como peso inicial de 75 kg, são preservados.
+- A migração também é aplicada à leitura de backups antigos recebidos via Gist e aos arquivos JSON importados. Registros reais de medidas e alimentação são preservados. Se algum campo pessoal coincidia exatamente com um exemplo antigo, sem histórico de edição, talvez seja necessário informá-lo novamente.
+- O estado permanece exclusivamente no dispositivo e no Gist criptografado do usuário; não existem dados pessoais no repositório.
+- Recomenda-se exportar um **backup JSON** antes da primeira sincronização após a atualização.
