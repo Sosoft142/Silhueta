@@ -1,4 +1,4 @@
-# Silhueta · versão 1.8
+# Silhueta · versão 1.9 — interface orientada por tarefas
 
 Aplicativo web instalável (PWA) para acompanhar medidas corporais, composição corporal, nutrição e evolução.
 
@@ -53,3 +53,28 @@ Não depende de servidor próprio, não sincroniza automaticamente com Google Sh
 - **PWA offline:** cache versionado para 1.8 e ícones de instalação incluídos entre os recursos armazenados.
 - **Testes locais:** navegação e screenshots em 320, 390, 768, 1080 e 1440 px; perfil, medições, nutrição, exportação JSON/CSV, modal, barra lateral, migração de dados fictícios, tombstones e mesclagem de campos independentes.
 - **Limitação conhecida:** os Gists são criptografados com uma chave derivada do token usado ao criá-los. Antes de substituir ou revogar o token, exporte um backup JSON dos seus dados. O teste de comunicação com um Gist real depende do token do próprio usuário.
+
+## Experiência de uso — versão 1.9
+
+- **Início:** mostra a próxima ação conforme os dados existentes (configurar perfil, primeira medida ou nova semana). Inclui duas etapas de início, resumo e indicações explícitas de registros versus valores de referência. Gráfico de peso só aparece após duas pesagens reais.
+- **Perfil:** concentra dados essenciais visíveis; rotina, objetivos e metas nutricionais ficam em seções opcionais, recolhíveis. O peso de referência não gera pesagem no histórico.
+- **Medidas:** primeira tela com data, peso, cintura e quadril; outras medidas e anotações em seção opcional. Mostra semanas já salvas e instruções rápidas para medir.
+- **Nutrição:** o check-in semanal aparece antes das referências alimentares; macros detalhados são opcionais, assim como metas nutricionais.
+- **Evolução:** começa com uma instrução para criar a primeira medição quando não há registros. Mostra primeiro os gráficos essenciais; indicadores complementares ficam sob expansão.
+- **Como usar:** três passos com links, glossário breve, cópias de segurança e ações de manutenção secundárias.
+- **Android:** cinco destinos na navegação inferior (Início, Medidas, Evolução, Nutrição e Perfil). Ajuda está disponível pelo painel, perfil e menu lateral no desktop.
+- **Acessibilidade:** áreas de toque, tipografia secundária, contraste e rótulos de campos reforçados. A barra lateral retrátil foi preservada no computador.
+
+### Princípios adotados
+
+- [Nielsen Norman Group — 10 heurísticas de usabilidade](https://www.nngroup.com/articles/ten-usability-heuristics/)
+- [Nielsen Norman Group — estados vazios](https://www.nngroup.com/articles/empty-state-interface-design/)
+- [Nielsen Norman Group — divulgação progressiva](https://www.nngroup.com/articles/progressive-disclosure/)
+- [Nielsen Norman Group — microcopy informativa](https://www.nngroup.com/articles/3-cs-microcopy/)
+- [GOV.UK Design System — páginas de perguntas](https://design-system.service.gov.uk/patterns/question-pages/)
+- [Android — navegação e layouts](https://developer.android.com/design/ui/mobile/guides/layout-and-content/layout-and-nav-patterns)
+- [W3C — WCAG 2.2](https://www.w3.org/WAI/standards-guidelines/wcag/new-in-22/)
+
+### Verificação
+
+Testes de navegação e salvamento em Chromium (larguras de 320, 390, 768 e 1440 pixels); telas com e sem registros; preservação de campos opcionais ocultos nos formulários; checagem de erros JavaScript e ausência de rolagem horizontal. Não constitui um estudo com usuárias reais nem validação contra o Gist da conta pessoal.
