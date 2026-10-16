@@ -1,25 +1,30 @@
-# Silhueta — acompanhamento corporal (PWA)
+# Silhueta · versão 1.5
 
-Aplicativo estático de acompanhamento por 53 semanas, preparado para GitHub Pages e instalação no Chrome para Android. Mantém os dados locais no navegador e oferece backup criptografado por GitHub Gist com token clássico (permissão `gist`).
+Aplicativo web instalável (PWA) para acompanhar medidas corporais, composição corporal, nutrição e evolução.
 
-## Instalação
+## Publicação
+Hospedado no GitHub Pages: https://sosoft142.github.io/Silhueta/
 
-Acesse https://sosoft142.github.io/Silhueta/ no Chrome Android e use **Instalar aplicativo** ou **Adicionar à tela inicial**. O aplicativo dispõe de `manifest.webmanifest`, `service-worker.js` e ícones; a atualização do service worker pode levar algum tempo. Os ícones PNG são produzidos automaticamente pelo GitHub Actions a partir do SVG em `icons/icon.svg`.
+## Como começar
+1. Abra **Meu perfil** e confira idade, altura, peso e metas. Selecione **Salvar meu perfil**.
+2. Na aba **Medições**, registre semanalmente peso e circunferências.
+3. Veja o progresso na página inicial e os gráficos em **Evolução**.
 
-## Sincronização e segurança
+## Sincronização entre celular e computador
+1. Abra o ícone de nuvem nos dois aparelhos.
+2. Informe **o mesmo Personal Access Token (classic)** do GitHub com a permissão `gist` em ambos.
+3. Toque **Conectar e sincronizar** uma vez em cada aparelho.
+4. Após a conexão, as alterações são enviadas automaticamente depois de salvar, e o aplicativo busca atualizações ao abrir, retomar a tela e periodicamente enquanto estiver ativo.
+5. O verde indica que **este aparelho confirmou seu estado com o Gist**. Ele não significa que outro dispositivo desconectado já recebeu as alterações.
 
-Abra o ícone de nuvem no topo. Insira um token clássico do GitHub com escopo exclusivo `gist`; se quiser armazená-lo neste dispositivo, marque a opção de lembrar. Um Gist secreto não é privado — por isso o backup é criptografado com AES-GCM. **Não coloque token, senhas ou dados pessoais no repositório.**
+**Importante:** caso tenha utilizado uma senha de criptografia adicional na versão antiga, faça um backup JSON no dispositivo antigo para migrar os dados. Nunca inclua tokens, Gists ou backups pessoais neste repositório. Tokens armazenados localmente podem ser expostos se o dispositivo estiver comprometido. Faça backups JSON independentes.
 
-A sincronização é **manual**, não contínua. A versão 1.4 protege especialmente o primeiro acesso em outro dispositivo: se encontrar registros no Gist e apenas dados de demonstração no aparelho, oferece o recebimento antes de qualquer substituição. Em caso de conflito ou dúvida, exporte backups JSON dos dispositivos antes de escolher Enviar ou Receber.
+O aplicativo preserva alterações em campos diferentes durante a mesclagem. Se o mesmo campo for modificado simultaneamente, utiliza o horário da última edição; não há resolução avançada de conflitos nem garantia de atualização instantânea enquanto o aplicativo está fechado.
 
-A cor da nuvem indica o estado **deste dispositivo**: neutra quando não há confirmação, lilás quando existem alterações locais, vermelha em erro e verde após comunicação e verificação do backup no Gist. **Verde não garante que todos os outros dispositivos já receberam aquela versão; cada um precisa sincronizar.**
+## Instalação no Android
+No Chrome, abra o site e acesse o menu ⋮ → **Instalar aplicativo** (ou **Adicionar à tela inicial**, conforme a versão). A instalação exige HTTPS, fornecido pelo GitHub Pages.
 
-## Arquivos
-- `index.html`: interface, cálculos e sincronização.
-- `manifest.webmanifest`: metadados de instalação.
-- `service-worker.js`: cache para uso offline.
-- `icons/`: ícone SVG e PNGs gerados.
-- `.github/workflows/icons.yml`: gera os PNGs necessários à instalação.
-- `.nojekyll`: publicação estática.
+## Tecnologias
+HTML, CSS, JavaScript, localStorage, Service Worker, Web Crypto API e GitHub Gist.
 
-Dados pessoais e credenciais não estão incluídos no repositório.
+Não depende de servidor próprio, não sincroniza automaticamente com Google Sheets e não coloca credenciais no repositório.
