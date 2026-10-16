@@ -21,10 +21,22 @@
   --font:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",Arial,sans-serif;
 }
 *{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:#fcfafb;color:var(--ink);font-family:var(--font);font-size:14px}button,input,select,textarea{font:inherit}button{cursor:pointer}a{color:inherit}button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:3px solid #cf89b1;outline-offset:2px}
-.app{display:grid;grid-template-columns:252px minmax(0,1fr);min-height:100vh}
+.app{display:grid;grid-template-columns:252px minmax(0,1fr);min-height:100vh;transition:grid-template-columns .23s ease}
 .sidebar{background:#fff;position:sticky;top:0;height:100vh;display:flex;flex-direction:column;padding:27px 17px;border-right:1px solid var(--border)}
 .brand{padding:2px 12px 31px;display:flex;gap:12px;align-items:center}.mark{height:45px;width:45px;border-radius:16px;background:linear-gradient(145deg,#efb2cb,#d57ca8);display:grid;place-items:center;color:white;box-shadow:0 8px 20px #e2a0bf5c}.brand h1{font-family:Georgia,serif;letter-spacing:-.6px;font-size:25px;line-height:1;margin:0;color:#73425e}.brand small{font-size:10px;letter-spacing:1.5px;color:#9a8792;font-weight:750}
 .nav-list{display:grid;gap:6px}.nav-btn{border:0;background:none;color:#746975;padding:13px 14px;text-align:left;border-radius:13px;display:flex;align-items:center;gap:13px;font-weight:650;width:100%;transition:.2s}.nav-btn:hover{background:#fbf4f7}.nav-btn.active{background:var(--rose-soft);color:var(--rose-dark)}.nav-btn svg{height:19px;width:19px;flex:none}.nav-label{font-size:12px;letter-spacing:1.1px;color:#a396a0;margin:20px 14px 10px;text-transform:uppercase;font-weight:800}.sidebar-spacer{flex:1}.sidebar-note{background:#fdf4f8;border:1px solid #f6e1eb;border-radius:15px;padding:15px;color:#80536a;font-size:12px;line-height:1.6}.sidebar-note strong{display:block;font-size:13px;margin-bottom:3px}
+.sidebar{min-width:0;transition:padding .23s ease}
+.sidebar-toggle{position:absolute;top:48px;right:-15px;width:30px;height:30px;z-index:15;border:1px solid #eadce6;border-radius:50%;background:#fff;color:#915d7a;display:flex;align-items:center;justify-content:center;box-shadow:0 3px 12px #7b536122;transition:background .2s ease}
+.sidebar-toggle:hover{background:#f9eaf2}
+.sidebar-toggle svg{width:17px;height:17px;transition:transform .23s ease}
+.app.sidebar-collapsed{grid-template-columns:82px minmax(0,1fr)}
+.app.sidebar-collapsed .sidebar{padding-left:10px;padding-right:10px}
+.app.sidebar-collapsed .brand{justify-content:center;padding:2px 0 30px}
+.app.sidebar-collapsed .brand>div:last-child,.app.sidebar-collapsed .nav-label,.app.sidebar-collapsed .sidebar-note,.app.sidebar-collapsed .nav-btn span{display:none}
+.app.sidebar-collapsed .nav-btn{justify-content:center;padding:13px 8px}
+.app.sidebar-collapsed .sidebar-toggle svg{transform:rotate(180deg)}
+@media(max-width:850px){.sidebar-toggle{display:none}.app.sidebar-collapsed{display:block}}
+@media(prefers-reduced-motion:reduce){.app,.sidebar,.sidebar-toggle svg{transition:none}}
 .main-shell{min-width:0;max-width:1550px;width:100%;margin:0 auto;padding:29px clamp(22px,3.2vw,60px) 90px}.topbar{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:26px}.eyebrow{font-size:11px;font-weight:800;letter-spacing:2px;text-transform:uppercase;color:var(--rose-dark)}.topbar-right{display:flex;align-items:center;gap:10px}.top-pill{padding:9px 12px;border:1px solid #f1dde7;border-radius:30px;background:#fff7fa;color:#9b5878;font-size:12px;font-weight:700;white-space:nowrap}.icon-btn{border:1px solid var(--border);background:white;border-radius:12px;padding:10px;display:grid;place-items:center;color:#8d7282}.icon-btn svg{width:18px;height:18px}
 .page-title{font-family:Georgia,serif;font-size:clamp(29px,3.1vw,43px);letter-spacing:-1.2px;font-weight:500;color:#54394c;margin:0 0 10px}.page-desc{margin:0;line-height:1.7;color:#8b808a;max-width:800px;font-size:14px}.page-head{display:flex;justify-content:space-between;gap:16px;align-items:center;margin-bottom:26px}.page-head .left{max-width:810px}
 .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border:1px solid transparent;border-radius:12px;padding:12px 16px;font-weight:750;font-size:13px;min-height:44px;text-decoration:none;white-space:nowrap;transition:transform .15s,background .15s}.btn svg{height:16px;width:16px}.btn:hover{transform:translateY(-1px)}.btn-primary{color:#fff;background:var(--rose);box-shadow:0 7px 20px #d9789f33}.btn-primary:hover{background:var(--rose-dark)}.btn-soft{color:#89516c;background:#fbedf3;border-color:#f5e2eb}.btn-plain{background:white;color:#6b5a68;border-color:var(--border)}.btn-danger{color:#af4765;background:#fff0f3;border-color:#f7dce6}.btn-sm{min-height:34px;padding:8px 11px;font-size:12px;border-radius:9px}.small-muted{color:var(--sub);font-size:12px}.grid{display:grid;gap:17px}.grid-4{grid-template-columns:repeat(4,minmax(0,1fr))}.grid-3{grid-template-columns:repeat(3,minmax(0,1fr))}.grid-2{grid-template-columns:repeat(2,minmax(0,1fr))}.grid-12{grid-template-columns:repeat(12,minmax(0,1fr))}.span-8{grid-column:span 8}.span-7{grid-column:span 7}.span-6{grid-column:span 6}.span-5{grid-column:span 5}.span-4{grid-column:span 4}
@@ -39,7 +51,7 @@
 .help-step{display:flex;gap:14px;padding:17px 0;border-bottom:1px solid #f0e9ef}.help-step:last-child{border:0}.help-num{height:34px;width:34px;border-radius:11px;background:#f3e4ec;display:grid;place-items:center;color:#995775;font-weight:800;flex:none}.help-step strong{display:block;margin-bottom:5px}.help-step p{margin:0;color:var(--sub);line-height:1.7;font-size:12px}
 .toast{position:fixed;bottom:28px;left:50%;transform:translate(-50%,12px);max-width:90vw;padding:12px 18px;border-radius:12px;background:#3c3440;color:#fff;font-weight:700;font-size:12px;box-shadow:0 10px 35px #0002;z-index:99;opacity:0;pointer-events:none;transition:.2s}.toast.show{opacity:1;transform:translate(-50%,0)}.notice{background:#fff7ee;color:#89653b;padding:11px 15px;border-radius:10px;border:1px solid #f4dfbe;margin:0 0 20px;font-size:12px;line-height:1.6}.mobile-nav{display:none}.toolbar-flex{display:flex;gap:9px;align-items:center;flex-wrap:wrap}.no-data{color:#ad9da8}.download-panel{background:#fcf7fa;border:1px solid #f4e7ee;border-radius:15px;padding:17px;display:grid;gap:12px}.hr-tight{margin:11px 0}.comparison{display:grid;grid-template-columns:1fr 1fr;gap:10px}.comparison .small-block{background:#fbf7fb;border-radius:10px;padding:14px}.small-block small{display:block;color:#8b7d88;font-size:11px;margin-bottom:8px}.small-block strong{font-size:20px;font-variant-numeric:tabular-nums}.nav-short{display:none}
 @media(max-width:1250px){.grid-4{grid-template-columns:repeat(2,minmax(0,1fr))}.grid-12{grid-template-columns:repeat(2,minmax(0,1fr))}.span-8,.span-7,.span-6,.span-5,.span-4{grid-column:span 1}.form-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
-@media(max-width:850px){.app{display:block}.sidebar{display:none}.main-shell{padding:22px 16px 110px}.mobile-nav{display:grid;grid-template-columns:repeat(5,1fr);position:fixed;bottom:0;left:0;right:0;background:#ffffffed;backdrop-filter:blur(18px);border-top:1px solid #f0e2e9;z-index:40;padding:7px max(5px,env(safe-area-inset-left)) calc(7px + env(safe-area-inset-bottom))}.mobile-link{border:0;background:transparent;color:#93838e;display:grid;justify-items:center;align-content:center;gap:4px;padding:5px 2px;font-size:9px;font-weight:700;border-radius:12px;min-height:47px}.mobile-link svg{height:20px;width:20px}.mobile-link.active{color:#ab527c;background:#fff1f6}.topbar{margin-bottom:21px}.page-title{font-size:31px}.page-head{align-items:start}.page-head .btn{min-width:auto}.desktop-only{display:none}}
+@media(max-width:850px){.app{display:block}.sidebar{display:none}.main-shell{padding:22px 16px 110px}.mobile-nav{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));position:fixed;bottom:0;left:0;right:0;background:#ffffffed;backdrop-filter:blur(18px);border-top:1px solid #f0e2e9;z-index:40;padding:7px max(5px,env(safe-area-inset-left)) calc(7px + env(safe-area-inset-bottom))}.mobile-link{border:0;background:transparent;color:#93838e;display:grid;justify-items:center;align-content:center;gap:4px;padding:5px 2px;font-size:9px;font-weight:700;border-radius:12px;min-height:47px}.mobile-link svg{height:20px;width:20px}.mobile-link.active{color:#ab527c;background:#fff1f6}.topbar{margin-bottom:21px}.page-title{font-size:31px}.page-head{align-items:start}.page-head .btn{min-width:auto}.desktop-only{display:none}}
 @media(max-width:590px){.grid-4,.grid-3,.grid-2,.grid-12{grid-template-columns:1fr 1fr;gap:11px}.span-8,.span-7,.span-6,.span-5,.span-4{grid-column:span 2}.kpi-card{padding:16px;min-height:140px}.kpi-value{font-size:26px}.card{padding:18px;border-radius:17px}.page-head{display:block}.page-head .toolbar-flex{margin-top:17px}.form-grid{grid-template-columns:1fr 1fr;gap:12px}.form-grid .full-mobile{grid-column:span 2}.page-title{font-size:29px}.top-pill{font-size:10px;padding:8px 10px}.brand-sm{font-family:Georgia,serif;font-size:20px;color:#784461;font-weight:800}.week-chooser{width:100%}.week-select{flex:1;min-width:0;max-width:none}.entry{gap:9px;padding:12px}.entry-index{width:35px;height:35px}.entry-weight{min-width:53px}.entry-action{padding:8px 7px}.ring-layout{justify-content:center}.macro-legend{min-width:100%}.form-actions{align-items:stretch}.form-actions .btn{flex:1}.nav-short{display:inline}.page-desc{font-size:13px}}
 /* Privacidade / Gist */
 .sync-card{background:linear-gradient(160deg,#fff,#fcf9ff);border-color:#e9dff4}
@@ -147,8 +159,8 @@ body.sync-open{overflow:hidden}
 </head>
 <body>
 <div class="app">
- <aside class="sidebar"><div class="brand"><div class="mark" aria-hidden="true"><img src="./icons/icon-192.png" width="45" height="45" alt="" /></div><div><h1>Silhueta</h1><small>MEU PROJETO</small></div></div><div class="nav-label">Acompanhamento</div><nav class="nav-list" id="desktopNav"></nav><div class="sidebar-spacer"></div><div class="sidebar-note"><strong>Um progresso de cada vez.</strong>Seu objetivo é a proporção corporal e o desenvolvimento dos glúteos — não apenas o número na balança.</div></aside>
- <div class="main-shell"><div class="topbar"><div class="eyebrow desktop-only">Seu espaço de acompanhamento</div><div class="brand-sm nav-short"><img src="./icons/icon-192.png" width="28" height="28" alt="" /> <span>Silhueta</span></div><div class="topbar-right"><button class="sync-trigger" data-action="openSync" aria-label="Configurar sincronização" title="Sincronizar com GitHub Gist"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.15" stroke-linecap="round" stroke-linejoin="round"><path d="M6.2 18h11a4.3 4.3 0 0 0 .2-8.6A5.9 5.9 0 0 0 6 10.5 3.8 3.8 0 0 0 6.2 18Z"/></svg><span class="sync-trigger-label">Sincronização</span></button><span class="top-pill" id="topPeriod">12 meses de projeto</span><button class="icon-btn" data-action="go" data-view="help" title="Ajuda e exportação" aria-label="Ajuda e exportação"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M9.4 9a2.8 2.8 0 1 1 4.5 2.25c-1 .75-1.9 1.2-1.9 2.7M12 17.5h.01" stroke-linecap="round"/></svg></button></div></div><div id="storageNotice" role="status"></div><main id="main" tabindex="-1"></main></div>
+ <aside class="sidebar" id="appSidebar" aria-label="Menu de navegação"><button class="sidebar-toggle" type="button" data-action="toggleSidebar" id="sidebarToggle" aria-label="Recolher barra lateral" aria-expanded="true" aria-controls="desktopNav" title="Recolher barra lateral"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m14 5-7 7 7 7"/></svg></button><div class="brand"><div class="mark" aria-hidden="true"><img src="./icons/icon-192.png" width="45" height="45" alt="" /></div><div><h1>Silhueta</h1><small>MEU PROJETO</small></div></div><div class="nav-label">Acompanhamento</div><nav class="nav-list" id="desktopNav"></nav><div class="sidebar-spacer"></div><div class="sidebar-note"><strong>Um progresso de cada vez.</strong>Seu objetivo é a proporção corporal e o desenvolvimento dos glúteos — não apenas o número na balança.</div></aside>
+ <div class="main-shell"><div class="topbar"><div class="eyebrow desktop-only">Seu espaço de acompanhamento</div><div class="brand-sm nav-short"><img src="./icons/icon-192.png" width="28" height="28" alt="" /> <span>Silhueta</span></div><div class="topbar-right"><button class="sync-trigger" data-action="openSync" aria-label="Configurar sincronização" title="Sincronizar com GitHub Gist"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.15" stroke-linecap="round" stroke-linejoin="round"><path d="M6.2 18h11a4.3 4.3 0 0 0 .2-8.6A5.9 5.9 0 0 0 6 10.5 3.8 3.8 0 0 0 6.2 18Z"/></svg><span class="sync-trigger-label">Sincronização</span></button><span class="top-pill" id="topPeriod">12 meses de projeto</span></div></div><div id="storageNotice" role="status"></div><main id="main" tabindex="-1"></main></div>
 </div>
 <nav class="mobile-nav" id="mobileNav" aria-label="Navegação principal"></nav>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
@@ -171,7 +183,7 @@ body.sync-open{overflow:hidden}
 <input type="file" id="importFile" accept=".json,.csv,text/csv,application/json" hidden />
 <script>
 (()=>{'use strict';
-const STORAGE_KEY='silhueta.app.v1', VERSION=4;
+const STORAGE_KEY='silhueta.app.v1', VERSION=5;
 const ICONS={cloud:'<path d="M6 18h11.2A4 4 0 0 0 18 10a6 6 0 0 0-11.8.7A3.7 3.7 0 0 0 6 18Z"/>',dashboard:'<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>',measure:'<path d="M4 7h16v10H4z"/><path d="M7 7v4m4-4v3m4-3v4m3-4v3"/>',trends:'<path d="M3 19h18M4 15l5-5 4 3 7-8"/>',nutrition:'<path d="M12 21c4 0 8-5 8-10a8 8 0 0 0-16 0c0 5 4 10 8 10Z"/><path d="M12 20V4M5 10h14"/>',profile:'<circle cx="12" cy="8" r="4"/><path d="M4 21c0-5 3-8 8-8s8 3 8 8"/>',help:'<circle cx="12" cy="12" r="9"/><path d="M9.5 9a2.6 2.6 0 1 1 4.2 2.1C12 12.5 12 13.5 12 14m0 3h.01"/>',plus:'<path d="M12 5v14M5 12h14"/>',chevron:'<path d="m9 18 6-6-6-6"/>',arrow:'<path d="M12 19V5m-6 6 6-6 6 6"/>',download:'<path d="M12 3v12m-5-5 5 5 5-5M4 17v4h16v-4"/>',upload:'<path d="M12 17V4M7 9l5-5 5 5M4 17v4h16v-4"/>',heart:'<path d="M20.5 8.5c0 4.3-8.5 10-8.5 10s-8.5-5.7-8.5-10a4.5 4.5 0 0 1 8.5-2 4.5 4.5 0 0 1 8.5 2Z"/>',calendar:'<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M7 3v4m10-4v4M3 10h18"/>',scale:'<rect x="3" y="4" width="18" height="17" rx="3"/><path d="M8 10a4 4 0 0 1 8 0M12 10l2-2"/>',waist:'<path d="M7 3c0 4 3 5 3 9 0 3-3 5-3 9m10-18c0 4-3 5-3 9 0 3 3 5 3 9M7 9h10M7 16h10"/>',chart:'<path d="M3 20V4m0 16h18M6 17l4-5 4 2 6-9"/>',check:'<path d="m5 12 4 4L19 6"/>',edit:'<path d="m4 18 12-12 3 3-12 12H4zM14 8l3 3"/>',trash:'<path d="M4 7h16M9 7V4h6v3m3 0-1 14H7L6 7m4 4v6m4-6v6"/>',clock:'<circle cx="12" cy="12" r="9"/><path d="M12 6v6l4 2"/>',lock:'<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>',info:'<circle cx="12" cy="12" r="9"/><path d="M12 10v7m0-10h.01"/>'};
 function ico(name, size=20){return `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[name]||ICONS.heart}</svg>`;}
 const NAV=[['dashboard','Painel','dashboard'],['measure','Medições','measure'],['trends','Evolução','trends'],['nutrition','Nutrição','nutrition'],['profile','Meu perfil','profile'],['help','Como usar','help']];
@@ -181,25 +193,47 @@ const LEGACY_DEMO_PROFILE={age:25,height:165,baselineWeight:70,startDate:'2026-1
 const LEGACY_DEMO_MACROS={protein:120,carbs:240,fat:65,calorieReference:2025};
 function stripLegacyDemo(d){
  if(!d||typeof d!=='object')return d;
- if(Number(d.version)>=4)return d;
+ const fromOldTemplate=Number(d.version)<4;
  d.meta=d.meta&&typeof d.meta==='object'?d.meta:{};
- const clocks=d.meta.clock&&typeof d.meta.clock==='object'?d.meta.clock:{};
- for(const [section,defaults] of [['profile',LEGACY_DEMO_PROFILE],['macros',LEGACY_DEMO_MACROS]]){
-  const block=d[section];if(!block||typeof block!=='object')continue;
-  for(const [field,oldDefault] of Object.entries(defaults)){
-   const key=section+'.'+field;
-   // If the value matches the old template AND lacks an explicit edit clock, it is not a verified user entry.
-   if(block[field]===oldDefault&&!(Number(clocks[key])>0))block[field]=field==='startDate'?'':null;
+ d.meta.clock=d.meta.clock&&typeof d.meta.clock==='object'?d.meta.clock:{};
+ const clocks=d.meta.clock;
+ // A version < 4 carried demo values in the profile and nutrition sections.
+ if(fromOldTemplate){
+  for(const [section,defaults] of [['profile',LEGACY_DEMO_PROFILE],['macros',LEGACY_DEMO_MACROS]]){
+   const block=d[section];if(!block||typeof block!=='object')continue;
+   for(const [field,oldDefault] of Object.entries(defaults)){
+    const key=section+'.'+field;
+    if(block[field]===oldDefault&&!(Number(clocks[key])>0))block[field]=field==='startDate'?'':null;
+   }
   }
  }
- const record=d.measurements?.['0'];
- if(record&&typeof record==='object'&&record.weight===70&&record.date==='2026-10-15'&&!(Number(clocks['measurements.0.weight'])>0)){
-  delete record.weight;
-  // A date originating from the original fake week-zero record must not count as a measurement.
-  if(!(Number(clocks['measurements.0.date'])>0))delete record.date;
-  if(!Object.entries(record).some(([k,v])=>v!==null&&v!==''&&v!==undefined))delete d.measurements['0'];
+ // Original demo: week zero, 70 kg, no independent measurement, often with
+ // a date silently rewritten to the user's chosen project start date.
+ // Do not interpret a positive sync clock as proof of a manual entry: the
+ // previous sync implementation backfilled clocks for inherited demo data.
+ // A one-time marker prevents reclassifying user-entered 70 kg in the future.
+ const entry=d.measurements?.['0'];
+ const start=d.profile?.startDate;
+ const legacySource=fromOldTemplate||d.meta.legacyDemoCleaned===true||Number(d.version)===4;
+ const onlyDemoFields=entry&&Object.entries(entry).every(([key,val])=>
+  key==='weight'||key==='date'||(key==='notes'&&!String(val??'').trim()));
+ const matchesTemplateDate=entry&&(!entry.date||entry.date==='2026-10-15'||(start&&entry.date===start));
+ const baselineChanged=!d.profile||d.profile.baselineWeight===null||d.profile.baselineWeight===undefined||d.profile.baselineWeight!==70;
+ if(legacySource&&entry&&entry.weight===70&&onlyDemoFields&&matchesTemplateDate&&baselineChanged){
+  delete entry.weight;
+  delete entry.date;
+  if('notes' in entry&&!String(entry.notes??'').trim())delete entry.notes;
+  if(!Object.keys(entry).length)delete d.measurements['0'];
+  // Sync tombstones for the removed sample ensure that a still-stale second
+  // device cannot restore it in the field-level last-write-wins merge.
+  const newClock=Math.max(Date.now(),Number(clocks['measurements.0.weight'])||0,Number(clocks['measurements.0.date'])||0)+1;
+  clocks['measurements.0.weight']=newClock;
+  clocks['measurements.0.date']=newClock;
+  d.meta.legacyWeekZeroPurgedV2=true;
+  d.meta.updatedAt=nowStamp();
  }
- d.version=VERSION;d.meta.legacyDemoCleaned=true;
+ d.version=VERSION;
+ if(fromOldTemplate)d.meta.legacyDemoCleaned=true;
  return d;
 }
 function cleanNum(x){if(x===null||x===undefined||x==='')return null;const n=typeof x==='string'?Number(x.replace(/\s/g,'').replace(',','.')):Number(x);return Number.isFinite(n)?n:null;}
@@ -232,7 +266,16 @@ function pickWeek(){const baseline=record(0);if(!Number.isFinite(baseline.waist)
 function metricStatus(r){if(!realData(r))return 'Pendente';return Number.isFinite(r.weight)&&Number.isFinite(r.waist)&&Number.isFinite(r.hip)?'Completo':'Parcial'}
 function toast(msg){const el=document.getElementById('toast');el.textContent=msg;el.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>el.classList.remove('show'),3200)}
 function setView(view){ui.view=view;if(view==='measure'&&ui.week===null)ui.week=pickWeek();render();window.scrollTo({top:0,behavior:'smooth'})}
-function navRender(){document.getElementById('desktopNav').innerHTML=NAV.map(([id,label,ic])=>`<button class="nav-btn ${ui.view===id?'active':''}" data-action="go" data-view="${id}" ${ui.view===id?'aria-current="page"':''}>${ico(ic)}<span>${label}</span></button>`).join('');document.getElementById('mobileNav').innerHTML=NAV.slice(0,5).map(([id,label,ic])=>`<button class="mobile-link ${ui.view===id?'active':''}" data-action="go" data-view="${id}" aria-label="${label}" ${ui.view===id?'aria-current="page"':''}>${ico(ic)}<span>${label}</span></button>`).join('')}
+const SIDEBAR_PREF_KEY='silhueta.ui.sidebarCollapsed';
+function setSidebarCollapsed(collapsed){
+ document.querySelector('.app')?.classList.toggle('sidebar-collapsed',collapsed);
+ const toggle=document.getElementById('sidebarToggle');
+ if(toggle){toggle.setAttribute('aria-expanded',String(!collapsed));toggle.setAttribute('aria-label',collapsed?'Expandir barra lateral':'Recolher barra lateral');toggle.title=collapsed?'Expandir barra lateral':'Recolher barra lateral';}
+ try{localStorage.setItem(SIDEBAR_PREF_KEY,collapsed?'1':'0')}catch(e){}
+}
+function toggleSidebar(){setSidebarCollapsed(!document.querySelector('.app')?.classList.contains('sidebar-collapsed'))}
+function navRender(){document.getElementById('desktopNav').innerHTML=NAV.map(([id,label,ic])=>`<button class="nav-btn ${ui.view===id?'active':''}" data-action="go" data-view="${id}" aria-label="${label}" title="${label}" ${ui.view===id?'aria-current="page"':''}>${ico(ic)}<span>${label}</span></button>`).join('');document.getElementById('mobileNav').innerHTML=NAV.map(([id,label,ic])=>`<button class="mobile-link ${ui.view===id?'active':''}" data-action="go" data-view="${id}" aria-label="${label}" ${ui.view===id?'aria-current="page"':''}>${ico(ic)}<span>${label}</span></button>`).join('')}
+
 function heading(title,desc,action=''){return `<div class="page-head"><div class="left"><h1 class="page-title">${title}</h1><p class="page-desc">${desc}</p></div>${action?`<div class="toolbar-flex">${action}</div>`:''}</div>`}
 function button(text,ic,act,more='',kind='btn-primary'){return `<button class="btn ${kind}" data-action="${act}" ${more}>${ico(ic,16)}${text}</button>`}
 function cardKpi(label,value,unit,tint,ic,footer){return `<article class="card kpi-card ${tint}"><div class="kpi-header"><span class="kpi-label">${label}</span><span class="kpi-icon" style="background:${tint==='tint-rose'?'#fae7ef':tint==='tint-green'?'#e7f4eb':tint==='tint-lavender'?'#f0ebfa':'#e9f4fb'};color:${tint==='tint-rose'?'#bd7091':tint==='tint-green'?'#608e78':tint==='tint-lavender'?'#9082ba':'#739ebc'}">${ico(ic,18)}</span></div><div class="kpi-value">${value} <small>${unit}</small></div><span class="kpi-footer">${footer}</span></article>`}
@@ -372,11 +415,11 @@ function importCSV(text){const rows=parseCSV(text);const index=rows.findIndex(ro
 function importFile(file){if(!file)return;const reader=new FileReader();reader.onload=()=>{try{const txt=String(reader.result);if(file.name.toLowerCase().endsWith('.json')){const parsed=JSON.parse(txt),data=parsed.data||parsed;if(!data||!data.profile||!data.measurements||!data.macros||typeof data.measurements!=='object')throw Error('Formato de backup não reconhecido.');if(!confirm('Importar este backup substituindo os dados atuais? Faça um backup antes, se necessário.'))return;state=normalizeStateData(data);ui.week=0;ui.nutWeek=0;persist();toast('Backup importado com sucesso.');setView('dashboard')}else if(file.name.toLowerCase().endsWith('.csv')){if(!confirm('Importar os registros deste CSV para o projeto atual? Semanas correspondentes serão atualizadas.'))return;let n=importCSV(txt);persist();toast(`${n} semanas importadas.`);setView('dashboard')}else throw Error('Utilize .json ou .csv')}catch(e){alert('Não foi possível importar: '+e.message)}};reader.readAsText(file,'UTF-8')}
 function reset(){if(!confirm('Restaurar o aplicativo aos dados iniciais? Todas as medições e registros salvos serão perdidos.'))return;if(!confirm('Confirma a exclusão dos registros atuais?'))return;state=DEFAULT();ui.week=0;ui.nutWeek=0;persist();toast('Dados iniciais restaurados.');setView('dashboard')}
 document.addEventListener('click',e=>{const el=e.target.closest('[data-action]');if(!el)return;const act=el.dataset.action;
- switch(act){case'openSync':openSync();break;case'closeSync':closeSync();break;case'gistSync':case'gistUpload':case'gistDownload':runGist(act);break;case'gistCopyBackup':gistCopyBackup();break;case'gistRestoreOpen':document.getElementById('syncRestoreBox').hidden=false;document.getElementById('gistRestoreText').focus();break;case'gistRestoreCancel':document.getElementById('syncRestoreBox').hidden=true;break;case'gistRestore':gistRestoreBackup();break;case'gistRemoveToken':gistRemoveToken();break;case'go':setView(el.dataset.view);break;case'newMeasurement':ui.week=pickWeek();setView('measure');break;case'editWeek':ui.week=Number(el.dataset.week);setView('measure');break;case'prevWeek':ui.week=Math.max(0,ui.week-1);render();break;case'nextWeek':ui.week=Math.min(52,ui.week+1);render();break;case'prevNutWeek':ui.nutWeek=Math.max(0,ui.nutWeek-1);render();break;case'nextNutWeek':ui.nutWeek=Math.min(52,ui.nutWeek+1);render();break;case'editNutWeek':ui.nutWeek=Number(el.dataset.week);setView('nutrition');break;case'saveMeasure':saveMeasure();break;case'saveNutrition':saveNutrition();break;case'saveProfile':saveProfile();break;case'deleteMeasure':if(confirm('Apagar os dados desta semana?')){delete state.measurements[String(ui.week)];persist();toast('Semana apagada.');render()}break;case'exportCSV':exportCSV();break;case'exportNutCSV':exportNutCSV();break;case'exportJSON':exportJSON();break;case'import':document.getElementById('importFile').click();break;case'reset':reset();break;}
+ switch(act){case'toggleSidebar':toggleSidebar();break;case'openSync':openSync();break;case'closeSync':closeSync();break;case'gistSync':case'gistUpload':case'gistDownload':runGist(act);break;case'gistCopyBackup':gistCopyBackup();break;case'gistRestoreOpen':document.getElementById('syncRestoreBox').hidden=false;document.getElementById('gistRestoreText').focus();break;case'gistRestoreCancel':document.getElementById('syncRestoreBox').hidden=true;break;case'gistRestore':gistRestoreBackup();break;case'gistRemoveToken':gistRemoveToken();break;case'go':setView(el.dataset.view);break;case'newMeasurement':ui.week=pickWeek();setView('measure');break;case'editWeek':ui.week=Number(el.dataset.week);setView('measure');break;case'prevWeek':ui.week=Math.max(0,ui.week-1);render();break;case'nextWeek':ui.week=Math.min(52,ui.week+1);render();break;case'prevNutWeek':ui.nutWeek=Math.max(0,ui.nutWeek-1);render();break;case'nextNutWeek':ui.nutWeek=Math.min(52,ui.nutWeek+1);render();break;case'editNutWeek':ui.nutWeek=Number(el.dataset.week);setView('nutrition');break;case'saveMeasure':saveMeasure();break;case'saveNutrition':saveNutrition();break;case'saveProfile':saveProfile();break;case'deleteMeasure':if(confirm('Apagar os dados desta semana?')){delete state.measurements[String(ui.week)];persist();toast('Semana apagada.');render()}break;case'exportCSV':exportCSV();break;case'exportNutCSV':exportNutCSV();break;case'exportJSON':exportJSON();break;case'import':document.getElementById('importFile').click();break;case'reset':reset();break;}
 });
 document.addEventListener('change',e=>{if(e.target.id==='weekPicker'){ui.week=Number(e.target.value);render()}if(e.target.id==='nutWeekPicker'){ui.nutWeek=Number(e.target.value);render()}if(e.target.id==='importFile'){importFile(e.target.files[0]);e.target.value=''}});
 document.addEventListener('submit',e=>{if(['measureForm','nutritionForm','profileForm'].includes(e.target.id))e.preventDefault()});
-persist({preserveTimestamp:true,keepSync:true,suppressSync:true});ui.week=pickWeek();ui.nutWeek=currentWeek();render();setSyncState(hasTokenSaved()?'Verificando nuvem…':'Não conectado',hasTokenSaved()?'ready':'');if(hasTokenSaved())setTimeout(()=>syncNow('startup'),500);
+setSidebarCollapsed(localRead(SIDEBAR_PREF_KEY)==='1');persist({preserveTimestamp:true,keepSync:true,suppressSync:true});ui.week=pickWeek();ui.nutWeek=currentWeek();render();setSyncState(hasTokenSaved()?'Verificando nuvem…':'Não conectado',hasTokenSaved()?'ready':'');if(hasTokenSaved())setTimeout(()=>syncNow('startup'),500);
 })();
 </script>
 <script>document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!document.getElementById('syncModal').hidden)document.querySelector('[data-action=closeSync]').click()});</script>
