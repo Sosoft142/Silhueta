@@ -1,4 +1,4 @@
-# Silhueta · versão 1.6 — sem dados fictícios
+# Silhueta · versão 1.7
 
 Aplicativo web instalável (PWA) para acompanhar medidas corporais, composição corporal, nutrição e evolução.
 
@@ -37,3 +37,11 @@ Não depende de servidor próprio, não sincroniza automaticamente com Google Sh
 - A migração também é aplicada à leitura de backups antigos recebidos via Gist e aos arquivos JSON importados. Registros reais de medidas e alimentação são preservados. Se algum campo pessoal coincidia exatamente com um exemplo antigo, sem histórico de edição, talvez seja necessário informá-lo novamente.
 - O estado permanece exclusivamente no dispositivo e no Gist criptografado do usuário; não existem dados pessoais no repositório.
 - Recomenda-se exportar um **backup JSON** antes da primeira sincronização após a atualização.
+
+## Interface e correção de dados (v1.7)
+
+- No computador, use a seta ao lado da marca para recolher ou expandir a barra lateral. A preferência é guardada somente neste navegador.
+- O botão de ajuda redundante no canto superior direito foi removido. A seção **Como usar** permanece na barra lateral e agora também na navegação inferior do celular.
+- A migração identifica o antigo registro de demonstração de **70 kg na semana zero**, mesmo quando a data foi alterada junto com o projeto ou quando um backup Gist reintroduz esse dado. A remoção registra a exclusão nos relógios de sincronização, para impedir que versões antigas a restaurem.
+- Registros semanais com medidas adicionais (por exemplo, cintura ou quadril) e pesagens diferentes de 70 kg não são removidos por essa regra. Se você registrou deliberadamente **70 kg como única medida da semana inicial em uma versão antiga**, confira o registro após atualizar, pois sua origem não pode ser distinguida automaticamente do exemplo original.
+- Antes da migração, é recomendável exportar um backup JSON em **Como usar**.
