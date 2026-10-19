@@ -1,4 +1,4 @@
-# Silhueta · versão 2.2 — medições adicionais com datas individuais
+# Silhueta · versão 2.3 — histórico independente e registro rápido
 
 Aplicativo web instalável (PWA) para acompanhar medidas corporais, composição corporal, nutrição e evolução.
 
@@ -103,3 +103,28 @@ Para atualizar o ícone na tela inicial do Android, aguarde a atualização do s
 
 ### Verificação local
 Testes em 320, 390, 768 e 1440 px, incluindo alternância de abas sem perder campos, datas diferentes para busto/bíceps/cintura, ordenação pela data de cada medida (independentemente da semana), persistência local, abertura do painel e visualização das curvas. Não foi realizada conexão com o Gist real da usuária.
+
+## Silhueta 2.3 — novas funcionalidades
+
+**Histórico individual:** as medidas agora são eventos independentes, com identificador e data próprios. É possível registrar duas pesagens no mesmo dia ou várias medidas da mesma região dentro de uma semana, editar e excluir apenas um registro. Cada exclusão cria um marcador sincronizável (tombstone), para evitar que um aparelho desatualizado o restaure.
+
+**Migração de registros:** na primeira abertura da versão 2.3, o histórico semanal anterior é convertido uma única vez, criando identificadores determinísticos por semana e região. Os registros semanais legados continuam preservados no backup JSON, incluindo observações e treinos antigos; as observações podem ser consultadas na página Medidas. Dados de referência não são convertidos em pesagens. As datas individuais de medidas da versão 2.2 são preservadas.
+
+**Painel personalizável:** em **Início → Personalizar painel**, selecione de um a oito indicadores corporais e altere sua ordem com as setas. Cada cartão exibe a última data e o último valor da região, além da diferença para o registro anterior quando disponível. As preferências são sincronizadas pelo Gist.
+
+**Guia anatômico:** na página **Medidas**, um esquema simplificado do corpo e botões de regiões dão acesso a instruções de medição. Selecionar uma região prepara seu campo no registro rápido.
+
+**Registro rápido:** em **Medidas → Registro rápido**, informe região, valor, data e observações opcionais. A alternativa **Várias medidas** cria registros independentes de diferentes regiões com uma data comum. O histórico permite editar e excluir registros individualmente.
+
+**Evolução:** gráficos por data real e filtros de região. Dados ausentes não são interpolados. O CSV exporta data, região, valor, unidade e identificador; o aplicativo continua aceitando CSVs semanais antigos. O backup JSON permanece o formato mais completo.
+
+### Sincronização e segurança
+
+- O Gist mantém o mesmo arquivo criptografado e a mesma autenticação de versões anteriores.
+- Cada registro independente é sincronizado atomicamente por identificador. Alterações simultâneas no **mesmo registro** usam o relógio da última edição; não há solução avançada de conflitos.
+- **Atualize o Silhueta em todos os dispositivos antes de registrar novas medições.** Um cliente antigo não oferece o novo histórico e pode não tratar corretamente alterações da versão 2.3.
+- **Exporte um backup JSON antes da primeira sincronização depois da atualização.** A migração foi testada com dados simulados, mas a conexão com o Gist real da usuária não foi executada nesta sessão.
+
+### Testes locais
+
+Sintaxe JavaScript; renderização e ausência de rolagem horizontal em 320, 390, 768 e 1440 px; inclusão repetida da mesma região, registro de múltiplas regiões, edição e exclusão individual, filtros, favoritos e ordenação, guia anatômico, atualização de perfil, migração de dados da versão 2.2, não duplicação na migração, preservação de datas próprias e simulação de mesclagem entre aparelhos com marcadores de exclusão.
