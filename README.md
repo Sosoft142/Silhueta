@@ -1,4 +1,4 @@
-# Silhueta · versão 2.0 — ícone minimalista
+# Silhueta · versão 2.1 — identidade visual Opção A
 
 Aplicativo web instalável (PWA) para acompanhar medidas corporais, composição corporal, nutrição e evolução.
 
@@ -85,3 +85,9 @@ Testes de navegação e salvamento em Chromium (larguras de 320, 390, 768 e 1440
 - Ícones PNG revisados de 192 px, 512 px e 180 px (Apple), além de uma versão *maskable* de 512 px com fundo preenchido para launchers Android.
 - Navegação lateral, barra superior, favicon, manifesto e cache offline utilizam os arquivos versionados v2 para evitar imagens antigas mantidas em cache.
 - O SVG foi atualizado para uma versão vetorial equivalente ao novo desenho. A atualização de ícones de PWAs já instalados pode depender do launcher Android: se permanecer o anterior após reiniciar o Chrome, remova o atalho/app e instale-o novamente no menu do Chrome.
+
+## Ícone — Opção A (v2.1)
+
+O ícone escolhido usa o desenho minimalista de busto, cintura e quadril em linhas marfim sobre gradiente lilás-roxo. A marca é a mesma no cabeçalho e na lateral, no favicon, nos atalhos e no Android. Os recursos de instalação foram atualizados para ícones com **fundo preenchido até as bordas**, sem contorno arredondado embutido, e com versão maskable adequada ao recorte do Android. Não há seções de dicas diárias ou mensagens motivacionais.
+
+Para atualizar o ícone na tela inicial do Android, aguarde a atualização do service worker. Em alguns launchers, pode ser preciso remover o atalho/app antigo e instalar novamente pelo Chrome **após confirmar o backup JSON e a sincronização**. O cache está versionado como `silhueta-app-v2.1.0`.

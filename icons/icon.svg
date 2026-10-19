@@ -1,10 +1,28 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-<defs>
-  <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#d797ed"/><stop offset=".5" stop-color="#a666d1"/><stop offset="1" stop-color="#6d329e"/></linearGradient>
-  <linearGradient id="figure" x1=".25" y1="0" x2=".72" y2="1"><stop stop-color="#fffaf8"/><stop offset=".7" stop-color="#f9eaf3"/><stop offset="1" stop-color="#ecd1e5"/></linearGradient>
-</defs>
-<rect width="512" height="512" rx="122" fill="url(#bg)"/>
-<path d="M231 89 Q251 95 281 90 C277 119 288 141 302 152 C320 166 354 165 374 180 C404 205 391 237 366 258 C353 269 354 288 340 314 C326 338 311 342 313 364 C316 388 339 402 356 426 C370 445 374 469 358 480 C329 493 186 493 155 480 C140 469 144 445 158 426 C175 402 198 388 201 364 C203 342 188 338 174 314 C160 288 161 269 148 258 C123 237 110 205 140 180 C160 165 194 166 212 152 C226 141 237 119 231 89Z" fill="url(#figure)"/>
-<path d="M159 267 C171 304 215 309 256 271 C297 309 341 304 353 267" fill="none" stroke="#c69ad6" stroke-width="13" stroke-linecap="round" opacity=".77"/>
-<path d="M198 335 C211 371 190 394 176 431 M314 335 C301 371 322 394 336 431" fill="none" stroke="#d0a9db" stroke-width="12" stroke-linecap="round" opacity=".63"/>
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="bg" x1=".04" y1=".02" x2=".94" y2=".98" gradientUnits="objectBoundingBox">
+      <stop offset="0" stop-color="#EBA5EF"/>
+      <stop offset=".32" stop-color="#B853DF"/>
+      <stop offset=".67" stop-color="#8533BD"/>
+      <stop offset="1" stop-color="#50148D"/>
+    </linearGradient>
+    <linearGradient id="halo" x1=".05" y1=".20" x2=".90" y2=".75">
+      <stop offset="0" stop-color="#F9CEF5" stop-opacity=".35"/>
+      <stop offset=".7" stop-color="#E9A5F7" stop-opacity=".08"/>
+      <stop offset="1" stop-color="#A243D7" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" fill="url(#bg)"/>
+  <path d="M-34 225 Q115 314 219 365 T550 518 L-34 518Z" fill="url(#halo)" opacity=".38"/>
+  <g  fill="none" stroke="#FFF1FC" stroke-linecap="round" stroke-linejoin="round">
+    <!-- neck, shoulders and upper torso: mirrored flowing lines from approved Option A -->
+    <path d="M229 91 C237 122 237 145 214 163 C191 181 158 175 145 207 C136 233 151 254 163 272" stroke-width="10"/>
+    <path d="M283 91 C275 122 275 145 298 163 C321 181 354 175 367 207 C376 233 361 254 349 272" stroke-width="10"/>
+    <!-- chest contours, airy rather than a solid shape -->
+    <path d="M172 240 C162 260 170 285 193 295 C218 309 244 301 255 286 C269 302 292 308 319 294 C344 280 350 257 342 239" stroke-width="10"/>
+    <!-- narrow waist, rounded hips, tapered tips -->
+    <path d="M182 294 C198 321 213 354 201 383 C195 402 177 419 164 443 C153 464 154 483 158 495" stroke-width="11"/>
+    <path d="M330 294 C314 321 299 354 311 383 C317 402 335 419 348 443 C359 464 358 483 354 495" stroke-width="11"/>
+    <path d="M257 373 C253 383 253 390 261 396" stroke-width="5"/>
+  </g>
 </svg>
