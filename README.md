@@ -1,4 +1,4 @@
-# Silhueta · versão 2.4 — revisão de estabilidade e usabilidade
+# Silhueta · versão 2.5 — guia anatômico ilustrado
 
 Aplicativo web instalável (PWA) para acompanhar medidas corporais, composição corporal, nutrição e evolução.
 
@@ -140,3 +140,17 @@ Sintaxe JavaScript; renderização e ausência de rolagem horizontal em 320, 390
 **Verificação:** JavaScript conferido com Node, testes automatizados de formulário, navegação, validação de datas, registros, exclusão, migração e mesclagem de estados com navegadores simulados. Interface revisada no Chromium em 320, 390, 768 e 1440 px, nas seis páginas, sem rolagem horizontal ou erros de execução. Não foi efetuado teste autenticado no Gist pessoal da usuária.
 
 **Backup:** antes de atualizar os dois dispositivos, exporte um JSON em **Como usar** e confirme que os dados estão sincronizados. Os dados pessoais e o token GitHub não estão no repositório.
+
+## Guia anatômico ilustrado (2.5)
+
+- A seção **Guia anatômico**, em **Medidas**, exibe uma ilustração vetorial específica para cada região: busto, abaixo do busto, ombros, pescoço, cintura, abdômen, quadril, braço relaxado, bíceps contraído, antebraço, coxa e panturrilha.
+- Selecione uma região pelos botões. A ilustração e as instruções mudam **no próprio guia**, sem mudar de página, sem rolar automaticamente até o formulário e **sem modificar o registro rápido nem perder valores digitados que ainda não foram salvos**.
+- A faixa rosa é um indicador **esquemático da posição**; para circunferências, a fita deve contornar todo o corpo ou membro, não apenas a face mostrada.
+- Para a **cintura**, as instruções usam o ponto médio entre a costela inferior e a crista ilíaca; para o **quadril**, a maior circunferência dos glúteos, conforme protocolos antropométricos da OMS. Para o abdômen, este aplicativo padroniza o ponto do umbigo, separado da medida de cintura.
+- O guia é educativo e não substitui avaliação antropométrica profissional. Meça sempre do mesmo lado, no mesmo ponto e sob condições comparáveis.
+- O seletor do guia inclui agora ombros e antebraço, que já estavam disponíveis como campos de medição, mas não tinham ilustrações.
+- Nenhuma mudança foi feita na estrutura de registros, migração de histórico, criptografia ou sincronização por Gist.
+
+**Testes locais:** sintaxe de JavaScript no Node; seleção das 12 regiões em Chromium em larguras de 320, 390, 768 e 1440 px; checagem das ilustrações SVG, estados visuais, ausência de erros e de rolagem horizontal; preservação de um valor não salvo durante as seleções; manutenção da posição de rolagem após entrar no guia. O teste não acessou o Gist pessoal da usuária.
+
+Referência: Organização Mundial da Saúde, *Waist Circumference and Waist–Hip Ratio: Report of a WHO Expert Consultation* (https://iris.who.int/handle/10665/44583).
