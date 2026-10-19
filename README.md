@@ -1,4 +1,4 @@
-# Silhueta · versão 1.9 — interface orientada por tarefas
+# Silhueta · versão 2.0 — ícone minimalista
 
 Aplicativo web instalável (PWA) para acompanhar medidas corporais, composição corporal, nutrição e evolução.
 
@@ -78,3 +78,10 @@ Não depende de servidor próprio, não sincroniza automaticamente com Google Sh
 ### Verificação
 
 Testes de navegação e salvamento em Chromium (larguras de 320, 390, 768 e 1440 pixels); telas com e sem registros; preservação de campos opcionais ocultos nos formulários; checagem de erros JavaScript e ausência de rolagem horizontal. Não constitui um estudo com usuárias reais nem validação contra o Gist da conta pessoal.
+
+## Identidade visual 2.0
+
+- Ícone simplificado com silhueta feminina clara sobre gradiente suave lilás/roxo, inspirado no estilo dos demais aplicativos da tela inicial Android.
+- Ícones PNG revisados de 192 px, 512 px e 180 px (Apple), além de uma versão *maskable* de 512 px com fundo preenchido para launchers Android.
+- Navegação lateral, barra superior, favicon, manifesto e cache offline utilizam os arquivos versionados v2 para evitar imagens antigas mantidas em cache.
+- O SVG foi atualizado para uma versão vetorial equivalente ao novo desenho. A atualização de ícones de PWAs já instalados pode depender do launcher Android: se permanecer o anterior após reiniciar o Chrome, remova o atalho/app e instale-o novamente no menu do Chrome.

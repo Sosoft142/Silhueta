@@ -1,5 +1,5 @@
-const VERSION='silhueta-app-v1.9.0';
-const CORE=['./','./index.html','./manifest.webmanifest','./icons/icon.svg','./icons/icon-192.png','./icons/icon-512.png','./icons/icon-maskable-512.png'];
+const VERSION='silhueta-app-v2.0.0';
+const CORE=['./','./index.html','./manifest.webmanifest','./icons/icon.svg','./icons/apple-touch-icon-v2.png','./icons/icon-192-v2.png','./icons/icon-512-v2.png','./icons/icon-maskable-512-v2.png'];
 self.addEventListener('install',e=>e.waitUntil(caches.open(VERSION).then(cache=>cache.addAll(CORE)).then(()=>self.skipWaiting())));
 self.addEventListener('activate',e=>e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(key=>key!==VERSION).map(key=>caches.delete(key)))).then(()=>self.clients.claim())));
 self.addEventListener('fetch',e=>{
