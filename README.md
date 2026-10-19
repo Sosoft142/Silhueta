@@ -1,4 +1,4 @@
-# Silhueta · versão 2.1 — identidade visual Opção A
+# Silhueta · versão 2.2 — medições adicionais com datas individuais
 
 Aplicativo web instalável (PWA) para acompanhar medidas corporais, composição corporal, nutrição e evolução.
 
@@ -91,3 +91,15 @@ Testes de navegação e salvamento em Chromium (larguras de 320, 390, 768 e 1440
 O ícone escolhido usa o desenho minimalista de busto, cintura e quadril em linhas marfim sobre gradiente lilás-roxo. A marca é a mesma no cabeçalho e na lateral, no favicon, nos atalhos e no Android. Os recursos de instalação foram atualizados para ícones com **fundo preenchido até as bordas**, sem contorno arredondado embutido, e com versão maskable adequada ao recorte do Android. Não há seções de dicas diárias ou mensagens motivacionais.
 
 Para atualizar o ícone na tela inicial do Android, aguarde a atualização do service worker. Em alguns launchers, pode ser preciso remover o atalho/app antigo e instalar novamente pelo Chrome **após confirmar o backup JSON e a sincronização**. O cache está versionado como `silhueta-app-v2.1.0`.
+
+## Medições de outras partes do corpo (v2.2)
+
+- Na aba **Medidas**, alterne entre **Principais** e **Mais medições**. Campos adicionais: busto, abaixo do busto, ombros, abdômen, pescoço, braço relaxado, bíceps contraído, antebraço, coxa e panturrilha.
+- Cada medida aceita **uma data própria**, inclusive quando os registros compartilham a mesma semana. As datas individuais de peso, cintura e quadril estão em **Datas diferentes...** na aba Principais.
+- No painel **Início**, expanda **Mais medidas do corpo** pela seta: aparecem somente medidas já preenchidas, com o último valor pela **data real da própria medida**. Um registro da semana seguinte não substitui um valor de data anterior.
+- Em **Evolução**, escolha qualquer medida adicional preenchida e examine sua curva, sempre sem inventar valores ausentes.
+- Os campos e suas datas são preservados nos backups JSON, na exportação/importação CSV e na sincronização criptografada por Gist. Em aparelhos antigos que só têm a data da semana, essa data serve de referência até que a data individual seja informada.
+- **Importante:** o projeto conserva um registro por semana. Se duas medições da mesma parte do corpo forem salvas dentro da mesma semana, o último valor editado para aquela semana será mantido; o histórico entre semanas permanece preservado.
+
+### Verificação local
+Testes em 320, 390, 768 e 1440 px, incluindo alternância de abas sem perder campos, datas diferentes para busto/bíceps/cintura, ordenação pela data de cada medida (independentemente da semana), persistência local, abertura do painel e visualização das curvas. Não foi realizada conexão com o Gist real da usuária.
