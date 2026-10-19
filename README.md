@@ -1,4 +1,4 @@
-# Silhueta · versão 2.3 — histórico independente e registro rápido
+# Silhueta · versão 2.4 — revisão de estabilidade e usabilidade
 
 Aplicativo web instalável (PWA) para acompanhar medidas corporais, composição corporal, nutrição e evolução.
 
@@ -128,3 +128,15 @@ Testes em 320, 390, 768 e 1440 px, incluindo alternância de abas sem perder cam
 ### Testes locais
 
 Sintaxe JavaScript; renderização e ausência de rolagem horizontal em 320, 390, 768 e 1440 px; inclusão repetida da mesma região, registro de múltiplas regiões, edição e exclusão individual, filtros, favoritos e ordenação, guia anatômico, atualização de perfil, migração de dados da versão 2.2, não duplicação na migração, preservação de datas próprias e simulação de mesclagem entre aparelhos com marcadores de exclusão.
+
+## Auditoria da versão 2.4
+
+- Validação estrita de datas (por exemplo, 30/02 não é mais aceito), sem alterar datas antigas válidas.
+- Sincronização automática não interrompe nem substitui um formulário enquanto há alterações locais ainda não salvas. Salve ou descarte os campos antes da sincronização manual.
+- Ao navegar para outra tela ou trocar o modo de registro com campos alterados, o aplicativo pergunta se é permitido descartar as informações.
+- Textos da ajuda atualizados para descrever o **histórico de medições independentes por data**, sem confundir com o diário semanal de nutrição.
+- Guia anatômico melhorado para telas pequenas: fontes e botões maiores, contornos de foco visíveis e áreas de toque ampliadas.
+
+**Verificação:** JavaScript conferido com Node, testes automatizados de formulário, navegação, validação de datas, registros, exclusão, migração e mesclagem de estados com navegadores simulados. Interface revisada no Chromium em 320, 390, 768 e 1440 px, nas seis páginas, sem rolagem horizontal ou erros de execução. Não foi efetuado teste autenticado no Gist pessoal da usuária.
+
+**Backup:** antes de atualizar os dois dispositivos, exporte um JSON em **Como usar** e confirme que os dados estão sincronizados. Os dados pessoais e o token GitHub não estão no repositório.
