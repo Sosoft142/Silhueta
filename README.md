@@ -1,4 +1,4 @@
-# Silhueta · versão 2.7.1 — guia anatômico otimizado para Android
+# Silhueta · versão 2.8 — guia anatômico padronizado e verificação automática
 
 Aplicativo web instalável (PWA) para acompanhar medidas corporais, composição corporal, nutrição e evolução.
 
@@ -178,3 +178,16 @@ Referência: Organização Mundial da Saúde, *Waist Circumference and Waist–H
 **Testes executados:** Chromium em 320, 360, 390, 414, 768, 1024 e 1440 pixels; seleção de todas as doze regiões em cada largura; verificação de imagens incorporadas, ausência de rolagem horizontal, erros JavaScript e perda de valores não salvos. A sincronização com um Gist real não foi testada.
 
 **Atualização Android:** feche e reabra o aplicativo instalado pelo Chrome para atualizar o service worker (cache v2.7.1). Antes de reinstalar o PWA, exporte seus registros JSON e confirme a sincronização.
+
+## Versão 2.8 — revisão das 12 ilustrações anatômicas
+
+- Substituímos as imagens do guia por **12 ilustrações com fita métrica rosa**, com uma imagem para cada região corporal e sem círculos ou faixas SVG sobrepostas. A seleção permanece lado a lado e não altera registros ou os campos do formulário.
+- Os arquivos PNG individuais de 2048 × 2048 pixels seguem disponíveis no pacote de ilustrações; para melhor desempenho e funcionamento offline, o aplicativo usa versões **WebP 1280 × 1280** incorporadas ao HTML. Os PNG foram ampliados de uma prancha de IA: não têm detalhe nativo equivalente a uma ilustração feita originalmente a 2048 px.
+- Mantivemos o ícone escolhido (**Opção A**), os dados e a integração do GitHub Gist.
+- Criamos `qa/anatomy-manifest.json`, `qa/check_anatomy.py` e `.github/workflows/anatomy-qa.yml`. O GitHub Actions agora verifica automaticamente: presença e vínculo das 12 imagens, integridade SHA-256, resolução mínima, presença de faixa rosa na área esperada, ausência de marcadores extras, manutenção do ícone e sintaxe JavaScript.
+- A checklist anatômica manual fica em **[qa/VISUAL_REVIEW.md](qa/VISUAL_REVIEW.md)**. O teste automático **não substitui** uma avaliação visual humana ou certificação anatômica.
+- A versão do cache PWA mudou para **v2.8.0**.
+
+**Verificação desta publicação:** o workflow do GitHub Actions foi executado com sucesso, assim como o deployment GitHub Pages do mesmo commit em que foi introduzido. Também validamos localmente as 12 imagens e sintaxe do JavaScript. O navegador automatizado desta sessão bloqueou a navegação inclusive em páginas locais, portanto **não afirmamos ter executado novos testes interativos do layout nesta versão**; o layout CSS permanece o da 2.7.1.
+
+Recomendação: faça um backup JSON antes de reinstalar o aplicativo no Android e confirme a sincronização Gist em ambos os aparelhos.
