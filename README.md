@@ -1,4 +1,4 @@
-# Silhueta · versão 2.5 — guia anatômico ilustrado
+# Silhueta · versão 2.6 — guia anatômico lado a lado
 
 Aplicativo web instalável (PWA) para acompanhar medidas corporais, composição corporal, nutrição e evolução.
 
@@ -154,3 +154,14 @@ Sintaxe JavaScript; renderização e ausência de rolagem horizontal em 320, 390
 **Testes locais:** sintaxe de JavaScript no Node; seleção das 12 regiões em Chromium em larguras de 320, 390, 768 e 1440 px; checagem das ilustrações SVG, estados visuais, ausência de erros e de rolagem horizontal; preservação de um valor não salvo durante as seleções; manutenção da posição de rolagem após entrar no guia. O teste não acessou o Gist pessoal da usuária.
 
 Referência: Organização Mundial da Saúde, *Waist Circumference and Waist–Hip Ratio: Report of a WHO Expert Consultation* (https://iris.who.int/handle/10665/44583).
+
+## Atualização 2.6: ilustrações anatômicas lado a lado
+
+- O guia ocupa uma seção de largura total em **Medidas**. Botões de seleção ficam à esquerda e a ilustração correspondente aparece **à direita**, também no Android, sem abrir o formulário.
+- Os desenhos vetoriais foram revisados para manter as faixas rosas sobre a região do corpo representada e melhorar a legibilidade.
+- A seleção atualiza somente o painel do guia, não redesenha os campos digitados e não altera a rolagem da página.
+- As 12 regiões permanecem disponíveis: busto, abaixo do busto, ombros, pescoço, cintura, abdômen, quadril, braço, bíceps, antebraço, coxa e panturrilha.
+- O guia usa imagens esquemáticas, não fotografia anatômica ou precisão clínica; orientações textuais contextualizam cada região.
+- Nenhuma mudança no modelo de dados, registros históricos, criptografia ou sincronização por Gist.
+
+**Testes realizados:** sintaxe do JavaScript (Node), renderização em Chromium com larguras de 320, 390, 768 e 1440 px, ausência de overflow horizontal, imagem à direita dos seletores, alternância de áreas e persistência de um valor digitado e ainda não salvo no formulário.
