@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#8736BD" />
 <meta name="description" content="Seu diário de recomposição corporal, medições, nutrição e progresso em um só lugar." />
 <title>Silhueta — Seu acompanhamento</title>
-<link rel="manifest" href="./manifest.webmanifest?v=29" />
+<link rel="manifest" href="./manifest.webmanifest?v=291" />
 <link rel="icon" href="./icons/icon-192-v21.png" sizes="192x192" />
 <link rel="apple-touch-icon" href="./icons/apple-touch-icon-v21.png" />
 <style>
@@ -493,7 +493,18 @@ body{font-size:15px;line-height:1.55;background:#fcfafd}
   body.drawer-open{overflow:hidden}
 }
 @media(max-width:520px){.goal-results{grid-template-columns:1fr}.settings-section{padding:17px}}
-.settings-links{display:flex;gap:9px;flex-wrap:wrap;margin:13px 0}.settings-links .btn{min-height:42px}.settings-stack .help-extra{margin-top:12px}</style>
+.settings-links{display:flex;gap:9px;flex-wrap:wrap;margin:13px 0}.settings-links .btn{min-height:42px}.settings-stack .help-extra{margin-top:12px}
+/* 2.9.1: readable charts, bounded notes and complete week dates on mobile. */
+.history-list,.history-item{min-width:0;max-width:100%}
+.history-item strong,.history-item small{overflow-wrap:anywhere;word-break:normal}
+.history-item small{white-space:pre-wrap}
+@media(max-width:430px){
+ .week-chooser{display:grid;grid-template-columns:44px minmax(0,1fr) 44px}
+ .week-chooser .week-select{grid-column:1/-1;grid-row:1;width:100%;max-width:none}
+ .week-chooser .week-arrow:first-child{grid-column:1;grid-row:2}
+ .week-chooser .week-arrow:last-child{grid-column:3;grid-row:2}
+}
+</style>
 </head>
 <body>
 <div class="app">
@@ -545,7 +556,7 @@ const EXTRA_MEASURE_GROUPS=[
 const MAIN_BODY_KEYS=['weight','waist','hip'];
 const ALL_BODY_KEYS=[...MAIN_BODY_KEYS,...EXTRA_MEASURE_GROUPS.flatMap(g=>g.fields.map(f=>f[0]))];
 const BODY_LABELS={weight:'Peso',waist:'Cintura',hip:'Quadril',...Object.fromEntries(EXTRA_MEASURE_GROUPS.flatMap(g=>g.fields.map(f=>[f[0],f[1]])))};
-function isDate(iso){if(!/^\d{4}-\d{2}-\d{2}$/.test(iso||''))return false;const d=new Date(iso+'T00:00:00Z');return !Number.isNaN(d.getTime())&&d.toISOString().slice(0,10)===iso}
+function isDate(iso){if(typeof iso!=='string')return false;if(!/^\d{4}-\d{2}-\d{2}$/.test(iso||''))return false;const d=new Date(iso+'T00:00:00Z');return !Number.isNaN(d.getTime())&&d.toISOString().slice(0,10)===iso}
 function actualMetricDate(r,key){const perField=r?.['d_'+key];return isDate(perField)?perField:(isDate(r?.date)?r.date:'')}
 
 function metricDateControl(key,label,rec){const value=rec?.['d_'+key]|| (cleanNum(rec?.[key])!==null?rec?.date:'')||'';return dateField('d_'+key,'Data de '+label.toLowerCase(),value)}
@@ -553,6 +564,10 @@ function extraMetricCard(key,label,hint,r){const value=cleanNum(r[key]);const da
 
 // One history event per measurement. Tombstones prevent deleted events from returning via Gist.
 const METRIC_KEYS=[...ALL_BODY_KEYS,'bodyFat'];
+const NUTRITION_RANGES={calories:[0,9000],protein:[0,500],carbs:[0,900],fat:[0,400],cardio:[0,2500],workouts:[0,14],sleep:[0,24]};
+const NUTRITION_LABELS={calories:'calorias',protein:'proteínas',carbs:'carboidratos',fat:'gorduras',cardio:'cardio',workouts:'treinos',sleep:'sono'};
+const NUTRITION_INTEGERS=['calories','cardio','workouts'];
+function metricRange(metric){return metric==='weight'?[20,300]:metric==='bodyFat'?[0,100]:[10,300];}
 const METRIC_UNITS={...Object.fromEntries(ALL_BODY_KEYS.map(k=>[k,k==='weight'?'kg':'cm'])),bodyFat:'%'};
 BODY_LABELS.bodyFat='Gordura corporal';
 const METRIC_GUIDES={weight:'Pese-se em condições semelhantes, sempre que possível.',waist:'Passe a fita na cintura sem apertar; repita sempre no mesmo ponto.',hip:'Meça a circunferência mais larga dos glúteos.',bust:'Meça a maior circunferência do busto mantendo a fita horizontal.',underbust:'Meça logo abaixo dos seios, com a fita nivelada.',shoulders:'Passe a fita em volta dos ombros e da parte superior do tronco.',abdomen:'Meça a região abdominal no mesmo ponto a cada registro.',neck:'Passe a fita na base do pescoço, sem apertar.',arm:'Meça a circunferência do braço relaxado, sempre do mesmo lado.',biceps:'Meça o bíceps contraído no ponto de maior circunferência.',forearm:'Meça o antebraço no ponto mais largo.',thigh:'Meça a coxa no mesmo lado e na mesma altura.',calf:'Meça a panturrilha no ponto mais largo.',bodyFat:'Informe somente um resultado medido por avaliação corporal.'};
@@ -582,7 +597,7 @@ function cleanPreferences(pref){
  const valid=x=>Array.isArray(x)?[...new Set(x.filter(k=>METRIC_KEYS.includes(k)))]:[];
  return {favoriteMetrics:valid(v.favoriteMetrics).slice(0,8),quickMetrics:valid(v.quickMetrics).slice(0,8)};
 }
-function allMetricEntries(metric){return Object.entries(state.metricEntries||{}).filter(([id,r])=>r&&!r.deleted&&METRIC_KEYS.includes(r.metric)&&cleanNum(r.value)!==null&&(!metric||r.metric===metric)).map(([id,r])=>({...r,id,value:cleanNum(r.value)})).sort((a,b)=>(b.date||'').localeCompare(a.date||'')||String(b.updatedAt||'').localeCompare(String(a.updatedAt||''))||a.id.localeCompare(b.id));}
+function allMetricEntries(metric){return Object.entries(state.metricEntries||{}).filter(([id,r])=>r&&!r.deleted&&METRIC_KEYS.includes(r.metric)&&cleanNum(r.value)!==null&&(!metric||r.metric===metric)).map(([id,r])=>({...r,id,value:cleanNum(r.value),date:isDate(r.date)?r.date:''})).sort((a,b)=>(b.date||'').localeCompare(a.date||'')||String(b.updatedAt||'').localeCompare(String(a.updatedAt||''))||a.id.localeCompare(b.id));}
 function latestMetric(key){const item=allMetricEntries(key)[0];return item?{...item,actualDate:item.date}:null;}
 function populatedExtras(){return EXTRA_MEASURE_GROUPS.flatMap(g=>g.fields.map(([key,label])=>({key,label,last:latestMetric(key)}))).filter(x=>x.last).sort((a,b)=>(b.last.date||'').localeCompare(a.last.date||''));}
 function metricUnit(key){return METRIC_UNITS[key]||'cm'}
@@ -591,7 +606,7 @@ function newEntryId(){return 'm_'+(crypto.randomUUID?crypto.randomUUID():Date.no
 function saveMetricEntry(metric,value,date,id=null,note=''){
  if(!METRIC_KEYS.includes(metric))throw Error('Medida desconhecida');
  if(!isDate(date))throw Error('Informe uma data válida');
- const range=metric==='weight'?[20,300]:metric==='bodyFat'?[0,100]:[10,300];
+ const range=metricRange(metric);
  const n=safeNum(value,...range);if(n===null)throw Error('Informe um valor válido para '+BODY_LABELS[metric]);
  if(id&&(!state.metricEntries[id]||state.metricEntries[id].deleted))throw Error('Registro não encontrado');
  const key=id||newEntryId();state.metricEntries[key]={metric,value:n,date,note:String(note||'').slice(0,500),updatedAt:nowStamp()};
@@ -651,14 +666,14 @@ function safeNum(x,min,max){let v=cleanNum(x);return v!==null&&v>=min&&v<=max?v:
 const esc=s=>String(s??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
 function nfmt(n,d=1){return Number.isFinite(n)?new Intl.NumberFormat('pt-BR',{minimumFractionDigits:d,maximumFractionDigits:d}).format(n):'—';}
 function dateAdd(iso,days){if(!isDate(iso))return '';const [y,m,d]=iso.split('-').map(Number);const t=new Date(Date.UTC(y,m-1,d+days));return t.toISOString().slice(0,10)}
-function dateBR(iso){if(!iso)return'—';const [y,m,d]=iso.split('-');return `${d}/${m}/${y}`}
+function dateBR(iso){if(!isDate(iso))return'—';const [y,m,d]=iso.split('-');return `${d}/${m}/${y}`}
 function dateDiff(a,b){if(!a||!b)return NaN;return Math.round((Date.parse(a+'T00:00:00Z')-Date.parse(b+'T00:00:00Z'))/86400000)}
 function nowISO(){const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`}
 function nowStamp(){return new Date().toISOString()}
 function load(){try{const raw=localStorage.getItem(STORAGE_KEY);if(!raw)return DEFAULT();const s=JSON.parse(raw);if(!s||typeof s!=='object'||!s.profile||!s.macros)return DEFAULT();return normalizeStateData(s)}catch(e){return DEFAULT()}}
 let state=load(), storageOK=true, toastTimer=0;
 function persist(opts={}){const keepSync=!!opts.keepSync,preserveTimestamp=!!opts.preserveTimestamp;state.meta={...DEFAULT().meta,...(state.meta||{})};if(!opts.suppressSync&&typeof syncClockDiff==='function')syncClockDiff(lastSyncSnapshot,state);if(!preserveTimestamp)state.meta.updatedAt=nowStamp();if(!keepSync&&typeof syncVerifiedAt!=='undefined'&&syncVerifiedAt){syncVerifiedAt=0;setSyncState('Alterações aguardando envio','dirty')}try{localStorage.setItem(STORAGE_KEY,JSON.stringify(state));storageOK=true;document.getElementById('storageNotice').innerHTML=''}catch(e){storageOK=false;document.getElementById('storageNotice').innerHTML='<div class="notice">O navegador não permitiu salvar localmente. Exporte um backup JSON antes de fechar o aplicativo.</div>'}if(typeof lastSyncSnapshot!=='undefined')lastSyncSnapshot=makeSyncSnapshot();if(!opts.suppressSync&&typeof scheduleSync==='function')scheduleSync()}
-let ui={view:'dashboard',week:0,nutWeek:0,measureTab:'primary',extraChartKey:'bust',measureMode:'quick',quickMetric:'weight',editEntryId:null,historyFilter:'all',historyLimit:30,chartMetric:'weight'};
+let ui={view:'dashboard',week:0,nutWeek:0,measureTab:'primary',extraChartKey:'bust',measureMode:'quick',quickMetric:'weight',editEntryId:null,historyFilter:'all',historyLimit:30,chartMetric:'weight',guideMetric:'waist'};
 function currentWeek(){if(!state.profile.startDate)return 0;return Math.max(0,Math.min(52,Math.floor(dateDiff(nowISO(),state.profile.startDate)/7)||0))}
 function record(w){return state.measurements[String(w)]||{}}
 function records(){return Array.from({length:53},(_,i)=>({week:i,date:dateAdd(state.profile.startDate,i*7),...record(i)}))}
@@ -762,7 +777,7 @@ function guideFigure(metric){
  return `<div class="guide-detail-new"><div class="anatomy-photo"><div class="anatomy-picture"><img src="${ANATOMY_IMAGES[detail.image]}" alt="Ilustração da medição de ${esc(detail.title)}: fita métrica rosa contornando a região indicada" loading="eager" decoding="async"/></div><span class="anatomy-tag">${esc(detail.position)}</span></div><div class="anatomy-copy"><h3>${esc(detail.title)}</h3><p class="anatomy-explainer">${esc(detail.position)}</p><ol class="anatomy-instructions">${detail.steps.map(t=>`<li>${esc(t)}</li>`).join('')}</ol><p class="guide-disclaimer">A fita rosa indica o local da circunferência. Mantenha-a nivelada e sem comprimir a pele. O desenho é orientativo; repita sempre o mesmo ponto nas medições.</p></div></div>`;
 }
 function anatomyGuide(){
- const selected=GUIDE_REGIONS.some(([k])=>k===ui.quickMetric)?ui.quickMetric:'waist';
+ const selected=GUIDE_REGIONS.some(([k])=>k===ui.guideMetric)?ui.guideMetric:'waist';
  return `<section class="card anatomy-card"><div class="card-head"><div><h2>Guia anatômico</h2><p class="card-sub">Selecione uma região. A ilustração e as instruções mudam ao lado, sem sair desta página.</p></div></div><div class="anatomy-shell"><div class="guide-pick"><div class="guide-region-list">${GUIDE_REGIONS.map(([metric,label])=>`<button type="button" data-action="guideMetric" data-metric="${metric}" class="guide-region ${selected===metric?'selected':''}" aria-pressed="${selected===metric}"><span>${esc(label)}</span>${ico('chevron',13)}</button>`).join('')}</div><div class="guide-scroll-label">Deslize para ver outras regiões ↓</div></div><div class="guide-tip" role="region" aria-live="polite" aria-label="Como medir: ${esc(BODY_LABELS[selected])}">${guideFigure(selected)}</div></div></section>`;
 }
 function metricOptions(selected){const fav=state.preferences.quickMetrics;let options=METRIC_KEYS.map(metric=>`<option value="${metric}" ${selected===metric?'selected':''}>${esc(BODY_LABELS[metric])} (${metricUnit(metric)})</option>`).join('');return `<select name="quickMetric" id="quickMetric" required>${options}</select>`}
@@ -772,7 +787,7 @@ function measurement(){
  const val=current&&!current.deleted?current.value:'';
  const date=current&&!current.deleted?current.date:nowISO();
  const quick=`<form id="quickForm" class="quick-form"><div class="quick-form-title"><h2>${current?'Editar medição':'Registro rápido'}</h2><p>Salve um valor de cada vez, sem substituir outros registros.</p></div><div class="quick-fields"><div class="field"><label for="quickMetric">Parte do corpo</label>${metricOptions(selected)}</div>${dateField('quickDate','Data da medição',date)}${numberField('quickValue','Valor',val,metricUnit(selected),selected==='weight'?20:selected==='bodyFat'?0:10,selected==='bodyFat'?100:300,'.1')}</div><details class="help-extra"><summary>Observações desta medição (opcional)</summary>${textField('quickNote','Anotações',current?.note||'','Ex.: após o treino, horário, condições...')}</details><div class="quick-actions"><button type="submit" class="btn btn-primary">${ico('check',16)} ${current?'Salvar alteração':'Salvar medição'}</button>${current?`<button type="button" class="btn btn-plain" data-action="cancelEditMetric">Cancelar edição</button>`:''}</div></form>`;
- const batch=`<form id="batchForm" class="batch-form"><h2>Registrar várias medidas</h2><p>Use quando medir diferentes regiões no mesmo dia. Cada valor cria um registro independente.</p>${dateField('batchDate','Data dessas medidas',nowISO())}<div class="batch-metrics">${METRIC_KEYS.map(metric=>`<div class="field"><label for="batch_${metric}">${esc(BODY_LABELS[metric])} (${metricUnit(metric)})</label><input id="batch_${metric}" name="${metric}" type="number" inputmode="decimal" step="0.1" min="${metric==='bodyFat'?0:10}" max="300" placeholder="—"/></div>`).join('')}</div><button type="submit" class="btn btn-primary">${ico('check',16)} Salvar medidas preenchidas</button></form>`;
+ const batch=`<form id="batchForm" class="batch-form"><h2>Registrar várias medidas</h2><p>Use quando medir diferentes regiões no mesmo dia. Cada valor cria um registro independente.</p>${dateField('batchDate','Data dessas medidas',nowISO())}<div class="batch-metrics">${METRIC_KEYS.map(metric=>`<div class="field"><label for="batch_${metric}">${esc(BODY_LABELS[metric])} (${metricUnit(metric)})</label><input id="batch_${metric}" name="${metric}" type="number" inputmode="decimal" step="0.1" min="${metricRange(metric)[0]}" max="${metricRange(metric)[1]}" placeholder="—"/></div>`).join('')}</div><button type="submit" class="btn btn-primary">${ico('check',16)} Salvar medidas preenchidas</button></form>`;
  const links=`<div class="entry-mode"><button type="button" data-action="measureMode" data-mode="quick" class="${ui.measureMode==='quick'?'selected':''}" aria-pressed="${ui.measureMode==='quick'}">Registro rápido</button><button type="button" data-action="measureMode" data-mode="batch" class="${ui.measureMode==='batch'?'selected':''}" aria-pressed="${ui.measureMode==='batch'}">Várias medidas</button></div>`;
  return heading('Registrar medidas','Cada medição fica salva com sua própria data, mesmo dentro da mesma semana.',button('Ver evolução','trends','go','data-view="trends"','btn-soft'))+
  `<div class="measurement-layout has-anatomy"><div class="measure-main"><article class="card">${links}${ui.measureMode==='batch'?batch:quick}</article></div><aside class="measure-aside"><div class="card"><h2>Sobre as datas</h2><p class="card-sub">Você pode registrar várias medidas da mesma região, inclusive no mesmo dia. O painel sempre usa a data da medição mais recente.</p><button class="text-action" data-action="go" data-view="help">Como medir com consistência →</button></div></aside><div class="anatomy-full-width">${anatomyGuide()}</div><article class="card history-full-width"><div class="card-head"><div><h2>Histórico de medidas</h2><p class="card-sub">Editar ou excluir não altera outros registros.</p></div><span class="subtle-chip">${allMetricEntries().length} registro(s)</span></div>${historyList()}${legacyArchivedNotes()}</article></div>`;
@@ -780,31 +795,45 @@ function measurement(){
 function saveQuick(form){
  if(!form.reportValidity())return;const d=inputObj(form);let id=ui.editEntryId;
  try{saveMetricEntry(d.quickMetric,d.quickValue,d.quickDate,id,d.quickNote)}catch(e){toast(e.message);return}
- ui.editEntryId=null;ui.quickMetric=d.quickMetric;persist();toast(id?'Registro atualizado.':'Medição salva.');render();
+ ui.editEntryId=null;ui.quickMetric=d.quickMetric;persist();toast(id?'Registro atualizado.':'Medição salva.');render({preserveDrafts:true,excludeForm:'quickForm'});
 }
 function saveBatch(form){
  if(!form.reportValidity())return;const data=inputObj(form),inputs=METRIC_KEYS.filter(k=>data[k]!==''&&data[k]!==undefined);
  if(!inputs.length){toast('Preencha pelo menos uma medida.');return}
  // Validate all before saving any, to avoid partial writes.
- try{if(!isDate(data.batchDate))throw Error('Informe uma data válida');for(const key of inputs){const range=key==='weight'?[20,300]:key==='bodyFat'?[0,100]:[10,300];if(safeNum(data[key],...range)===null)throw Error('Valor inválido em '+BODY_LABELS[key])}}
+ try{if(!isDate(data.batchDate))throw Error('Informe uma data válida');for(const key of inputs){const range=metricRange(key);if(safeNum(data[key],...range)===null)throw Error('Valor inválido em '+BODY_LABELS[key])}}
  catch(e){toast(e.message);return}
  for(const key of inputs)saveMetricEntry(key,data[key],data.batchDate);
- persist();toast(inputs.length+' medida(s) registradas.');render();
+ persist();toast(inputs.length+' medida(s) registradas.');render({preserveDrafts:true,excludeForm:'batchForm'});
 }
 
-function historyChart(metricSeries,unit='cm'){
+function historyChart(metricSeries,unit='cm',width=740){
  const series=metricSeries.map(s=>({...s,points:allMetricEntries(s.metric).filter(e=>isDate(e.date)).slice().reverse().map(e=>({date:e.date,time:Date.parse(e.date+'T00:00:00Z'),value:e.value}))}));
  const data=series.flatMap(s=>s.points);if(!data.length)return `<div class="empty-state">${ico('chart',26)}<strong>Sem dados para o gráfico</strong><span>Registre uma medida com sua data para acompanhar a evolução.</span></div>`;
- const W=740,H=278,L=61,R=20,T=23,B=43;let low=Math.min(...data.map(x=>x.value)),high=Math.max(...data.map(x=>x.value));const yPad=Math.max(1,(high-low)*.2);low-=yPad;high+=yPad;
+ const W=Math.max(220,Math.round(width)),H=W<450?240:278,L=52,R=24,T=23,B=43;let low=Math.min(...data.map(x=>x.value)),high=Math.max(...data.map(x=>x.value));const yPad=Math.max(1,(high-low)*.2);low-=yPad;high+=yPad;
  let minX=Math.min(...data.map(x=>x.time)),maxX=Math.max(...data.map(x=>x.time));if(minX===maxX){minX-=3*864e5;maxX+=3*864e5}
  const sx=t=>L+(W-L-R)*(t-minX)/(maxX-minX),sy=v=>T+(H-T-B)*(high-v)/(high-low);
  let out=`<svg class="chart-svg" viewBox="0 0 ${W} ${H}" role="img" aria-label="Evolução: ${series.map(s=>s.label).join(' e ')}">`;
  for(let i=0;i<5;i++){const y=T+(H-T-B)*i/4;out+=`<line x1="${L}" x2="${W-R}" y1="${y}" y2="${y}" stroke="#eee6ef"/><text x="${L-9}" y="${y+4}" text-anchor="end" font-size="12" fill="#756b76">${nfmt(high-(high-low)*i/4,1)}</text>`}
- for(let i=0;i<4;i++){const t=minX+(maxX-minX)*i/3;out+=`<text x="${sx(t)}" y="${H-10}" text-anchor="middle" font-size="12" fill="#756b76">${dateBR(new Date(t).toISOString().slice(0,10)).slice(0,5)}</text>`}
+ const dateTicks=W<420?3:4;for(let i=0;i<dateTicks;i++){const t=minX+(maxX-minX)*i/(dateTicks-1);out+=`<text x="${sx(t)}" y="${H-10}" text-anchor="middle" font-size="12" fill="#756b76">${dateBR(new Date(t).toISOString().slice(0,10)).slice(0,5)}</text>`}
  for(const ser of series){const points=ser.points.sort((a,b)=>a.time-b.time);if(points.length>1)out+=`<path d="${points.map((p,i)=>(i?'L':'M')+sx(p.time).toFixed(1)+' '+sy(p.value).toFixed(1)).join(' ')}" fill="none" stroke="${ser.color}" stroke-width="3" stroke-linecap="round"/>`;
   for(const p of points)out+=`<circle cx="${sx(p.time)}" cy="${sy(p.value)}" r="4.5" fill="#fff" stroke="${ser.color}" stroke-width="2.7"><title>${esc(ser.label)}: ${fmtMetric(ser.metric,p.value)} — ${dateBR(p.date)}</title></circle>`;
  }
- out+='</svg>';return `<div class="chart-wrap">${out}<div class="chart-legend">${series.map(s=>`<span class="legend-item"><i class="legend-dot" style="background:${s.color}"></i>${esc(s.label)}</span>`).join('')}</div></div>`;
+ out+='</svg>';return `<div class="chart-wrap" data-history-chart="${esc(JSON.stringify({series:metricSeries,unit}))}">${out}<div class="chart-legend">${series.map(s=>`<span class="legend-item"><i class="legend-dot" style="background:${s.color}"></i>${esc(s.label)}</span>`).join('')}</div></div>`;
+}
+
+let chartResizeObserver=null;
+function fitHistoryCharts(){
+ if(chartResizeObserver){chartResizeObserver.disconnect();chartResizeObserver=null;}
+ const wraps=[...document.querySelectorAll('#main [data-history-chart]')];
+ const draw=wrap=>{
+  const width=Math.round(wrap.clientWidth);if(!width||Number(wrap.dataset.chartWidth)===width)return;
+  const config=JSON.parse(wrap.dataset.historyChart),holder=document.createElement('template');
+  holder.innerHTML=historyChart(config.series,config.unit,width);
+  wrap.innerHTML=holder.content.firstElementChild.innerHTML;wrap.dataset.chartWidth=String(width);
+ };
+ wraps.forEach(draw);
+ if(typeof ResizeObserver!=='undefined'&&wraps.length){chartResizeObserver=new ResizeObserver(entries=>entries.forEach(entry=>draw(entry.target)));wraps.forEach(wrap=>chartResizeObserver.observe(wrap));}
 }
 function goalSettings(){const p=state.profile,fields=[['goalWeight','Peso','weight','kg'],['goalWaist','Cintura','waist','cm'],['goalHip','Quadril','hip','cm']];
  const results=fields.filter(([k])=>Number.isFinite(p[k])).map(([k,label,metric,unit])=>{const current=latestMetric(metric),diff=current?current.value-p[k]:null;return `<div class="goal-result"><strong>${label}</strong><span>Referência desejada: ${nfmt(p[k],1)} ${unit}</span><span>${current?'Última medida: '+nfmt(current.value,1)+' '+unit+' ('+dateBR(current.date)+')':'Aguardando medida real'}</span>${diff!==null?`<span>Diferença atual: ${diff>0?'+':''}${nfmt(diff,1)} ${unit}</span>`:''}</div>`}).join('');
@@ -917,17 +946,40 @@ function help(){return heading('Como usar','O essencial para registrar seus dado
  `<div class="help-bottom"><article class="card"><h2>Entenda os números</h2><div class="glossary-row"><strong>Medidas anteriores</strong><span>Referências do antigo perfil são preservadas, mas não geram medições.</span></div><div class="glossary-row"><strong>Peso medido</strong><span>Uma pesagem salva com sua própria data, independente da semana.</span></div><div class="glossary-row"><strong>Relação cintura/quadril</strong><span>Cintura dividida pelo quadril; compare preferencialmente valores medidos na mesma data.</span></div><div class="glossary-row"><strong>Metas opcionais</strong><span>Configure alimentação em Nutrição e objetivos corporais em Evolução.</span></div></article>
  <article class="card"><h2>Seus dados e dispositivos</h2><p class="help-mini">O Silhueta salva primeiro neste aparelho. Quando a nuvem está conectada, envia alterações após salvar e verifica atualizações enquanto o app está aberto.</p><button class="btn btn-soft" data-action="openSync">${ico('cloud',16)} Configurar sincronização</button><div class="help-divider"></div><h3>Faça uma cópia de segurança</h3><div class="help-backup-actions">${button('Baixar backup JSON','download','exportJSON','','btn-plain')}${button('Importar arquivo','upload','import','','btn-plain')}</div><details class="help-extra"><summary>Mais opções de exportação</summary><div class="help-backup-actions">${button('Medições CSV','download','exportCSV','','btn-plain')}${button('Nutrição CSV','download','exportNutCSV','','btn-plain')}</div></details><p class="fine-print">O backup JSON contém dados pessoais em texto legível. Guarde-o em local privado.</p><details class="help-extra danger-section"><summary>Reiniciar apenas este dispositivo</summary><p>Apaga os dados locais e desconecta da nuvem. Não apaga o backup no Gist.</p><button class="btn btn-danger" data-action="reset">Reiniciar este aparelho</button></details></article></div>`;
 }
-function render(){navRender();const views={dashboard,measure:measurement,trends,nutrition,settings,help};document.getElementById('main').innerHTML=(views[ui.view]||dashboard)();document.title=({dashboard:'Painel',measure:'Medições',trends:'Evolução',nutrition:'Nutrição',settings:'Configurações',help:'Como usar'})[ui.view]+' · Silhueta';document.getElementById('topPeriod').textContent=`${state.profile.months} meses de projeto`;}
+function captureFormDrafts(excludeForm=''){
+ const forms=[...document.querySelectorAll('#main form')].filter(f=>f.id!==excludeForm).map(form=>({id:form.id,fields:[...form.elements].filter(el=>el.name&&!['submit','button','hidden'].includes(el.type)).map(el=>({id:el.id,name:el.name,type:el.type,value:el.value,checked:el.checked}))}));
+ const details=[...document.querySelectorAll('#main details')].map(el=>({className:el.className,open:el.open}));
+ return {forms,details,focusId:document.activeElement?.id||''};
+}
+function restoreFormDrafts(snapshot){
+ if(!snapshot)return;
+ for(const saved of snapshot.forms){const form=document.getElementById(saved.id);if(!form)continue;for(const field of saved.fields){const el=[...form.elements].find(item=>field.id?item.id===field.id:item.name===field.name&&item.type===field.type);if(!el)continue;if(field.type==='checkbox'||field.type==='radio')el.checked=field.checked;else el.value=field.value;}}
+ [...document.querySelectorAll('#main details')].forEach((el,i)=>{const saved=snapshot.details[i];if(saved&&el.className===saved.className)el.open=saved.open;});
+ if(snapshot.focusId)document.getElementById(snapshot.focusId)?.focus({preventScroll:true});
+}
+function render(options={}){const drafts=options.preserveDrafts?captureFormDrafts(options.excludeForm):null;navRender();const views={dashboard,measure:measurement,trends,nutrition,settings,help};document.getElementById('main').innerHTML=(views[ui.view]||dashboard)();document.title=({dashboard:'Painel',measure:'Medições',trends:'Evolução',nutrition:'Nutrição',settings:'Configurações',help:'Como usar'})[ui.view]+' · Silhueta';document.getElementById('topPeriod').textContent=`${state.profile.months} meses de projeto`;restoreFormDrafts(drafts);fitHistoryCharts();}
+
 function inputObj(form){return Object.fromEntries(new FormData(form).entries())}
 function saveMeasure(){const f=document.getElementById('quickForm');if(f)saveQuick(f)}
-function saveNutrition(){const f=document.getElementById('nutritionForm');if(!f.reportValidity())return;const d=inputObj(f),obj={notes:d.notes?.trim()||''},ranges={calories:[0,9000],protein:[0,500],carbs:[0,900],fat:[0,400],cardio:[0,2500],workouts:[0,14],sleep:[0,24]};for(const [k,[l,h]]of Object.entries(ranges)){let v=safeNum(d[k],l,h);if(d[k]!==''&&v===null){toast('Revise o campo '+k);return}if(v!==null)obj[k]=v}state.nutritionLogs[String(ui.nutWeek)]=obj;persist();toast('Diário da semana '+ui.nutWeek+' salvo.');render()}
+function nutritionValue(key,raw){
+ if(raw===null||raw===undefined||raw==='')return null;
+ const value=(typeof raw==='number'||typeof raw==='string')?safeNum(raw,...NUTRITION_RANGES[key]):null;
+ if(value===null||(NUTRITION_INTEGERS.includes(key)&&!Number.isInteger(value)))throw Error('Confira '+NUTRITION_LABELS[key]+': valor fora do intervalo permitido.');
+ return value;
+}
+function saveNutrition(){
+ const f=document.getElementById('nutritionForm');if(!f||!f.reportValidity())return;
+ const d=inputObj(f),obj={notes:d.notes?.trim()||''};
+ try{for(const key of Object.keys(NUTRITION_RANGES)){const value=nutritionValue(key,d[key]);if(value!==null)obj[key]=value;}}catch(e){toast(e.message);return;}
+ state.nutritionLogs[String(ui.nutWeek)]=obj;persist();toast('Diário da semana '+ui.nutWeek+' salvo.');render({preserveDrafts:true,excludeForm:'nutritionForm'});
+}
 function saveSettings(){const f=document.getElementById('settingsForm');if(!f||!f.reportValidity())return;const d=inputObj(f);if(d.startDate&&!isDate(d.startDate)){toast('Confira a data de início.');return}const old=state.profile.startDate;
  if(old!==d.startDate&&Object.keys(state.nutritionLogs).length>0&&!confirm('Mudar o início altera a correspondência das semanas do diário de nutrição. As datas das suas medições continuam iguais. Continuar?'))return;
- state.profile.startDate=d.startDate;persist();toast('Data do projeto salva.');render();}
+ state.profile.startDate=d.startDate;persist();toast('Data do projeto salva.');render({preserveDrafts:true,excludeForm:'settingsForm'});}
 function saveMacroTargets(){const f=document.getElementById('macroForm');if(!f||!f.reportValidity())return;const d=inputObj(f),next={...state.macros};for(const [name,max] of [['protein',400],['carbs',800],['fat',300]]){if(d[name]!==''&&safeNum(d[name],0,max)===null){toast('Confira '+name);return}next[name]=d[name]===''?null:cleanNum(d[name]);}
- next.calorieReference=[next.protein,next.carbs,next.fat].every(Number.isFinite)?next.protein*4+next.carbs*4+next.fat*9:null;state.macros=next;persist();toast('Metas de nutrição salvas.');render();}
+ next.calorieReference=[next.protein,next.carbs,next.fat].every(Number.isFinite)?next.protein*4+next.carbs*4+next.fat*9:null;state.macros=next;persist();toast('Metas de nutrição salvas.');render({preserveDrafts:true,excludeForm:'macroForm'});}
 function saveGoals(){const f=document.getElementById('goalForm');if(!f||!f.reportValidity())return;const d=inputObj(f),goals={};for(const [name,min] of [['goalWeight',20],['goalWaist',10],['goalHip',10]]){if(d[name]!==''&&safeNum(d[name],min,300)===null){toast('Revise '+name);return}goals[name]=d[name]===''?null:cleanNum(d[name]);}
- Object.assign(state.profile,goals);persist();toast('Metas corporais salvas.');render();}
+ Object.assign(state.profile,goals);persist();toast('Metas corporais salvas.');render({preserveDrafts:true,excludeForm:'goalForm'});}
 function download(name,text,type){const blob=new Blob([type.startsWith('text/csv')?'\ufeff':'',text],{type});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=name;document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),4000)}
 const csvescape=x=>{if(x===null||x===undefined)return '';let str=String(x);return /[,\n\r"]/.test(str)?'"'+str.replaceAll('"','""')+'"':str};
 function csvRows(rows){return rows.map(row=>row.map(csvescape).join(',')).join('\r\n')}
@@ -938,40 +990,115 @@ function exportCSV(){
 function exportNutCSV(){const rows=[['Semana','Calorias médias','Proteína média (g)','Carboidratos médios (g)','Gordura média (g)','Cardio (min)','Treinos (nº)','Sono (h)','Observações'],...Array.from({length:53},(_,w)=>{let r=state.nutritionLogs[String(w)]||{};return[w,r.calories??'',r.protein??'',r.carbs??'',r.fat??'',r.cardio??'',r.workouts??'',r.sleep??'',r.notes||'']})];download('silhueta_nutricao.csv',csvRows(rows),'text/csv;charset=utf-8');toast('Nutrição exportada em CSV.')}
 function exportJSON(){download('silhueta_backup_'+nowISO()+'.json',JSON.stringify({app:'Silhueta',exportDate:nowISO(),data:state},null,2),'application/json;charset=utf-8');toast('Backup completo exportado.')}
 function parseCSV(txt){txt=txt.replace(/^\ufeff/,'');let first=txt.split(/\r?\n/)[0]||'';let delimiter=first.split(';').length>first.split(',').length?';':',';let rows=[],row=[],cell='',quoted=false;for(let i=0;i<txt.length;i++){let c=txt[i];if(c==='"'){if(quoted&&txt[i+1]==='"'){cell+='"';i++}else quoted=!quoted}else if(c===delimiter&&!quoted){row.push(cell);cell=''}else if((c==='\n'||c==='\r')&&!quoted){if(c==='\r'&&txt[i+1]==='\n')i++;row.push(cell);if(row.some(x=>x.trim()!==''))rows.push(row);cell='';row=[]}else cell+=c}row.push(cell);if(row.some(x=>x.trim()!==''))rows.push(row);return rows}
-function importCSV(text){
- const rows=parseCSV(text),hdr=rows[0]||[];
+function requireImportRecord(value,label){
+ if(!value||typeof value!=='object'||Array.isArray(value))throw Error('Estrutura inválida em '+label+'.');
+ if(Object.keys(value).some(key=>['__proto__','constructor','prototype'].includes(key)))throw Error('Chave inválida em '+label+'.');
+ return value;
+}
+function importNumber(obj,key,range,label,integer=false){
+ const raw=obj[key];if(raw===null||raw===undefined||raw==='')return;
+ const value=(typeof raw==='number'||typeof raw==='string')?safeNum(raw,...range):null;
+ if(value===null||(integer&&!Number.isInteger(value)))throw Error('Valor inválido em '+label+'.');
+ obj[key]=value;
+}
+function importDate(obj,key,label){const value=obj[key];if(value===null||value===undefined||value==='')return;if(!isDate(value))throw Error('Data inválida em '+label+'.');}
+function validateBackupData(data){
+ requireImportRecord(data,'backup');
+ const copy=JSON.parse(JSON.stringify(data));
+ for(const name of ['profile','macros','measurements'])requireImportRecord(copy[name],name);
+ for(const name of ['metricEntries','nutritionLogs','preferences','meta'])if(copy[name]!==undefined)requireImportRecord(copy[name],name);
+ if(copy.meta?.clock!==undefined)requireImportRecord(copy.meta.clock,'relógios de sincronização');
+ const profileRanges={age:[0,150],height:[0,300],baselineWeight:[20,300],hormoneMonths:[0,2000],workoutsPlanned:[0,14],months:[0,1200],goalWeight:[20,300],goalWaist:[10,300],goalHip:[10,300]};
+ for(const [key,range]of Object.entries(profileRanges))importNumber(copy.profile,key,range,'perfil: '+key,key==='months');
+ importDate(copy.profile,'startDate','início do projeto');
+ for(const key of ['protein','carbs','fat','calorieReference'])importNumber(copy.macros,key,key==='calorieReference'?[0,20000]:[0,1000],'metas de nutrição: '+key);
+ for(const [week,row]of Object.entries(copy.measurements)){
+  if(!/^\d{1,3}$/.test(week)||Number(week)>52)throw Error('Semana inválida no histórico antigo.');
+  requireImportRecord(row,'histórico antigo');
+  for(const metric of METRIC_KEYS){importNumber(row,metric,metricRange(metric),'histórico: '+BODY_LABELS[metric]);importDate(row,'d_'+metric,'histórico: '+BODY_LABELS[metric]);}
+  importDate(row,'date','histórico antigo');
+  if(row.notes!=null&&typeof row.notes!=='string')throw Error('Anotação inválida no histórico antigo.');
+ }
+ for(const [week,row]of Object.entries(copy.nutritionLogs||{})){
+  if(!/^\d{1,3}$/.test(week)||Number(week)>52)throw Error('Semana inválida em Nutrição.');
+  requireImportRecord(row,'semana de nutrição');
+  for(const key of Object.keys(NUTRITION_RANGES)){const value=nutritionValue(key,row[key]);if(value!==null)row[key]=value;}
+  if(row.notes!=null&&typeof row.notes!=='string')throw Error('Anotação inválida em Nutrição.');
+ }
+ const normalized=normalizeStateData(copy);
+ for(const [id,entry]of Object.entries(normalized.metricEntries)){
+  requireImportRecord(entry,'medição '+id);
+  if(entry.deleted===true)continue;
+  if(!METRIC_KEYS.includes(entry.metric))throw Error('Região inválida em uma medição.');
+  const value=(typeof entry.value==='number'||typeof entry.value==='string')?safeNum(entry.value,...metricRange(entry.metric)):null;
+  if(value===null)throw Error('Valor inválido em '+BODY_LABELS[entry.metric]+'.');
+  const undatedLegacy=(entry.origin==='legacy'||id.startsWith('legacy_'))&&(entry.date===undefined||entry.date===null||entry.date==='');
+  if(!isDate(entry.date)&&!undatedLegacy)throw Error('Data inválida em '+BODY_LABELS[entry.metric]+'.');
+  if(entry.note!=null&&typeof entry.note!=='string')throw Error('Anotação inválida em uma medição.');
+  if(entry.updatedAt!=null&&(typeof entry.updatedAt!=='string'||!Number.isFinite(Date.parse(entry.updatedAt))))throw Error('Data de edição inválida em uma medição.');
+  entry.value=value;
+ }
+ return normalized;
+}
+function applyCSVImport(text,target){
+ const rows=parseCSV(text),hdr=(rows[0]||[]).map(x=>x.trim());
  if(hdr.includes('Região')&&hdr.includes('Medida')&&hdr.includes('Data')){
-  let count=0;for(const cells of rows.slice(1)){
-   const region=cells[hdr.indexOf('Região')],metric=METRIC_KEYS.find(k=>BODY_LABELS[k]===region),raw=cells[hdr.indexOf('Medida')],date=cells[hdr.indexOf('Data')];
-   if(!metric||!isDate(date)||!raw)continue;
-   const n=safeNum(raw,...(metric==='weight'?[20,300]:metric==='bodyFat'?[0,100]:[10,300]));if(n===null)continue;
-   const srcId=cells[hdr.indexOf('ID')],id=(srcId&&/^m_[a-z0-9_-]+$/i.test(srcId))?srcId:newEntryId();
-   // Re-importing a previously exported file is idempotent; never overwrite edits.
-   if(state.metricEntries[id])continue;
-   state.metricEntries[id]={metric,value:n,date,updatedAt:nowStamp(),origin:'csv'};count++;
+  let count=0;for(const [index,cells]of rows.slice(1).entries()){
+   const region=(cells[hdr.indexOf('Região')]||'').trim(),metric=METRIC_KEYS.find(k=>BODY_LABELS[k]===region),raw=(cells[hdr.indexOf('Medida')]||'').trim(),date=(cells[hdr.indexOf('Data')]||'').trim();
+   if(!metric||!isDate(date))throw Error('Região ou data inválida na linha '+(index+2)+'.');
+   const value=safeNum(raw,...metricRange(metric));if(value===null)throw Error('Valor inválido na linha '+(index+2)+'.');
+   const unitIndex=hdr.indexOf('Unidade'),unit=unitIndex>=0?(cells[unitIndex]||'').trim():'';
+   if(unit&&unit!==metricUnit(metric))throw Error('Unidade inválida na linha '+(index+2)+'.');
+   const srcId=(cells[hdr.indexOf('ID')]||'').trim(),id=/^(?:m_|legacy_)[a-z0-9_-]+$/i.test(srcId)&&srcId.length<=160?srcId:newEntryId();
+   if(Object.prototype.hasOwnProperty.call(target.metricEntries,id))continue;
+   target.metricEntries[id]={metric,value,date,updatedAt:nowStamp(),origin:'csv'};count++;
   }
-  if(!count)throw Error('Nenhum registro novo e válido encontrado.');return count;
+  return count;
  }
  const index=rows.findIndex(row=>row.some(x=>x.trim()==='Semana')&&(row.some(x=>/Peso \(kg\)/.test(x))||row.some(x=>/Calorias médias/.test(x))));
  if(index<0)throw Error('Formato CSV não reconhecido.');
- const head=rows[index],weekly=head.some(x=>/Peso \(kg\)/.test(x)),data=rows.slice(index+1);
- if(!weekly){let count=0;const cols={'Calorias médias':'calories','Proteína média (g)':'protein','Carboidratos médios (g)':'carbs','Gordura média (g)':'fat','Cardio (min)':'cardio','Treinos (nº)':'workouts','Sono (h)':'sleep','Observações':'notes'};
-  for(const row of data){const week=Number(row[head.indexOf('Semana')]);if(!Number.isInteger(week)||week<0||week>52)continue;const obj={...(state.nutritionLogs[String(week)]||{})};let changed=false;for(const [label,key] of Object.entries(cols)){const idx=head.indexOf(label);if(idx<0)continue;const raw=(row[idx]||'').trim();if(!raw)continue;obj[key]=key==='notes'?raw:cleanNum(raw);changed=true}if(changed){state.nutritionLogs[String(week)]=obj;count++}}if(!count)throw Error('Nenhuma linha preenchida.');return count;}
+ const head=rows[index].map(x=>x.trim()),weekly=head.some(x=>/Peso \(kg\)/.test(x)),data=rows.slice(index+1);
+ const weekFor=row=>{const raw=(row[head.indexOf('Semana')]||'').trim();if(!/^\d{1,2}$/.test(raw)||Number(raw)>52)throw Error('Semana inválida no CSV.');return Number(raw);};
+ if(!weekly){
+  let count=0;const cols={'Calorias médias':'calories','Proteína média (g)':'protein','Carboidratos médios (g)':'carbs','Gordura média (g)':'fat','Cardio (min)':'cardio','Treinos (nº)':'workouts','Sono (h)':'sleep','Observações':'notes'};
+  for(const row of data){const week=weekFor(row),obj={...(target.nutritionLogs[String(week)]||{})};let changed=false;
+   for(const [label,key]of Object.entries(cols)){const i=head.indexOf(label);if(i<0)continue;const raw=(row[i]||'').trim();if(!raw)continue;const value=key==='notes'?raw:nutritionValue(key,raw);if(JSON.stringify(obj[key])!==JSON.stringify(value)){obj[key]=value;changed=true;}}
+   if(changed){target.nutritionLogs[String(week)]=obj;count++;}
+  }
+  return count;
+ }
  const cols={'Peso (kg)':'weight','Cintura (cm)':'waist','Quadril (cm)':'hip','% gordura medido':'bodyFat',...Object.fromEntries(EXTRA_MEASURE_GROUPS.flatMap(g=>g.fields.map(([k,label])=>[label+' (cm)',k])))};
- let count=0;for(const row of data){const week=Number(row[head.indexOf('Semana')]);if(!Number.isInteger(week)||week<0||week>52)continue;
-  const base=row[head.indexOf('Data real')]||dateAdd(state.profile.startDate,week*7)||'';
-  for(const [label,metric] of Object.entries(cols)){const idx=head.indexOf(label);if(idx<0||!row[idx])continue;const n=safeNum(row[idx],...(metric==='weight'?[20,300]:metric==='bodyFat'?[0,100]:[10,300]));if(n===null)continue;
-   const dateLabel=metric==='weight'?'Data do peso':metric==='waist'?'Data da cintura':metric==='hip'?'Data do quadril':'Data de '+BODY_LABELS[metric];
-   const fieldDate=row[head.indexOf(dateLabel)]||base;
-   if(!isDate(fieldDate))continue;
-   const id='legacy_'+week+'_'+metric;
-   if(state.metricEntries[id])continue;
-   state.metricEntries[id]={metric,value:n,date:fieldDate,updatedAt:nowStamp(),origin:'csv'};count++;
+ let count=0;for(const row of data){const week=weekFor(row),base=row[head.indexOf('Data real')]||dateAdd(target.profile.startDate,week*7)||'';
+  for(const [label,metric]of Object.entries(cols)){const i=head.indexOf(label);if(i<0||!(row[i]||'').trim())continue;const value=safeNum(row[i],...metricRange(metric));if(value===null)throw Error('Valor inválido em '+BODY_LABELS[metric]+'.');
+   const dateLabel=metric==='weight'?'Data do peso':metric==='waist'?'Data da cintura':metric==='hip'?'Data do quadril':'Data de '+BODY_LABELS[metric],date=row[head.indexOf(dateLabel)]||base;
+   if(!isDate(date))throw Error('Data inválida em '+BODY_LABELS[metric]+'.');
+   const id='legacy_'+week+'_'+metric;if(Object.prototype.hasOwnProperty.call(target.metricEntries,id))continue;
+   target.metricEntries[id]={metric,value,date,updatedAt:nowStamp(),origin:'csv'};count++;
   }
  }
- if(!count)throw Error('Nenhuma medida nova encontrada.');return count;
+ return count;
 }
-function importFile(file){if(!file)return;const reader=new FileReader();reader.onload=()=>{try{const txt=String(reader.result);if(file.name.toLowerCase().endsWith('.json')){const parsed=JSON.parse(txt),data=parsed.data||parsed;if(!data||!data.profile||!data.measurements||!data.macros||typeof data.measurements!=='object')throw Error('Formato de backup não reconhecido.');if(!confirm('Importar este backup substituindo os dados atuais? Faça um backup antes, se necessário.'))return;state=normalizeStateData(data);ui.week=0;ui.nutWeek=0;persist();toast('Backup importado com sucesso.');setView('dashboard')}else if(file.name.toLowerCase().endsWith('.csv')){if(!confirm('Importar os registros deste CSV para o projeto atual? Semanas correspondentes serão atualizadas.'))return;let n=importCSV(txt);persist();toast(`${n} semanas importadas.`);setView('dashboard')}else throw Error('Utilize .json ou .csv')}catch(e){alert('Não foi possível importar: '+e.message)}};reader.readAsText(file,'UTF-8')}
+function importCSV(text){
+ const candidate=JSON.parse(JSON.stringify(state)),count=applyCSVImport(text,candidate);
+ const validated=validateBackupData(candidate);
+ state=validated;return count;
+}
+function importFile(file){
+ if(!file)return;const reader=new FileReader();
+ reader.onload=()=>{try{
+  const txt=String(reader.result);if(!confirmDiscardEdits())return;
+  if(file.name.toLowerCase().endsWith('.json')){
+   const parsed=JSON.parse(txt),data=parsed&&Object.prototype.hasOwnProperty.call(parsed,'data')?parsed.data:parsed;
+   const candidate=validateBackupData(data);
+   if(!confirm('Importar este backup substituindo os dados atuais? Faça um backup antes, se necessário.'))return;
+   state=candidate;ui.week=0;ui.nutWeek=0;ui.editEntryId=null;persist();toast('Backup importado com sucesso.');setView('dashboard');
+  }else if(file.name.toLowerCase().endsWith('.csv')){
+   if(!confirm('Importar os registros deste CSV para o projeto atual? Os registros existentes serão preservados; semanas correspondentes poderão ser atualizadas.'))return;
+   const n=importCSV(txt);persist();toast(n?n+' registro(s) importado(s).':'Nenhum registro novo. Os dados existentes foram preservados.');setView('dashboard');
+  }else throw Error('Utilize .json ou .csv');
+ }catch(e){alert('Não foi possível importar: '+e.message)}};
+ reader.readAsText(file,'UTF-8');
+}
 function reset(){
  if(gistBusy){alert('Aguarde a sincronização terminar antes de reiniciar.');return}
  if(!confirm('Reiniciar apenas este aparelho? Seus dados locais serão apagados. O backup do GitHub Gist será preservado. Exporte um JSON antes de continuar.'))return;
@@ -986,14 +1113,14 @@ function reset(){
 document.addEventListener('click',e=>{const el=e.target.closest('[data-action]');if(!el)return;const act=el.dataset.action;
  switch(act){
  case'quickMetric':{const key=el.dataset.metric;if(METRIC_KEYS.includes(key)){if(!confirmDiscardEdits())break;ui.quickMetric=key;ui.editEntryId=null;ui.measureMode='quick';setView('measure')}break}
- case'guideMetric':{const key=el.dataset.metric;if(METRIC_KEYS.includes(key)){ui.quickMetric=key;const tip=document.querySelector('.guide-tip');if(tip){tip.innerHTML=guideFigure(key);tip.setAttribute('aria-label','Como medir: '+BODY_LABELS[key])}document.querySelectorAll('.guide-region').forEach(btn=>{const active=btn.dataset.metric===key;btn.classList.toggle('selected',active);btn.setAttribute('aria-pressed',String(active))})}break}
+ case'guideMetric':{const key=el.dataset.metric;if(METRIC_KEYS.includes(key)){ui.guideMetric=key;const tip=document.querySelector('.guide-tip');if(tip){tip.innerHTML=guideFigure(key);tip.setAttribute('aria-label','Como medir: '+BODY_LABELS[key])}document.querySelectorAll('.guide-region').forEach(btn=>{const active=btn.dataset.metric===key;btn.classList.toggle('selected',active);btn.setAttribute('aria-pressed',String(active))})}break}
  case'measureMode':{if(!confirmDiscardEdits())break;ui.measureMode=el.dataset.mode==='batch'?'batch':'quick';ui.editEntryId=null;render();break}
  case'cancelEditMetric':if(confirmDiscardEdits()){ui.editEntryId=null;render()}break;
- case'editMetric':{const item=state.metricEntries[el.dataset.id];if(item&&!item.deleted){ui.editEntryId=el.dataset.id;ui.quickMetric=item.metric;ui.measureMode='quick';setView('measure')}break}
- case'deleteMetric':{const item=state.metricEntries[el.dataset.id];if(item&&!item.deleted&&confirm('Excluir somente esta medição? Ela deixará de aparecer nos gráficos, mas as demais serão preservadas.')){deleteMetricEntry(el.dataset.id);if(ui.editEntryId===el.dataset.id)ui.editEntryId=null;persist();render();toast('Medição excluída.')}break}
+ case'editMetric':{if(!confirmDiscardEdits())break;const item=state.metricEntries[el.dataset.id];if(item&&!item.deleted){ui.editEntryId=el.dataset.id;ui.quickMetric=item.metric;ui.measureMode='quick';setView('measure')}break}
+ case'deleteMetric':{const item=state.metricEntries[el.dataset.id];if(item&&!item.deleted&&confirm('Excluir somente esta medição? Ela deixará de aparecer nos gráficos, mas as demais serão preservadas.')){const wasEditing=ui.editEntryId===el.dataset.id;deleteMetricEntry(el.dataset.id);if(wasEditing)ui.editEntryId=null;persist();render({preserveDrafts:true,excludeForm:wasEditing?'quickForm':''});toast('Medição excluída.')}break}
  case'favMove':{const f=state.preferences.favoriteMetrics,key=el.dataset.metric,i=f.indexOf(key),n=i+Number(el.dataset.direction);if(i>=0&&n>=0&&n<f.length){[f[i],f[n]]=[f[n],f[i]];persist();render()}break}
- case'moreHistory':ui.historyLimit+=40;render();break;
- case'measureTab':{ui.measureTab=el.dataset.tab==='extra'?'extra':'primary';for(const tab of document.querySelectorAll('.body-tab'))tab.setAttribute('aria-selected',String(tab.dataset.tab===ui.measureTab));for(const panel of document.querySelectorAll('.measure-pane'))panel.hidden=panel.id!=='pane-'+ui.measureTab;break}case'toggleSidebar':toggleSidebar();break;case'openDrawer':openMobileDrawer();break;case'closeDrawer':closeMobileDrawer();break;case'openSync':openSync();break;case'closeSync':closeSync();break;case'gistSync':case'gistUpload':case'gistDownload':runGist(act);break;case'gistCopyBackup':gistCopyBackup();break;case'gistRestoreOpen':document.getElementById('syncRestoreBox').hidden=false;document.getElementById('gistRestoreText').focus();break;case'gistRestoreCancel':document.getElementById('syncRestoreBox').hidden=true;break;case'gistRestore':gistRestoreBackup();break;case'gistRemoveToken':gistRemoveToken();break;case'go':if(confirmDiscardEdits())setView(el.dataset.view);break;case'newMeasurement':ui.week=pickWeek();setView('measure');break;case'editWeek':ui.week=Number(el.dataset.week);setView('measure');break;case'prevWeek':ui.week=Math.max(0,ui.week-1);render();break;case'nextWeek':ui.week=Math.min(52,ui.week+1);render();break;case'prevNutWeek':ui.nutWeek=Math.max(0,ui.nutWeek-1);render();break;case'nextNutWeek':ui.nutWeek=Math.min(52,ui.nutWeek+1);render();break;case'editNutWeek':ui.nutWeek=Number(el.dataset.week);setView('nutrition');break;case'saveMeasure':saveMeasure();break;case'saveNutrition':saveNutrition();break;case'saveSettings':saveSettings();break;case'saveMacroTargets':saveMacroTargets();break;case'saveGoals':saveGoals();break;case'deleteMeasure':if(confirm('Apagar os dados desta semana?')){delete state.measurements[String(ui.week)];persist();toast('Semana apagada.');render()}break;case'exportCSV':exportCSV();break;case'exportNutCSV':exportNutCSV();break;case'exportJSON':exportJSON();break;case'import':document.getElementById('importFile').click();break;case'reset':reset();break;}
+ case'moreHistory':ui.historyLimit+=40;render({preserveDrafts:true});break;
+ case'measureTab':{ui.measureTab=el.dataset.tab==='extra'?'extra':'primary';for(const tab of document.querySelectorAll('.body-tab'))tab.setAttribute('aria-selected',String(tab.dataset.tab===ui.measureTab));for(const panel of document.querySelectorAll('.measure-pane'))panel.hidden=panel.id!=='pane-'+ui.measureTab;break}case'toggleSidebar':toggleSidebar();break;case'openDrawer':openMobileDrawer();break;case'closeDrawer':closeMobileDrawer();break;case'openSync':openSync();break;case'closeSync':closeSync();break;case'gistSync':case'gistUpload':case'gistDownload':runGist(act);break;case'gistCopyBackup':gistCopyBackup();break;case'gistRestoreOpen':document.getElementById('syncRestoreBox').hidden=false;document.getElementById('gistRestoreText').focus();break;case'gistRestoreCancel':document.getElementById('syncRestoreBox').hidden=true;break;case'gistRestore':gistRestoreBackup();break;case'gistRemoveToken':gistRemoveToken();break;case'go':if(confirmDiscardEdits())setView(el.dataset.view);break;case'newMeasurement':if(!confirmDiscardEdits())break;ui.week=pickWeek();setView('measure');break;case'editWeek':if(!confirmDiscardEdits())break;ui.week=Number(el.dataset.week);setView('measure');break;case'prevWeek':if(!confirmDiscardEdits())break;ui.week=Math.max(0,ui.week-1);render();break;case'nextWeek':if(!confirmDiscardEdits())break;ui.week=Math.min(52,ui.week+1);render();break;case'prevNutWeek':if(!confirmDiscardEdits())break;ui.nutWeek=Math.max(0,ui.nutWeek-1);render();break;case'nextNutWeek':if(!confirmDiscardEdits())break;ui.nutWeek=Math.min(52,ui.nutWeek+1);render();break;case'editNutWeek':if(!confirmDiscardEdits())break;ui.nutWeek=Number(el.dataset.week);setView('nutrition');break;case'saveMeasure':saveMeasure();break;case'saveNutrition':saveNutrition();break;case'saveSettings':saveSettings();break;case'saveMacroTargets':saveMacroTargets();break;case'saveGoals':saveGoals();break;case'deleteMeasure':if(confirm('Apagar os dados desta semana?')){delete state.measurements[String(ui.week)];persist();toast('Semana apagada.');render()}break;case'exportCSV':exportCSV();break;case'exportNutCSV':exportNutCSV();break;case'exportJSON':exportJSON();break;case'import':document.getElementById('importFile').click();break;case'reset':reset();break;}
 });
 document.addEventListener('change',e=>{if(e.target.dataset.action==='favToggle'){
    const key=e.target.dataset.metric,f=state.preferences.favoriteMetrics;
@@ -1001,10 +1128,10 @@ document.addEventListener('change',e=>{if(e.target.dataset.action==='favToggle')
    else if(!e.target.checked){if(f.length===1){toast('Mantenha pelo menos um indicador.');e.target.checked=true;return}state.preferences.favoriteMetrics=f.filter(k=>k!==key)}
    persist();render();return;
  }if(e.target.id==='quickMetric'){ui.quickMetric=e.target.value;const label=document.querySelector('label[for="quickValue"]'),field=document.getElementById('quickValue');if(label)label.textContent='Valor ('+metricUnit(e.target.value)+')';if(field){field.min=e.target.value==='weight'?'20':e.target.value==='bodyFat'?'0':'10';field.max=e.target.value==='bodyFat'?'100':'300';field.placeholder=metricUnit(e.target.value);field.value='';}return}
- if(e.target.id==='historyFilter'){ui.historyFilter=e.target.value;ui.historyLimit=30;render();return}
- if(e.target.id==='chartMetric'){ui.chartMetric=e.target.value;render();return}
- if(e.target.id==='weekPicker'){ui.week=Number(e.target.value);render()}if(e.target.id==='nutWeekPicker'){ui.nutWeek=Number(e.target.value);render()}if(e.target.id==='extraChartSelect'){ui.extraChartKey=e.target.value;render()}if(e.target.id==='importFile'){importFile(e.target.files[0]);e.target.value=''}});
-document.addEventListener('submit',e=>{if(['quickForm','batchForm','measureForm','nutritionForm','settingsForm','macroForm','goalForm'].includes(e.target.id)){e.preventDefault();if(e.target.id==='quickForm')saveQuick(e.target);if(e.target.id==='batchForm')saveBatch(e.target);if(e.target.id==='settingsForm')saveSettings();if(e.target.id==='macroForm')saveMacroTargets();if(e.target.id==='goalForm')saveGoals()}});
+ if(e.target.id==='historyFilter'){ui.historyFilter=e.target.value;ui.historyLimit=30;render({preserveDrafts:true});return}
+ if(e.target.id==='chartMetric'){ui.chartMetric=e.target.value;render({preserveDrafts:true});return}
+ if(e.target.id==='weekPicker'){if(!confirmDiscardEdits()){e.target.value=String(ui.week);return}ui.week=Number(e.target.value);render()}if(e.target.id==='nutWeekPicker'){if(!confirmDiscardEdits()){e.target.value=String(ui.nutWeek);return}ui.nutWeek=Number(e.target.value);render()}if(e.target.id==='extraChartSelect'){ui.extraChartKey=e.target.value;render({preserveDrafts:true})}if(e.target.id==='importFile'){importFile(e.target.files[0]);e.target.value=''}});
+document.addEventListener('submit',e=>{if(['quickForm','batchForm','measureForm','nutritionForm','settingsForm','macroForm','goalForm'].includes(e.target.id)){e.preventDefault();if(e.target.id==='quickForm')saveQuick(e.target);if(e.target.id==='batchForm')saveBatch(e.target);if(e.target.id==='nutritionForm')saveNutrition();if(e.target.id==='settingsForm')saveSettings();if(e.target.id==='macroForm')saveMacroTargets();if(e.target.id==='goalForm')saveGoals()}});
 setSidebarCollapsed(localRead(SIDEBAR_PREF_KEY)==='1');persist({preserveTimestamp:true,keepSync:true,suppressSync:true});ui.week=pickWeek();ui.nutWeek=currentWeek();render();setSyncState(hasTokenSaved()?'Verificando nuvem…':'Não conectado',hasTokenSaved()?'ready':'');if(hasTokenSaved())setTimeout(()=>syncNow('startup'),500);
 })();
 </script>
