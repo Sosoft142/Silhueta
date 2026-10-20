@@ -1,0 +1,106 @@
+
+import { createServer } from 'node:http';
+import { readFile, mkdir, writeFile } from 'node:fs/promises';
+import path from 'node:path';
+import { createHash } from 'node:crypto';
+import { chromium } from 'playwright';
+
+const root=process.cwd(),output=path.join(root,'qa/mobile-audit-output');
+await mkdir(output,{recursive:true});
+const results=[],shots=[],runtimeErrors=[];
+const assert=(condition,message)=>{if(!condition)throw new Error(message);};
+const emptyState=()=>({version:7,meta:{updatedAt:'2026-10-20T12:00:00.000Z',lastSyncAt:'',syncState:'local-only',historyMigratedV23:true},profile:{age:null,height:null,baselineWeight:null,startDate:'',months:12,hormoneMonths:null,workoutsPlanned:null,goalWeight:null,goalWaist:null,goalHip:null},macros:{protein:null,carbs:null,fat:null,calorieReference:null},measurements:{},metricEntries:{},preferences:{favoriteMetrics:['weight','waist','hip'],quickMetrics:['weight','waist','hip']},nutritionLogs:{}});
+function filledState(){const s=emptyState();s.profile.startDate='2026-10-01';s.macros={protein:120,carbs:220,fat:60,calorieReference:1900};for(const [id,metric,value,date]of [['m_test_weight_old','weight',75,'2026-10-01'],['m_test_weight_new','weight',74.5,'2026-10-20'],['m_test_waist_old','waist',85,'2026-10-01'],['m_test_waist_new','waist',84.5,'2026-10-20'],['m_test_hip_old','hip',102,'2026-10-01'],['m_test_hip_new','hip',102.5,'2026-10-20']])s.metricEntries[id]={metric,value,date,note:'Registro fictício de teste',updatedAt:date+'T12:00:00.000Z'};s.nutritionLogs={'0':{calories:1900,workouts:3,cardio:90,sleep:7.5,notes:'Registro fictício de teste'}};return s;}
+const types={'.html':'text/html; charset=utf-8','.js':'application/javascript','.json':'application/json','.webmanifest':'application/manifest+json','.png':'image/png','.svg':'image/svg+xml'};
+const server=createServer(async(req,res)=>{try{const pathname=decodeURIComponent(new URL(req.url,'http://localhost').pathname);const file=path.resolve(root,'.'+(pathname==='/'?'/index.html':pathname));if(!file.startsWith(root+path.sep)){res.writeHead(403);res.end();return;}const bytes=await readFile(file);res.writeHead(200,{'Content-Type':types[path.extname(file)]||'application/octet-stream','Cache-Control':'no-store'});res.end(bytes);}catch{res.writeHead(404);res.end('Not found');}});
+await new Promise(resolve=>server.listen(4173,'127.0.0.1',resolve));
+const browser=await chromium.launch({headless:true});
+async function openPage(width=390,seed=emptyState(),acceptDialogs=false){
+ const context=await browser.newContext({viewport:{width,height:844},deviceScaleFactor:1,isMobile:width<=850,hasTouch:width<=850,locale:'pt-BR',timezoneId:'America/Sao_Paulo'});
+ await context.route('https://api.github.com/**',route=>route.abort());
+ await context.addInitScript(data=>{if(!localStorage.getItem('silhueta.app.v1'))localStorage.setItem('silhueta.app.v1',JSON.stringify(data));},seed);
+ const page=await context.newPage(),errors=[],dialogs=[];page.on('pageerror',e=>errors.push(e.message));page.on('console',msg=>{if(msg.type()==='error')errors.push(msg.text());});page.on('dialog',async d=>{dialogs.push(d.message());acceptDialogs?await d.accept():await d.dismiss();});
+ await page.goto('http://127.0.0.1:4173/',{waitUntil:'networkidle'});return{context,page,errors,dialogs};
+}
+async function go(page,view){let link=page.locator('[data-action="go"][data-view="'+view+'"]:visible').first();if(!(await link.count())){await page.locator('[data-action="openDrawer"]:visible').first().click();link=page.locator('#mobileDrawer [data-view="'+view+'"]:visible').first();}await link.click();await page.waitForTimeout(200);}
+async function state(page){return page.evaluate(()=>JSON.parse(localStorage.getItem('silhueta.app.v1')));}
+async function snap(page,name){const file=path.join(output,name+'.jpg');const bytes=await page.screenshot({path:file,type:'jpeg',quality:45,fullPage:false});shots.push({name,bytes});}
+async function run(name,fn,opts={}){
+ let h;try{h=await openPage(opts.width||390,opts.seed||emptyState(),!!opts.acceptDialogs);const detail=await fn(h);results.push({name,status:'pass',...detail});}catch(e){results.push({name,status:'fail',error:e.message});}finally{if(h){if(h.errors.length)runtimeErrors.push({test:name,errors:h.errors});await h.context.close();}}
+}
+try{
+ const local=await readFile(path.join(root,'index.html'));let live={};try{const r=await fetch('https://sosoft142.github.io/Silhueta/',{signal:AbortSignal.timeout(20000)}),bytes=Buffer.from(await r.arrayBuffer());live={httpStatus:r.status,sameAsRepository:local.equals(bytes),sha256:createHash('sha256').update(bytes).digest('hex')};}catch(e){live={error:e.message};}
+ results.push({name:'Published source comparison',status:live.sameAsRepository?'pass':'info',...live,repositoryBlob:createHash('sha1').update('blob '+local.length+'\0').update(local).digest('hex')});
+ for(const width of [320,360,390,414,768,1024,1440]){
+  await run('Layout normal and navigation '+width+'px',async({page,errors})=>{
+   const checks=[];
+   for(const view of ['dashboard','measure','trends','nutrition','settings','help']){
+    if(view!=='dashboard')await go(page,view);
+    const dimensions=await page.evaluate(()=>({viewport:innerWidth,page:document.documentElement.scrollWidth,body:document.body.scrollWidth}));
+    checks.push({view,...dimensions});assert(dimensions.page<=dimensions.viewport+1,'Horizontal overflow '+JSON.stringify({view,...dimensions}));
+    if(width===390&&['dashboard','measure','trends','nutrition','settings'].includes(view))await snap(page,'390-'+view);
+    if(width===320&&view==='trends')await snap(page,'320-trends');
+   }
+   assert(errors.length===0,'Browser errors: '+errors.join(' | '));return{checks};
+  },{width,seed:filledState()});
+ }
+ await run('Empty mobile dashboard and mobile drawer',async({page})=>{await snap(page,'390-empty-home');await page.locator('[data-action="openDrawer"]:visible').first().click();assert(await page.locator('#mobileDrawer').isVisible(),'Drawer did not open');await snap(page,'390-menu');await page.keyboard.press('Escape');assert(await page.locator('#mobileDrawer').isHidden(),'Escape did not close drawer');});
+ await run('Quick registration repeats, isolated edit, isolated delete, persistence',async({page})=>{
+  await go(page,'measure');
+  for(const v of ['75.5','75.6']){await page.locator('#quickValue').fill(v);await page.locator('#quickDate').fill('2026-10-20');await page.locator('#quickForm button[type="submit"]').click();}
+  let s=await state(page),ids=Object.keys(s.metricEntries);assert(ids.length===2,'Expected 2 separate entries');
+  await page.locator('[data-action="editMetric"][data-id="'+ids[0]+'"]').click();await page.locator('#quickValue').fill('76');await page.locator('#quickForm button[type="submit"]').click();s=await state(page);assert(s.metricEntries[ids[0]].value===76&&s.metricEntries[ids[1]].value===75.6,'Editing affected another record');
+  page.removeAllListeners('dialog');page.on('dialog',d=>d.accept());await page.locator('[data-action="deleteMetric"][data-id="'+ids[0]+'"]').click();s=await state(page);assert(s.metricEntries[ids[0]].deleted===true,'Delete did not create tombstone');
+  await page.reload({waitUntil:'networkidle'});s=await state(page);assert(s.metricEntries[ids[1]].value===75.6,'Persisted value lost');return{remainingRecords:1};
+ });
+ await run('Native number constraints block weight below minimum',async({page})=>{await go(page,'measure');await page.locator('#quickValue').fill('19');assert(await page.locator('#quickValue').evaluate(el=>el.validity.rangeUnderflow),'Browser did not detect minimum');await page.locator('#quickForm button[type="submit"]').click();assert(Object.keys((await state(page)).metricEntries).length===0,'Invalid weight saved');});
+ await run('Invalid date is rejected before saving',async({page})=>{await go(page,'measure');await page.locator('#quickValue').fill('75');await page.locator('#quickDate').evaluate(el=>el.value='2026-02-30');await page.locator('#quickForm button[type="submit"]').click();assert(Object.keys((await state(page)).metricEntries).length===0,'Impossible date saved');});
+ await run('Batch rejection is atomic',async({page})=>{await go(page,'measure');await page.locator('[data-action="measureMode"][data-mode="batch"]').click();await page.locator('#batch_weight').fill('75');await page.locator('#batch_waist').fill('85');await page.locator('#batch_bodyFat').fill('150');await page.locator('#batchForm button[type="submit"]').click();assert(Object.keys((await state(page)).metricEntries).length===0,'Batch partially saved');});
+ await run('Guide changes preserve unsaved input and all images decode',async({page})=>{await go(page,'measure');await page.locator('#quickValue').fill('75.5');for(const m of ['bust','underbust','shoulders','neck','waist','abdomen','hip','arm','biceps','forearm','thigh','calf']){await page.locator('[data-action="guideMetric"][data-metric="'+m+'"]').click();await page.locator('.anatomy-photo img').evaluate(img=>img.decode());assert(await page.locator('#quickValue').inputValue()==='75.5','Guide erased draft at '+m);}await page.locator('.anatomy-card').evaluate(el=>el.scrollIntoView({block:'start'}));await snap(page,'390-anatomy-guide');return{regions:12};});
+ await run('Navigation guard preserves draft when discard is refused',async({page,dialogs})=>{await go(page,'measure');await page.locator('#quickValue').fill('75.5');await page.locator('#mobileNav [data-view="dashboard"]').click();assert(dialogs.length===1&&await page.locator('#quickValue').inputValue()==='75.5','Navigation lost draft');});
+ await run('Regression: measurement history filter must preserve draft',async({page})=>{await go(page,'measure');await page.locator('#quickValue').fill('75.5');await page.locator('#historyFilter').selectOption('weight');assert(await page.locator('#quickValue').inputValue()==='75.5','Draft 75.5 disappeared after changing history filter');});
+ await run('Regression: nutrition week arrow must preserve draft',async({page})=>{await go(page,'nutrition');await page.locator('#calories').fill('1850');await page.locator('[data-action="nextNutWeek"]').click();assert(await page.locator('#calories').inputValue()==='1850','Unsaved 1850 calories disappeared after changing week');});
+ await run('Regression: saving macro targets must preserve consumption draft',async({page})=>{await go(page,'nutrition');await page.locator('#calories').fill('1850');await page.locator('.inline-macro-form summary').click();for(const [id,v]of [['target_protein','120'],['target_carbs','200'],['target_fat','60']])await page.locator('#'+id).fill(v);await page.locator('[data-action="saveMacroTargets"]').click();assert(await page.locator('#calories').inputValue()==='1850','Saving targets erased unsaved consumption');});
+ await run('Regression: saving consumption must preserve macro target draft',async({page})=>{await go(page,'nutrition');await page.locator('#calories').fill('1850');await page.locator('.inline-macro-form summary').click();await page.locator('#target_protein').fill('120');await page.locator('[data-action="saveNutrition"]').click();assert(await page.locator('#target_protein').inputValue()==='120','Saving consumption erased unsaved target');});
+ await run('Regression: editing another history entry must preserve draft',async({page})=>{await go(page,'measure');await page.locator('#quickValue').fill('76');await page.locator('[data-action="editMetric"]').first().click();assert(await page.locator('#quickValue').inputValue()==='76','Opening old entry replaced draft without confirmation');},{seed:filledState()});
+ await run('Regression: chart selector must preserve body goal draft',async({page})=>{await go(page,'trends');await page.locator('.inline-goal-form summary').click();await page.locator('#goalWeight').fill('72');await page.locator('#chartMetric').selectOption('waist');assert(await page.locator('#goalWeight').inputValue()==='72','Chart selector erased unsaved body goal');},{seed:filledState()});
+ await run('Regression: legacy CSV reimport must not duplicate',async({page})=>{const csv='Data,Região,Medida,Unidade,ID\n2026-10-20,Peso,75,kg,legacy_0_weight';for(let i=0;i<2;i++){await page.setInputFiles('#importFile',{name:'historico.csv',mimeType:'text/csv',buffer:Buffer.from(csv)});await page.waitForTimeout(100);}const entries=Object.values((await state(page)).metricEntries).filter(e=>!e.deleted);assert(entries.length===1,'Legacy CSV grew from 1 entry to '+entries.length);},{seed:(()=>{const s=emptyState();s.metricEntries={legacy_0_weight:{metric:'weight',value:75,date:'2026-10-20',updatedAt:'2026-10-20T12:00:00.000Z',origin:'legacy'}};return s;})(),acceptDialogs:true});
+ await run('Regression: nutrition CSV must reject out of range values',async({page})=>{const csv='Semana,Calorias médias,Treinos (nº),Sono (h)\n0,-500,99,50';await page.setInputFiles('#importFile',{name:'nutricao.csv',mimeType:'text/csv',buffer:Buffer.from(csv)});await page.waitForTimeout(100);const r=(await state(page)).nutritionLogs['0'];assert(!r||!(r.calories<0||r.workouts>14||r.sleep>24),'Invalid CSV values persisted: '+JSON.stringify(r));},{acceptDialogs:true});
+ await run('Regression: malformed JSON import must leave previous valid state usable',async({page})=>{const s=emptyState();s.metricEntries={m_invalid:{metric:'weight',value:75,date:123,updatedAt:'2026-10-20T12:00:00.000Z'}};await page.setInputFiles('#importFile',{name:'backup.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify({data:s}))});await page.waitForTimeout(100);const persisted=(await state(page)).metricEntries.m_invalid?.date;await page.reload({waitUntil:'networkidle'});const content=(await page.locator('#main').innerText()).trim();assert(persisted!==123&&content.length>0,'Malformed date persisted='+persisted+'; main content after reload='+content.length+' characters');},{acceptDialogs:true});
+ await run('Regression: batch native bounds must match accepted metric limits',async({page})=>{await go(page,'measure');await page.locator('[data-action="measureMode"][data-mode="batch"]').click();await page.locator('#batch_weight').fill('15');await page.locator('#batch_bodyFat').fill('150');const w=await page.locator('#batch_weight').evaluate(el=>el.validity.valid),f=await page.locator('#batch_bodyFat').evaluate(el=>el.validity.valid);assert(!w&&!f,'Browser marks weight 15 kg and body fat 150% as valid in batch');});
+ await run('Regression: long saved notes must not create horizontal overflow on 320px',async({page})=>{await go(page,'measure');await page.locator('.history-full-width').evaluate(el=>el.scrollIntoView({block:'start'}));const d=await page.evaluate(()=>({viewport:innerWidth,page:document.documentElement.scrollWidth,clientWidth:document.documentElement.clientWidth,scale:visualViewport.scale}));await snap(page,'320-long-note');assert(d.page<=321,'Saved 500-character note: '+JSON.stringify(d)+'; expected document width 320px');},{width:320,seed:(()=>{const s=filledState();s.metricEntries.m_test_weight_new.note='x'.repeat(500);return s;})()});
+
+ for(const width of [320,390])await run('Regression: chart axis labels must remain legible at '+width+'px',async({page})=>{await go(page,'trends');const sizes=await page.locator('.chart-svg text').evaluateAll(els=>els.map(el=>{const m=el.getScreenCTM();return parseFloat(getComputedStyle(el).fontSize)*Math.hypot(m.a,m.b);}));const min=Math.min(...sizes),max=Math.max(...sizes);assert(min>=10,'Chart axis rendered font size '+min.toFixed(2)+' to '+max.toFixed(2)+' CSS px at '+width+'px viewport; expected at least 10px');return{min,max};},{width,seed:filledState()});
+
+
+ await run('Valid JSON import preserves reference, goals, notes and deletion markers',async({page})=>{
+  const data=filledState();data.profile.baselineWeight=75;data.profile.goalWeight=72;data.metricEntries.m_deleted={metric:'weight',value:75,date:'2026-10-19',deleted:true,updatedAt:'2026-10-20T12:00:00.000Z'};
+  await page.setInputFiles('#importFile',{name:'valid.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify({app:'Silhueta',data}))});await page.waitForTimeout(100);
+  const saved=await state(page);assert(saved.profile.baselineWeight===75&&saved.profile.goalWeight===72&&saved.metricEntries.m_deleted.deleted,'Valid backup fields lost');assert(Object.values(saved.metricEntries).filter(r=>!r.deleted).length===6,'Reference created a fake weighing or records lost');assert(saved.metricEntries.m_test_weight_new.note==='Registro fictício de teste','Note lost');
+ },{acceptDialogs:true});
+ await run('Legacy JSON migration retains individual dates without duplication',async({page})=>{
+  const data=emptyState();data.profile.baselineWeight=75;data.meta.historyMigratedV23=false;delete data.metricEntries;data.measurements={'0':{weight:75,waist:85,date:'2026-10-19',d_waist:'2026-10-20',notes:'Nota antiga de teste'}};
+  await page.setInputFiles('#importFile',{name:'legacy.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(data))});await page.waitForTimeout(100);
+  let saved=await state(page);assert(saved.metricEntries.legacy_0_waist.date==='2026-10-20'&&saved.profile.baselineWeight===75,'Legacy fields lost');await page.reload({waitUntil:'networkidle'});saved=await state(page);assert(Object.keys(saved.metricEntries).length===2,'Legacy migration duplicated');
+ },{acceptDialogs:true});
+ await run('CSV invalid later row cannot partially modify existing nutrition',async({page})=>{
+  const before=JSON.stringify(await state(page));await page.setInputFiles('#importFile',{name:'partial.csv',mimeType:'text/csv',buffer:Buffer.from('Semana,Calorias médias,Treinos (nº),Sono (h)\n0,1850,3,8\n1,-500,99,50')});await page.waitForTimeout(100);assert(JSON.stringify(await state(page))===before,'CSV wrote a valid row before rejecting invalid row');
+ },{seed:filledState(),acceptDialogs:true});
+ await run('Invalid JSON cannot replace a valid pre-existing history',async({page})=>{
+  const before=JSON.stringify(await state(page)),data=emptyState();data.metricEntries={m_bad:{metric:'weight',value:75,date:123}};
+  await page.setInputFiles('#importFile',{name:'bad.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify({data}))});await page.waitForTimeout(100);assert(JSON.stringify(await state(page))===before,'Invalid backup replaced existing history');
+ },{seed:filledState(),acceptDialogs:true});
+ await run('Week dropdown refusal preserves week and nutrition draft',async({page,dialogs})=>{
+  await go(page,'nutrition');const week=await page.locator('#nutWeekPicker').inputValue();await page.locator('#calories').fill('1850');const next=String((Number(week)+1)%53);await page.locator('#nutWeekPicker').selectOption(next);assert(dialogs.length===1&&await page.locator('#nutWeekPicker').inputValue()===week&&await page.locator('#calories').inputValue()==='1850','Week dropdown lost draft or selection');
+ });
+ await run('Chart resizing preserves draft and readable axes',async({page})=>{
+  await go(page,'trends');await page.locator('.inline-goal-form summary').click();await page.locator('#goalWeight').fill('72');
+  for(const width of [320,414,360]){await page.setViewportSize({width,height:844});await page.waitForTimeout(150);const min=await page.locator('.chart-svg text').evaluateAll(els=>Math.min(...els.map(el=>{const m=el.getScreenCTM();return parseFloat(getComputedStyle(el).fontSize)*Math.hypot(m.a,m.b);})));assert(min>=10&&await page.locator('#goalWeight').inputValue()==='72','Resize shrank axis labels or erased draft');}
+ },{seed:filledState()});
+
+ const report={testedSource:process.env.GITHUB_SHA||'local',browser:browser.version(),testMode:'Chromium mobile emulation; isolated synthetic localStorage; no personal Gist',summary:{total:results.length,passed:results.filter(r=>r.status==='pass').length,failed:results.filter(r=>r.status==='fail').length},results,runtimeErrors,screenshots:shots.map(s=>s.name)};
+ await writeFile(path.join(output,'report.json'),JSON.stringify(report,null,2));
+ console.log('SILHUETA_AUDIT_JSON '+JSON.stringify(report));
+ for(const shot of shots){console.log('SILHUETA_IMAGE_BEGIN '+shot.name);const b64=shot.bytes.toString('base64');for(let i=0;i<b64.length;i+=8000)console.log('SILHUETA_IMAGE_CHUNK '+b64.slice(i,i+8000));console.log('SILHUETA_IMAGE_END '+shot.name);}
+ process.exitCode=report.summary.failed?1:0;
+}finally{await browser.close();await new Promise(resolve=>server.close(resolve));}

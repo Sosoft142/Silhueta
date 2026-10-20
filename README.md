@@ -211,3 +211,18 @@ Chromium com armazenamento local simulado em 320, 390, 768, 1024 e 1440 pixels: 
 **Limitações:** não houve acesso autenticado ao Gist pessoal nem teste de instalação em um aparelho Android físico. Como a navegação mudou, exporte um backup JSON antes da primeira sincronização após atualizar os dispositivos e confira o histórico.
 
 **Publicação:** o código no repositório corresponde exatamente ao arquivo da prévia local da versão 2.9; o fluxo do GitHub Actions verifica automaticamente as 12 imagens, seu mapeamento e a sintaxe JavaScript.
+
+
+## Versão 2.9.1 — correções de dados e interface mobile
+
+- **Rascunhos preservados:** filtros, gráficos e atualização de um formulário mantêm os campos ainda não salvos dos demais formulários. Trocar de registro ou de semana solicita confirmação antes de descartar alterações.
+- **Importação validada antes da gravação:** backups JSON e arquivos CSV são processados em uma cópia temporária. Estruturas, datas ou valores inválidos deixam os dados atuais intactos, sem gravação parcial.
+- **CSV sem duplicar medições antigas:** identificadores de registros migrados (legacy_) são preservados, inclusive os marcadores de exclusão.
+- **Limites consistentes:** registros nutricionais importados e medições em lote seguem as faixas numéricas dos formulários.
+- **Gráficos responsivos:** os eixos são desenhados conforme a largura real do cartão, mantendo a fonte legível no celular e ao redimensionar a janela.
+- **Textos no mobile:** anotações extensas quebram linha; o seletor de semana exibe a data completa em telas pequenas.
+- **Compatibilidade:** armazenamento local, modelo de histórico, referência de peso, ícone Opção A, ilustrações e integração criptografada com Gist foram mantidos. O cache PWA é silhueta-app-v2.9.1.
+
+A rotina de regressão em qa/mobile-input-audit.mjs cobre as seis páginas em 320, 360, 390, 414, 768, 1024 e 1440 pixels, além de preservação de formulários, importações válidas e inválidas, migração, edição/exclusão e legibilidade dos gráficos. O workflow executa automaticamente em alterações pertinentes, com dados fictícios isolados e sem acesso ao Gist pessoal.
+
+A emulação não substitui a verificação em Android físico, do teclado virtual e da sincronização autenticada entre dispositivos.
