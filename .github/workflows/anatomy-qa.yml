@@ -1,0 +1,44 @@
+name: Anatomical guide quality checks
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'index.html'
+      - 'qa/**'
+      - '.github/workflows/anatomy-qa.yml'
+  pull_request:
+    paths:
+      - 'index.html'
+      - 'qa/**'
+      - '.github/workflows/anatomy-qa.yml'
+
+jobs:
+  anatomy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install image verification dependency
+        run: python -m pip install Pillow==11.2.1
+      - name: Check illustrations, tape positions and mappings
+        run: python qa/check_anatomy.py
+      - name: Extract inline JavaScript for syntax verification
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re
+          html = Path('index.html').read_text(encoding='utf-8')
+          match = re.search(r"<script>\s*\(\(\)=>\{'use strict';(.*?)\}\)\(\);\s*</script>", html, re.S)
+          assert match, 'Main app JavaScript could not be found'
+          Path('/tmp/silhueta-inline.js').write_text("(()=>{'use strict';" + match.group(1) + "})();", encoding='utf-8')
+          PY
+      - name: Validate JavaScript
+        run: node --check /tmp/silhueta-inline.js
