@@ -1,4 +1,4 @@
-# Silhueta · versão 2.8 — guia anatômico padronizado e verificação automática
+# Silhueta · versão 2.9 — navegação simplificada e configurações
 
 Aplicativo web instalável (PWA) para acompanhar medidas corporais, composição corporal, nutrição e evolução.
 
@@ -191,3 +191,23 @@ Referência: Organização Mundial da Saúde, *Waist Circumference and Waist–H
 **Verificação desta publicação:** o workflow do GitHub Actions foi executado com sucesso, assim como o deployment GitHub Pages do mesmo commit em que foi introduzido. Também validamos localmente as 12 imagens e sintaxe do JavaScript. O navegador automatizado desta sessão bloqueou a navegação inclusive em páginas locais, portanto **não afirmamos ter executado novos testes interativos do layout nesta versão**; o layout CSS permanece o da 2.7.1.
 
 Recomendação: faça um backup JSON antes de reinstalar o aplicativo no Android e confirme a sincronização Gist em ambos os aparelhos.
+
+## Versão 2.9 — reorganização da interface
+
+- **Perfil saiu da navegação**: Início, Medidas, Evolução e Nutrição são agora as quatro páginas principais.
+- **Configurações** (engrenagem) fica na área inferior da **barra lateral do computador**. No Android, abra o menu lateral pelo botão no topo para acessar Configurações e Como usar, sem adicionar ícones à barra inferior.
+- **Comece sem perfil:** idade, altura e peso de referência não são obrigatórios para registrar medições; a data de início também é opcional.
+- **Nutrição** recebeu um formulário expansível para metas de proteína, carboidrato e gordura, com estimativa de 4/4/9 kcal/g. O consumo registrado permanece independente das metas.
+- **Evolução** recebeu metas corporais opcionais (peso, cintura e quadril), comparadas com os últimos registros reais disponíveis.
+- **Compatibilidade:** todos os campos antigos do perfil, inclusive idade, altura, peso inicial e informações opcionais, permanecem no estado/backup/Gist, sem serem apagados ou convertidos em medições. A migração não modifica a estrutura de sincronização existente.
+- **Proteção de formulário:** detecção de alterações não salvas em todos os formulários, confirmação antes de navegar e checagem adicional quando a resposta da sincronização chega durante uma edição.
+- **Sem alteração nas ilustrações e ícone:** as 12 imagens de fita rosa e o ícone Opção A permanecem os mesmos.
+- **PWA:** cache atualizado para `silhueta-app-v2.9.0`.
+
+### Testes desta atualização
+
+Chromium com armazenamento local simulado em 320, 390, 768, 1024 e 1440 pixels: navegação, menu lateral móvel, teclado/Escape, registro sem perfil, atualização de data, metas nutricionais, metas corporais, gráficos com dados reais, preservação do histórico antigo, IDs únicos de formulário, datas inválidas e proteção de alterações não salvas. **Todos passaram localmente.** Sintaxe JavaScript verificada com Node.
+
+**Limitações:** não houve acesso autenticado ao Gist pessoal nem teste de instalação em um aparelho Android físico. Como a navegação mudou, exporte um backup JSON antes da primeira sincronização após atualizar os dispositivos e confira o histórico.
+
+**Publicação:** o código no repositório corresponde exatamente ao arquivo da prévia local da versão 2.9; o fluxo do GitHub Actions verifica automaticamente as 12 imagens, seu mapeamento e a sintaxe JavaScript.
