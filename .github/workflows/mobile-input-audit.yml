@@ -1,0 +1,28 @@
+name: Mobile and input audit
+on:
+  push:
+    branches: [qa/mobile-input-audit-20261020]
+permissions:
+  contents: read
+jobs:
+  mobile-audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Install pinned browser tooling
+        run: |
+          npm install --no-save --package-lock=false playwright@1.56.1
+          npx playwright install --with-deps chromium
+      - name: Run isolated mobile and data audit
+        run: node qa/mobile-input-audit.mjs
+      - name: Preserve report and screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: silhueta-mobile-input-audit
+          path: qa/mobile-audit-output/
+          retention-days: 14
