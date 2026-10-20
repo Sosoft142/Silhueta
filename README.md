@@ -1,4 +1,4 @@
-# Silhueta · versão 2.6 — guia anatômico lado a lado
+# Silhueta · versão 2.7.1 — guia anatômico otimizado para Android
 
 Aplicativo web instalável (PWA) para acompanhar medidas corporais, composição corporal, nutrição e evolução.
 
@@ -165,3 +165,16 @@ Referência: Organização Mundial da Saúde, *Waist Circumference and Waist–H
 - Nenhuma mudança no modelo de dados, registros históricos, criptografia ou sincronização por Gist.
 
 **Testes realizados:** sintaxe do JavaScript (Node), renderização em Chromium com larguras de 320, 390, 768 e 1440 px, ausência de overflow horizontal, imagem à direita dos seletores, alternância de áreas e persistência de um valor digitado e ainda não salvo no formulário.
+
+## Guia de medições: correções visuais 2.7.1
+
+- As doze ilustrações anatômicas estilizadas são incorporadas ao `index.html` em formato WebP, sem requisições externas de imagens; permanecem disponíveis com o aplicativo em cache offline.
+- Nas telas pequenas, a **ilustração fica ao lado** da seleção de regiões. As instruções passam para um bloco de largura total abaixo, com texto maior e maior legibilidade.
+- A seleção de regiões possui rolagem independente e texto indicando a existência de outras opções, sem empurrar a ilustração para baixo.
+- Foram revistos os destaques de cintura, abdômen, ombros, pescoço e antebraço para se ajustarem à pose da respectiva ilustração. As imagens são representações educativas geradas com auxílio de IA, não referência clínica certificada.
+- A troca de região atualiza somente o guia, preservando campos de medições não salvos, sem alterar registros existentes.
+- O ícone **Opção A**, a estrutura dos registros corporais e a sincronização por Gist permanecem inalterados.
+
+**Testes executados:** Chromium em 320, 360, 390, 414, 768, 1024 e 1440 pixels; seleção de todas as doze regiões em cada largura; verificação de imagens incorporadas, ausência de rolagem horizontal, erros JavaScript e perda de valores não salvos. A sincronização com um Gist real não foi testada.
+
+**Atualização Android:** feche e reabra o aplicativo instalado pelo Chrome para atualizar o service worker (cache v2.7.1). Antes de reinstalar o PWA, exporte seus registros JSON e confirme a sincronização.
