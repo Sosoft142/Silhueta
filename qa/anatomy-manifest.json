@@ -1,0 +1,78 @@
+{
+  "version": "2.8.0",
+  "note": "Human-reviewed illustrative pink measuring tapes; visual/medical validity still requires human assessment when images are changed.",
+  "images": {
+    "abdomen": {
+      "sha256": "f2d44bb85fa7dae6f405c6977ebb87af5fe2952612ba3277d353c4f927ea3b41",
+      "minSize": 1200,
+      "tapeCenterY": 0.52,
+      "marker": "visible pink measuring tape"
+    },
+    "arm": {
+      "sha256": "d33fa9fb8043f42eed7c1203f1505c35eff0ef8308b9f92561a7bf0133ab38b5",
+      "minSize": 1200,
+      "tapeCenterY": 0.56,
+      "marker": "visible pink measuring tape"
+    },
+    "biceps": {
+      "sha256": "0bc1e62e92ba8cfd3c3d46add3b9079d3510cecc782722d4da4883d5a177b9f2",
+      "minSize": 1200,
+      "tapeCenterY": 0.61,
+      "marker": "visible pink measuring tape"
+    },
+    "bust": {
+      "sha256": "ebbafe8895462d74a6d7fdde48b6493d0a5653ce51663f641a19f5ec30cb756c",
+      "minSize": 1200,
+      "tapeCenterY": 0.65,
+      "marker": "visible pink measuring tape"
+    },
+    "calf": {
+      "sha256": "92e189b63d1d7932f44e4b3107a71957108753449c9c0f6e8e756fc74a808729",
+      "minSize": 1200,
+      "tapeCenterY": 0.5,
+      "marker": "visible pink measuring tape"
+    },
+    "forearm": {
+      "sha256": "db10d0c54d1ac5031bb8b0968dafdd234c84abfed4493bf496544c4e41c3e032",
+      "minSize": 1200,
+      "tapeCenterY": 0.51,
+      "marker": "visible pink measuring tape"
+    },
+    "hip": {
+      "sha256": "8d6ed3abdec628f1bff07eea1dbe7cc0f771f141594630e823ee4ca9f05747f3",
+      "minSize": 1200,
+      "tapeCenterY": 0.51,
+      "marker": "visible pink measuring tape"
+    },
+    "neck": {
+      "sha256": "df7596286fedd24e340216a48d041b2b22c4a4e82c8f594eace15fc31940133a",
+      "minSize": 1200,
+      "tapeCenterY": 0.49,
+      "marker": "visible pink measuring tape"
+    },
+    "shoulders": {
+      "sha256": "38e7ffb969a1ba1f7ac9a0092cf967aa63ce8039343a2204d1998b9d0065769f",
+      "minSize": 1200,
+      "tapeCenterY": 0.49,
+      "marker": "visible pink measuring tape"
+    },
+    "thigh": {
+      "sha256": "6fec15506f08c74b75ba3042486518d36a25958e61edd629e88a04a832d912b3",
+      "minSize": 1200,
+      "tapeCenterY": 0.53,
+      "marker": "visible pink measuring tape"
+    },
+    "underbust": {
+      "sha256": "6ae7c3191e7910d79f202a23749ff71aa52566bd612d9763bebb1d5e395aa378",
+      "minSize": 1200,
+      "tapeCenterY": 0.71,
+      "marker": "visible pink measuring tape"
+    },
+    "waist": {
+      "sha256": "9b31dd93c77fbfe989f62dadb270ad5fcfab5fb6d47038a647b8ce87f99a1b0c",
+      "minSize": 1200,
+      "tapeCenterY": 0.51,
+      "marker": "visible pink measuring tape"
+    }
+  }
+}
