@@ -1,11 +1,18 @@
-# Silhueta · versão 2.9.3 — clareza e agilidade no acompanhamento
+# Silhueta · versão 2.9.4 — clareza e agilidade no acompanhamento
 
 Aplicativo web instalável (PWA) para acompanhar medidas corporais, composição corporal, nutrição e evolução.
 
 ## Atualização da versão
-A versão exibida ao final de **Configurações** vem de `APP_VERSION` em `index.html`. Em cada atualização, execute `node scripts/release.mjs patch` (ou uma versão X.Y.Z maior). O comando também atualiza o cache PWA, a referência do manifest e este README. A integração contínua verifica a consistência com `node scripts/release.mjs --check`.
+A versão exibida ao final de **Configurações** vem de `APP_VERSION` em `index.html`. Em cada atualização, execute `node scripts/release.mjs patch` (ou uma versão X.Y.Z maior). O comando também atualiza o cache PWA e este README. A URL do manifest e a identidade de instalação permanecem fixas. A integração contínua verifica a consistência com `node scripts/release.mjs --check`.
 
 A marca usada dentro do app é `icons/brand-mark.svg`, sem fundo e com os traços da silhueta aprovada. Os ícones de instalação permanecem nos arquivos originais.
+
+## Identidade de instalação e atualizações PWA
+O manifest tem URL fixa (`./manifest.webmanifest`), `id` explícito (`/Silhueta/index.html`) e os mesmos `start_url` e `scope` das versões anteriores. O `id` corresponde à identidade original calculada a partir do endereço de início; não deve ser trocado por versão. O service worker busca o manifest pela rede, mantendo uma cópia para uso offline e aceitando os endereços com query de versões antigas. O registro não reutiliza o cache HTTP do script do service worker.
+
+A auditoria `qa/pwa-install-audit.mjs` verifica a identidade calculada pelo Chromium, critérios de instalação, migração do worker 2.9.3, metadados desatualizados em cache e preservação de registros. Esses testes não executam o instalador WebAPK de um aparelho Android físico.
+
+Referências: [identidade de PWAs no Chrome](https://developer.chrome.com/docs/capabilities/pwa-manifest-id) e [atualizações do manifest no Chrome](https://web.dev/articles/manifest-updates).
 
 ## Publicação
 Hospedado no GitHub Pages: https://sosoft142.github.io/Silhueta/

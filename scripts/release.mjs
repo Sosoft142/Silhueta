@@ -13,17 +13,20 @@ const command=process.argv[2]||'--check';
 
 if(command==='--check'){
  assert(worker.includes("const VERSION='silhueta-app-v"+current+"';"),'Service worker cache version differs from APP_VERSION');
- assert(html.includes('manifest.webmanifest?v='+current+'"'),'Manifest query differs from APP_VERSION');
+ assert(html.includes('<link rel="manifest" href="./manifest.webmanifest" />'),'Manifest URL must remain stable, without release queries');
+ const manifest=JSON.parse(await read('manifest.webmanifest'));
+ assert(manifest.id==='/Silhueta/index.html','PWA identity must preserve the original start URL');
+ assert(manifest.start_url==='./index.html'&&manifest.scope==='./','PWA start URL and scope must remain stable');
  assert(html.includes('data-app-version>${APP_VERSION}</span>'),'Settings must render APP_VERSION rather than a separate version string');
  assert(readme.startsWith('# Silhueta · versão '+current+' '),'README version differs from APP_VERSION');
- console.log('PASS: release '+current+' matches Settings, cache, manifest and README');
+ console.log('PASS: release '+current+' matches Settings, cache and README; PWA identity and manifest URL remain stable');
 }else{
  const parts=current.split('.').map(Number);
  const next=command==='patch'?`${parts[0]}.${parts[1]}.${parts[2]+1}`:command;
  assert(/^\d+\.\d+\.\d+$/.test(next),'Use: node scripts/release.mjs patch | X.Y.Z | --check');
  const numbers=next.split('.').map(Number),firstDifference=numbers.findIndex((n,i)=>n!==parts[i]);
  assert(firstDifference>=0&&numbers[firstDifference]>parts[firstDifference],'Release version must increase');
- html=html.replace(pattern,"const APP_VERSION='"+next+"';").replace(/manifest\.webmanifest\?v=[\d.]+/, 'manifest.webmanifest?v='+next);
+ html=html.replace(pattern,"const APP_VERSION='"+next+"';");
  worker=worker.replace(/const VERSION='silhueta-app-v[\d.]+';/,"const VERSION='silhueta-app-v"+next+"';");
  readme=readme.replace(/^# Silhueta · versão [\d.]+ /,'# Silhueta · versão '+next+' ');
  await writeFile(path.join(root,'index.html'),html);
