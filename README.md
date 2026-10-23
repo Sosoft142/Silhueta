@@ -1,4 +1,4 @@
-# Silhueta · versão 2.9 — navegação simplificada e configurações
+# Silhueta · versão 2.9.2 — clareza e agilidade no acompanhamento
 
 Aplicativo web instalável (PWA) para acompanhar medidas corporais, composição corporal, nutrição e evolução.
 
@@ -6,16 +6,17 @@ Aplicativo web instalável (PWA) para acompanhar medidas corporais, composição
 Hospedado no GitHub Pages: https://sosoft142.github.io/Silhueta/
 
 ## Como começar
-1. Abra **Meu perfil** e confira idade, altura, peso e metas. Selecione **Salvar meu perfil**.
-2. Na aba **Medições**, registre semanalmente peso e circunferências.
-3. Veja o progresso na página inicial e os gráficos em **Evolução**.
+1. Em **Medidas**, escolha a região e informe o valor e a data. O histórico fica logo após o formulário, e o guia anatômico pode ser aberto quando necessário.
+2. Consulte o painel em **Início** e toque nos pontos dos gráficos em **Evolução** para ver valores e datas completos.
+3. Use **Nutrição** para os registros semanais opcionais. Defina a data inicial em **Configurações** para associar as semanas ao calendário.
+4. O cabeçalho informa se os dados estão salvos neste aparelho ou sincronizados com a nuvem.
 
 ## Sincronização entre celular e computador
 1. Abra o ícone de nuvem nos dois aparelhos.
 2. Informe **o mesmo Personal Access Token (classic)** do GitHub com a permissão `gist` em ambos.
 3. Toque **Conectar e sincronizar** uma vez em cada aparelho.
 4. Após a conexão, as alterações são enviadas automaticamente depois de salvar, e o aplicativo busca atualizações ao abrir, retomar a tela e periodicamente enquanto estiver ativo.
-5. O verde indica que **este aparelho confirmou seu estado com o Gist**. Ele não significa que outro dispositivo desconectado já recebeu as alterações.
+5. A indicação **Sincronizado** informa que este aparelho confirmou seu estado com o Gist. Ele não significa que outro dispositivo desconectado já recebeu as alterações.
 
 **Importante:** caso tenha utilizado uma senha de criptografia adicional na versão antiga, faça um backup JSON no dispositivo antigo para migrar os dados. Nunca inclua tokens, Gists ou backups pessoais neste repositório. Tokens armazenados localmente podem ser expostos se o dispositivo estiver comprometido. Faça backups JSON independentes.
 

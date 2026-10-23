@@ -56,7 +56,7 @@ try{
  await run('Native number constraints block weight below minimum',async({page})=>{await go(page,'measure');await page.locator('#quickValue').fill('19');assert(await page.locator('#quickValue').evaluate(el=>el.validity.rangeUnderflow),'Browser did not detect minimum');await page.locator('#quickForm button[type="submit"]').click();assert(Object.keys((await state(page)).metricEntries).length===0,'Invalid weight saved');});
  await run('Invalid date is rejected before saving',async({page})=>{await go(page,'measure');await page.locator('#quickValue').fill('75');await page.locator('#quickDate').evaluate(el=>el.value='2026-02-30');await page.locator('#quickForm button[type="submit"]').click();assert(Object.keys((await state(page)).metricEntries).length===0,'Impossible date saved');});
  await run('Batch rejection is atomic',async({page})=>{await go(page,'measure');await page.locator('[data-action="measureMode"][data-mode="batch"]').click();await page.locator('#batch_weight').fill('75');await page.locator('#batch_waist').fill('85');await page.locator('#batch_bodyFat').fill('150');await page.locator('#batchForm button[type="submit"]').click();assert(Object.keys((await state(page)).metricEntries).length===0,'Batch partially saved');});
- await run('Guide changes preserve unsaved input and all images decode',async({page})=>{await go(page,'measure');await page.locator('#quickValue').fill('75.5');for(const m of ['bust','underbust','shoulders','neck','waist','abdomen','hip','arm','biceps','forearm','thigh','calf']){await page.locator('[data-action="guideMetric"][data-metric="'+m+'"]').click();await page.locator('.anatomy-photo img').evaluate(img=>img.decode());assert(await page.locator('#quickValue').inputValue()==='75.5','Guide erased draft at '+m);}await page.locator('.anatomy-card').evaluate(el=>el.scrollIntoView({block:'start'}));await snap(page,'390-anatomy-guide');return{regions:12};});
+ await run('Guide changes preserve unsaved input and all images decode',async({page})=>{await go(page,'measure');await page.locator('#quickValue').fill('75.5');await page.locator('[data-action="openGuide"]').click();for(const m of ['bust','underbust','shoulders','neck','waist','abdomen','hip','arm','biceps','forearm','thigh','calf']){await page.locator('[data-action="guideMetric"][data-metric="'+m+'"]').click();await page.locator('.anatomy-photo img').evaluate(img=>img.decode());assert(await page.locator('#quickValue').inputValue()==='75.5','Guide erased draft at '+m);}await page.locator('.anatomy-card').evaluate(el=>el.scrollIntoView({block:'start'}));await snap(page,'390-anatomy-guide');return{regions:12};});
  await run('Navigation guard preserves draft when discard is refused',async({page,dialogs})=>{await go(page,'measure');await page.locator('#quickValue').fill('75.5');await page.locator('#mobileNav [data-view="dashboard"]').click();assert(dialogs.length===1&&await page.locator('#quickValue').inputValue()==='75.5','Navigation lost draft');});
  await run('Regression: measurement history filter must preserve draft',async({page})=>{await go(page,'measure');await page.locator('#quickValue').fill('75.5');await page.locator('#historyFilter').selectOption('weight');assert(await page.locator('#quickValue').inputValue()==='75.5','Draft 75.5 disappeared after changing history filter');});
  await run('Regression: nutrition week arrow must preserve draft',async({page})=>{await go(page,'nutrition');await page.locator('#calories').fill('1850');await page.locator('[data-action="nextNutWeek"]').click();assert(await page.locator('#calories').inputValue()==='1850','Unsaved 1850 calories disappeared after changing week');});
@@ -98,6 +98,56 @@ try{
   for(const width of [320,414,360]){await page.setViewportSize({width,height:844});await page.waitForTimeout(150);const min=await page.locator('.chart-svg text').evaluateAll(els=>Math.min(...els.map(el=>{const m=el.getScreenCTM();return parseFloat(getComputedStyle(el).fontSize)*Math.hypot(m.a,m.b);})));assert(min>=10&&await page.locator('#goalWeight').inputValue()==='72','Resize shrank axis labels or erased draft');}
  },{seed:filledState()});
 
+ await run('Usability: returning dashboard prioritizes metrics and retains registration',async({page})=>{
+  assert(await page.locator('.ux-hero').count()===0,'Introductory hero still dominates returning dashboard');
+  assert(await page.locator('.page-head [data-view="measure"]').isVisible(),'Registration shortcut is missing');
+  assert(await page.locator('.dashboard-help').evaluate(el=>!el.open),'Instructions should start collapsed');
+  await page.locator('.page-head [data-view="measure"]').click();assert(await page.locator('#quickForm').isVisible(),'Registration shortcut did not open the form');
+ },{seed:filledState()});
+ await run('Usability: history precedes optional guide and opening it preserves the draft',async({page})=>{
+  await go(page,'measure');assert(await page.locator('.anatomy-guide').evaluate(el=>!el.open),'Guide should start collapsed');
+  const order=await page.evaluate(()=>document.querySelector('.history-full-width').getBoundingClientRect().top<document.querySelector('.anatomy-full-width').getBoundingClientRect().top);assert(order,'History is below guide');
+  await page.locator('#quickValue').fill('75.5');await page.locator('[data-action="openGuide"]').click();assert(await page.locator('.anatomy-guide').evaluate(el=>el.open),'Guide shortcut did not open details');
+  await page.locator('.anatomy-guide>summary').click();assert(await page.locator('#quickValue').inputValue()==='75.5','Opening or closing guide erased draft');
+  await page.locator('#historyFilter').selectOption('weight');assert(await page.locator('#quickValue').inputValue()==='75.5','Reordered history erased draft');
+ },{seed:filledState()});
+ await run('Usability: first week has calendar range and keeps the original saved log',async({page})=>{
+  await go(page,'nutrition');await page.locator('#nutWeekPicker').selectOption('0');
+  assert((await page.locator('.measurement-intro h2').innerText()).includes('Semana 1'),'Visible week numbering does not begin at 1');
+  assert((await page.locator('.week-context').innerText()).includes('01/10/2026 a 07/10/2026'),'Week range is missing or shifted');
+  assert(await page.locator('#calories').inputValue()==='1900','Existing first-week log moved to another week');
+  assert((await page.locator('[data-action="editNutWeek"][data-week="0"]').innerText()).includes('01/10/2026 a 07/10/2026'),'Saved week lacks its calendar range');
+  await page.locator('#calories').fill('1800');await page.locator('[data-action="saveNutrition"]').click();const s=await state(page);assert(s.nutritionLogs['0'].calories===1800&&!s.nutritionLogs['1'],'Saving visible week 1 changed the stored identity');
+ },{seed:filledState()});
+ await run('Usability: undated nutrition explains optional dates and links to settings',async({page})=>{
+  await go(page,'nutrition');const text=await page.locator('.week-context').innerText();assert(text.includes('ainda não tem datas')&&text.includes('mesmo sem essa data'),'Undated period is unexplained');
+  assert(!(await page.locator('#main').innerText()).includes('Semana 0'),'Week zero remains visible');
+  assert(!(await page.locator('.nutrition-reference').innerText()).includes('seu perfil'),'Obsolete profile reference remains');
+  await page.locator('.week-context [data-view="settings"]').click();assert(await page.locator('#startDate').isVisible(),'Date shortcut did not reach settings');
+ });
+ await run('Usability: weekly calendar handles year boundaries',async({page})=>{
+  await go(page,'nutrition');await page.locator('#nutWeekPicker').selectOption('0');assert((await page.locator('.week-context').innerText()).includes('29/12/2026 a 04/01/2027'),'Year boundary changed the 7-day period');
+ },{seed:(()=>{const s=emptyState();s.profile.startDate='2026-12-29';return s;})()});
+ await run('Usability: touch and keyboard chart inspection preserve drafts and resize selection',async({page})=>{
+  await go(page,'trends');const chart=page.locator('[data-history-chart]').first(),old=chart.locator('[data-id="m_test_weight_old"]'),recent=chart.locator('[data-id="m_test_weight_new"]');
+  await page.locator('.inline-goal-form summary').click();await page.locator('#goalWeight').fill('72');await old.tap();
+  assert((await chart.locator('.chart-readout').innerText()).includes('75,0 kg · 01/10/2026'),'Touch did not show exact value and date');
+  await recent.focus();await recent.press('Enter');assert((await chart.locator('.chart-readout').innerText()).includes('74,5 kg · 20/10/2026'),'Keyboard did not inspect chart');
+  await old.focus();await old.press('Space');await page.setViewportSize({width:320,height:844});await page.waitForTimeout(150);
+  assert((await chart.locator('.chart-readout').innerText()).includes('01/10/2026'),'Resizing discarded inspected point');assert(await page.locator('#goalWeight').inputValue()==='72','Inspecting chart erased goal draft');
+  const pair=page.locator('[data-history-chart]').nth(1);await pair.locator('[data-id="m_test_hip_old"]').tap();assert((await pair.locator('.chart-readout').innerText()).includes('Quadril · 102,0 cm · 01/10/2026'),'Combined chart showed wrong series');
+  await snap(page,'320-chart-inspection');
+ },{seed:filledState()});
+ await run('Usability: local save status remains visible after saving',async({page})=>{
+  const label=page.locator('.sync-trigger-label');assert(await label.isVisible()&&(await label.innerText())==='Salvo neste aparelho','Local save status is not visible');
+  await go(page,'measure');await page.locator('#quickValue').fill('75.5');await page.locator('#quickForm button[type="submit"]').click();assert((await label.innerText())==='Salvo neste aparelho','Local save is presented as cloud synchronization');
+ });
+ await run('Usability: failed storage is never presented as successfully saved',async({page})=>{
+  await page.addInitScript(()=>{const original=Storage.prototype.setItem;Storage.prototype.setItem=function(key,value){if(key==='silhueta.app.v1')throw new DOMException('Synthetic quota failure','QuotaExceededError');return original.call(this,key,value);};});
+  await page.reload({waitUntil:'networkidle'});assert((await page.locator('.sync-trigger-label').innerText())==='Falha ao salvar','Failed storage still claims success');assert((await page.locator('#storageNotice').innerText()).includes('não permitiu salvar'),'Storage failure has no recovery message');
+ });
+
+ results.push({name:'No browser runtime errors across all scenarios',status:runtimeErrors.length?'fail':'pass',errors:runtimeErrors});
  const report={testedSource:process.env.GITHUB_SHA||'local',browser:browser.version(),testMode:'Chromium mobile emulation; isolated synthetic localStorage; no personal Gist',summary:{total:results.length,passed:results.filter(r=>r.status==='pass').length,failed:results.filter(r=>r.status==='fail').length},results,runtimeErrors,screenshots:shots.map(s=>s.name)};
  await writeFile(path.join(output,'report.json'),JSON.stringify(report,null,2));
  console.log('SILHUETA_AUDIT_JSON '+JSON.stringify(report));
