@@ -12,11 +12,13 @@ const [html,worker,legacyWorker,legacyManifest]=await Promise.all(['index.html',
 const manifest=JSON.parse(await readFile(path.join(root,'manifest.webmanifest'),'utf8'));
 const version=html.match(/const APP_VERSION='([^']+)'/)[1],cacheName='silhueta-app-v'+version;
 let phase='legacy',manifestRevision='',manifestRequests=0;
-const results=[],runtimeErrors=[],profiles=[],contexts=new Set();let context,browserVersion='';
+const results=[],runtimeErrors=[],profiles=[],contexts=new Set(),pendingRequests=new Set();let context,browserVersion='';
+async function deadline(promise,label,ms=10000){let timer;try{return await Promise.race([promise,new Promise((_,reject)=>{timer=setTimeout(()=>reject(new Error(label+' did not respond within '+ms+'ms')),ms);})]);}finally{clearTimeout(timer);}}
+async function readyApp(page){await page.locator('#main h1').waitFor({state:'visible'});}
 async function check(name,fn){
  console.log('SILHUETA_PWA_CHECK_START '+name);let timer,timedOut=false;
  try{const detail=await Promise.race([fn(),new Promise((_,reject)=>{timer=setTimeout(()=>{timedOut=true;reject(new Error('Diagnostic exceeded 45 seconds: '+name));},45000);})]);results.push({name,status:'pass',...detail});}
- catch(error){results.push({name,status:'fail',error:error.message});if(timedOut)throw error;}
+ catch(error){results.push({name,status:'fail',error:error.message,pendingRequests:[...pendingRequests].map(r=>({url:r.url(),type:r.resourceType()}))});if(timedOut)throw error;}
  finally{clearTimeout(timer);console.log('SILHUETA_PWA_CHECK '+JSON.stringify(results.at(-1)));}
 }
 const mime={'.html':'text/html; charset=utf-8','.js':'application/javascript','.webmanifest':'application/manifest+json','.png':'image/png','.svg':'image/svg+xml'};
@@ -45,12 +47,15 @@ async function openProfile(options={}){
  await ctx.route('https://api.github.com/**',route=>route.abort());
  await ctx.addInitScript(data=>{if(!localStorage.getItem('silhueta.app.v1'))localStorage.setItem('silhueta.app.v1',JSON.stringify(data));},seed);
  const page=ctx.pages()[0]||await ctx.newPage();page.setDefaultTimeout(20000);page.on('pageerror',e=>runtimeErrors.push(e.message));
- await page.goto(base,{waitUntil:'networkidle'});return{ctx,page};
+ page.on('request',r=>pendingRequests.add(r));page.on('requestfinished',r=>pendingRequests.delete(r));page.on('requestfailed',r=>pendingRequests.delete(r));
+ // A service worker and Chrome's background installation checks need not be idle
+ // for the page to be usable. Check the rendered app and worker explicitly.
+ await page.goto(base,{waitUntil:'domcontentloaded'});await readyApp(page);return{ctx,page};
 }
 async function manifestSnapshot(page,includeInstallability=false){
- const cdp=await page.context().newCDPSession(page);
- async function command(name){let timer;try{return await Promise.race([cdp.send(name),new Promise((_,reject)=>{timer=setTimeout(()=>reject(new Error(name+' did not respond within 10 seconds')),10000);})]);}finally{clearTimeout(timer);}}
- try{await command('Page.enable');const data={manifest:await command('Page.getAppManifest'),identity:await command('Page.getAppId')};if(includeInstallability)data.installability=await command('Page.getInstallabilityErrors');return data;}finally{await cdp.detach();}
+ const cdp=await deadline(page.context().newCDPSession(page),'Create CDP session');
+ const command=name=>deadline(cdp.send(name),name);
+ try{await command('Page.enable');const data={manifest:await command('Page.getAppManifest'),identity:await command('Page.getAppId')};if(includeInstallability)data.installability=await command('Page.getInstallabilityErrors');return data;}finally{await deadline(cdp.detach(),'Detach CDP session',5000).catch(()=>{});}
 }
 async function waitForWorker(page){
  await page.waitForFunction(async()=>{const r=await navigator.serviceWorker.getRegistration();return r?.active?.state==='activated';});
@@ -65,13 +70,13 @@ try{
   await page.evaluate(async()=>{const c=await caches.open('another-project-cache');await c.put('/another-project-marker',new Response('preserve'));});
   phase='current';await page.evaluate(async()=>{const r=await navigator.serviceWorker.getRegistration();await r.update();});
   await page.waitForFunction(async name=>{const keys=await caches.keys();return keys.includes(name)&&!keys.includes('silhueta-app-v2.9.3');},cacheName);
-  await page.reload({waitUntil:'networkidle'});
+  await page.reload({waitUntil:'domcontentloaded'});await readyApp(page);
   const info=await page.evaluate(async()=>({scope:(await navigator.serviceWorker.ready).scope,updateViaCache:(await navigator.serviceWorker.ready).updateViaCache,keys:await caches.keys(),saved:JSON.parse(localStorage.getItem('silhueta.app.v1')).metricEntries.m_pwa_test}));
   assert.equal(info.scope,base);assert.equal(info.updateViaCache,'none');assert(info.keys.includes('another-project-cache'));assert.equal(info.saved.value,75);assert.equal(info.saved.note,seed.metricEntries.m_pwa_test.note);assert.equal(info.saved.date,'2026-10-20');return info;
  });
  phase='current';
  await check('Canonical manifest parses and preserves the original native App ID',async()=>{
-  await page.reload({waitUntil:'networkidle'});current=await manifestSnapshot(page);assert.equal(current.manifest.url,base+'manifest.webmanifest');assert.equal(current.manifest.errors.length,0);
+  await page.reload({waitUntil:'domcontentloaded'});await readyApp(page);current=await manifestSnapshot(page);assert.equal(current.manifest.url,base+'manifest.webmanifest');assert.equal(current.manifest.errors.length,0);
   assert.equal(JSON.parse(current.manifest.data).id,'/Silhueta/index.html');assert.equal(current.identity.appId,legacy?.identity.appId,'Adding explicit id changed the installed application identity');return{identity:current.identity,manifestUrl:current.manifest.url};
  });
  await check('Desktop Chromium reports no installability errors',async()=>{const data=await manifestSnapshot(page,true);assert.deepEqual(data.installability.installabilityErrors,[]);return data.installability;});
@@ -90,7 +95,7 @@ try{
  await check('Offline navigation and manifest fallback preserve the saved history',async()=>{
   try{await context.setOffline(true);const data=await page.evaluate(async()=>fetch('./manifest.webmanifest?v=2.9.3').then(r=>r.json()));assert.equal(data.id,manifest.id);assert.equal(data.description,manifestRevision);await page.reload({waitUntil:'domcontentloaded'});await page.locator('#main h1').waitFor();const saved=await page.evaluate(()=>JSON.parse(localStorage.getItem('silhueta.app.v1')).metricEntries.m_pwa_test);assert.equal(saved.value,75);assert.equal(saved.note,seed.metricEntries.m_pwa_test.note);return{value:saved.value,date:saved.date};}finally{await context.setOffline(false);}
  });
- await check('Root and index entry URLs resolve to the same application identity',async()=>{await page.goto(base+'index.html',{waitUntil:'networkidle'});const data=await manifestSnapshot(page);assert.equal(data.identity.appId,legacy?.identity.appId);return data.identity;});
+ await check('Root and index entry URLs resolve to the same application identity',async()=>{await page.goto(base+'index.html',{waitUntil:'domcontentloaded'});await readyApp(page);const data=await manifestSnapshot(page);assert.equal(data.identity.appId,legacy?.identity.appId);return data.identity;});
  await check('Release updates never change installation identity or manifest location',async()=>{
   const temp=await mkdtemp(path.join(os.tmpdir(),'silhueta-release-'));
   try{await mkdir(path.join(temp,'scripts'));for(const name of ['index.html','service-worker.js','manifest.webmanifest','README.md','scripts/release.mjs'])await cp(path.join(root,name),path.join(temp,name));execFileSync(process.execPath,[path.join(temp,'scripts/release.mjs'),'patch']);execFileSync(process.execPath,[path.join(temp,'scripts/release.mjs'),'--check']);const updated=await readFile(path.join(temp,'index.html'),'utf8');assert(updated.includes('<link rel="manifest" href="./manifest.webmanifest" />'));assert.deepEqual(JSON.parse(await readFile(path.join(temp,'manifest.webmanifest'),'utf8')),manifest);return{stableId:manifest.id};}finally{await rm(temp,{recursive:true,force:true});}
