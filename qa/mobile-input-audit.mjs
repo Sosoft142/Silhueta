@@ -14,7 +14,7 @@ function filledState(){const s=emptyState();s.profile.startDate='2026-10-01';s.m
 const types={'.html':'text/html; charset=utf-8','.js':'application/javascript','.json':'application/json','.webmanifest':'application/manifest+json','.png':'image/png','.svg':'image/svg+xml'};
 const server=createServer(async(req,res)=>{try{const pathname=decodeURIComponent(new URL(req.url,'http://localhost').pathname);const file=path.resolve(root,'.'+(pathname==='/'?'/index.html':pathname));if(!file.startsWith(root+path.sep)){res.writeHead(403);res.end();return;}const bytes=await readFile(file);res.writeHead(200,{'Content-Type':types[path.extname(file)]||'application/octet-stream','Cache-Control':'no-store'});res.end(bytes);}catch{res.writeHead(404);res.end('Not found');}});
 await new Promise(resolve=>server.listen(4173,'127.0.0.1',resolve));
-const browser=await chromium.launch({headless:true});
+const browser=await chromium.launch({headless:true,...(process.env.PWA_CHROME_CHANNEL?{channel:process.env.PWA_CHROME_CHANNEL}:{})});
 async function openPage(width=390,seed=emptyState(),acceptDialogs=false){
  const context=await browser.newContext({viewport:{width,height:844},deviceScaleFactor:1,isMobile:width<=850,hasTouch:width<=850,locale:'pt-BR',timezoneId:'America/Sao_Paulo'});
  await context.route('https://api.github.com/**',route=>route.abort());
@@ -24,6 +24,14 @@ async function openPage(width=390,seed=emptyState(),acceptDialogs=false){
 }
 async function go(page,view){let link=page.locator('[data-action="go"][data-view="'+view+'"]:visible').first();if(!(await link.count())){await page.locator('[data-action="openDrawer"]:visible').first().click();link=page.locator('#mobileDrawer [data-view="'+view+'"]:visible').first();}await link.click();await page.waitForTimeout(200);}
 async function state(page){return page.evaluate(()=>JSON.parse(localStorage.getItem('silhueta.app.v1')));}
+// Synthetic browser signals exercise the app's UI, not Android's WebAPK installer.
+async function offerInstall(page,rejectPrompt=false){return page.evaluate(reject=>{
+ const fixture=window.installAudit={calls:0};
+ const event=new Event('beforeinstallprompt',{cancelable:true});
+ event.prompt=()=>{fixture.calls++;return reject?Promise.reject(new Error('Synthetic install failure')):Promise.resolve();};
+ event.userChoice=new Promise(resolve=>{fixture.resolve=resolve;});
+ window.dispatchEvent(event);return event.defaultPrevented;
+},rejectPrompt);}
 async function snap(page,name){const file=path.join(output,name+'.jpg');const bytes=await page.screenshot({path:file,type:'jpeg',quality:45,fullPage:false});shots.push({name,bytes});}
 async function run(name,fn,opts={}){
  let h;try{h=await openPage(opts.width||390,opts.seed||emptyState(),!!opts.acceptDialogs);const detail=await fn(h);results.push({name,status:'pass',...detail});}catch(e){results.push({name,status:'fail',error:e.message});}finally{if(h){if(h.errors.length)runtimeErrors.push({test:name,errors:h.errors});await h.context.close();}}
@@ -145,6 +153,71 @@ try{
  await run('Usability: failed storage is never presented as successfully saved',async({page})=>{
   await page.addInitScript(()=>{const original=Storage.prototype.setItem;Storage.prototype.setItem=function(key,value){if(key==='silhueta.app.v1')throw new DOMException('Synthetic quota failure','QuotaExceededError');return original.call(this,key,value);};});
   await page.reload({waitUntil:'networkidle'});assert((await page.locator('.sync-trigger-label').innerText())==='Falha ao salvar','Failed storage still claims success');assert((await page.locator('#storageNotice').innerText()).includes('não permitiu salvar'),'Storage failure has no recovery message');
+ });
+
+ await run('Installation: late browser offer preserves unsaved settings and existing records',async({page})=>{
+  await go(page,'settings');const before=await state(page);
+  assert(await page.locator('#installAppButton').isDisabled(),'Installation offered without browser permission');
+  await page.locator('#startDate').fill('2026-10-23');
+  await page.locator('#settingsForm').evaluate(form=>{window.installDraftForm=form;});
+  assert(await offerInstall(page),'Native automatic prompt was not deferred');
+  assert(await page.locator('#installAppButton').isEnabled(),'Browser offer did not enable installation');
+  assert(await page.locator('#startDate').inputValue()==='2026-10-23','Browser offer erased date draft');
+  assert(await page.locator('#settingsForm').evaluate(form=>form===window.installDraftForm),'Offer re-rendered the settings form');
+  assert(JSON.stringify(await state(page))===JSON.stringify(before),'Install availability mutated user records');
+  await page.locator('#installAppButton').scrollIntoViewIfNeeded();await snap(page,'320-install-ready');
+ },{width:320,seed:filledState()});
+ await run('Installation: one prompt per offer, request is not completion, no permanent installed flag',async({page})=>{
+  await go(page,'settings');const before=await state(page);await offerInstall(page);
+  await page.locator('#installAppButton').click();await page.locator('#installAppButton').dispatchEvent('click');
+  assert(await page.evaluate(()=>window.installAudit.calls)===1,'Same browser offer invoked more than once');
+  assert(await page.locator('#installAppButton').isDisabled(),'Prompt can be opened twice while pending');
+  await page.evaluate(()=>{window.dispatchEvent(new Event('appinstalled'));window.installAudit.resolve({outcome:'accepted'});});
+  await page.waitForFunction(()=>document.getElementById('installAppButton').textContent.includes('Instalação solicitada'));
+  assert((await page.locator('#appInstallStatus').innerText()).includes('Aguarde o ícone'),'Early appinstalled event claimed WebAPK completion');
+  assert(JSON.stringify(await state(page))===JSON.stringify(before),'Install request mutated existing records');
+  await page.reload({waitUntil:'networkidle'});await go(page,'settings');await offerInstall(page);
+  assert(await page.locator('#installAppButton').isEnabled(),'Reload retained an installed flag that prevents reinstalling');
+ },{seed:filledState()});
+ await run('Installation: cancellation consumes only the old offer and a fresh offer can retry',async({page})=>{
+  await go(page,'settings');await offerInstall(page);await page.locator('#installAppButton').click();
+  await page.evaluate(()=>window.installAudit.resolve({outcome:'dismissed'}));
+  await page.waitForFunction(()=>document.getElementById('appInstallStatus').textContent.includes('cancelou'));
+  await page.locator('#installAppButton').dispatchEvent('click');
+  assert(await page.evaluate(()=>window.installAudit.calls)===1,'Dismissed offer was reused');
+  await offerInstall(page);assert(await page.locator('#installAppButton').isEnabled(),'Fresh browser offer cannot retry');
+  await page.locator('#installAppButton').click();assert(await page.evaluate(()=>window.installAudit.calls)===1,'Fresh offer did not prompt exactly once');
+ });
+ await run('Installation: browser rejection has a recovery message and preserves records',async({page})=>{
+  await go(page,'settings');const before=await state(page);await offerInstall(page,true);await page.locator('#installAppButton').click();
+  await page.waitForFunction(()=>document.getElementById('appInstallStatus').textContent.includes('não conseguiu iniciar'));
+  assert(await page.locator('#installAppButton').isDisabled(),'Failed offer was not consumed');
+  assert(JSON.stringify(await state(page))===JSON.stringify(before),'Failed installation modified user records');
+ },{seed:filledState()});
+ await run('Installation: an old response cannot overwrite a newer browser offer',async({page})=>{
+  await go(page,'settings');await offerInstall(page);await page.locator('#installAppButton').click();
+  await page.evaluate(()=>{window.oldInstallAudit=window.installAudit;});
+  await offerInstall(page);await page.locator('#installAppButton').click();
+  await page.evaluate(async()=>{window.oldInstallAudit.resolve({outcome:'dismissed'});await new Promise(resolve=>setTimeout(resolve,0));});
+  assert((await page.locator('#installAppButton').innerText()).includes('Aguardando confirmação'),'Late old response overwrote the current request');
+  await page.evaluate(()=>window.installAudit.resolve({outcome:'accepted'}));
+  await page.waitForFunction(()=>document.getElementById('installAppButton').textContent.includes('Instalação solicitada'));
+ });
+ await run('Installation: browser offer before opening Settings remains usable',async({page})=>{
+  await offerInstall(page);await go(page,'settings');assert(await page.locator('#installAppButton').isEnabled(),'Offer was lost before Settings opened');
+  await page.locator('#installAppButton').scrollIntoViewIfNeeded();await snap(page,'390-install-ready');
+ });
+ await run('Installation: standalone display does not offer to reinstall or save an installed flag',async({page})=>{
+  await page.addInitScript(()=>{const match=window.matchMedia.bind(window);window.matchMedia=query=>{const media=match(query);if(query==='(display-mode: standalone)')Object.defineProperty(media,'matches',{value:true});return media;};});
+  await page.reload({waitUntil:'networkidle'});await go(page,'settings');const before=await state(page);await offerInstall(page);
+  assert(await page.locator('#installAppButton').isDisabled(),'Running standalone app offers to reinstall');
+  assert((await page.locator('#appInstallStatus').innerText()).includes('como aplicativo'),'Standalone launch is not identified');
+  assert(JSON.stringify(await state(page))===JSON.stringify(before),'Standalone detection modified records');
+ });
+ await run('Installation: background browser signals preserve an unsaved measurement',async({page})=>{
+  await go(page,'measure');await page.locator('#quickValue').fill('75.5');await offerInstall(page);
+  await page.evaluate(()=>window.dispatchEvent(new Event('appinstalled')));
+  assert(await page.locator('#quickValue').inputValue()==='75.5','Install status update erased a measurement draft');
  });
 
  results.push({name:'No browser runtime errors across all scenarios',status:runtimeErrors.length?'fail':'pass',errors:runtimeErrors});
