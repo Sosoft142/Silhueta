@@ -13,7 +13,7 @@ const manifest=JSON.parse(await readFile(path.join(root,'manifest.webmanifest'),
 const version=html.match(/const APP_VERSION='([^']+)'/)[1],cacheName='silhueta-app-v'+version;
 let phase='legacy',manifestRevision='',manifestRequests=0;
 const results=[],runtimeErrors=[],profiles=[];let context,browserVersion='';
-async function check(name,fn){try{const detail=await fn();results.push({name,status:'pass',...detail});}catch(error){results.push({name,status:'fail',error:error.message});}}
+async function check(name,fn){console.log('SILHUETA_PWA_CHECK_START '+name);try{const detail=await fn();results.push({name,status:'pass',...detail});}catch(error){results.push({name,status:'fail',error:error.message});}console.log('SILHUETA_PWA_CHECK '+JSON.stringify(results.at(-1)));}
 const mime={'.html':'text/html; charset=utf-8','.js':'application/javascript','.webmanifest':'application/manifest+json','.png':'image/png','.svg':'image/svg+xml'};
 const server=createServer(async(req,res)=>{
  try{
@@ -41,7 +41,11 @@ async function openProfile(options={}){
  const page=ctx.pages()[0]||await ctx.newPage();page.setDefaultTimeout(20000);page.on('pageerror',e=>runtimeErrors.push(e.message));
  await page.goto(base,{waitUntil:'networkidle'});return{ctx,page};
 }
-async function manifestSnapshot(page){const cdp=await page.context().newCDPSession(page);try{return{manifest:await cdp.send('Page.getAppManifest'),identity:await cdp.send('Page.getAppId'),installability:await cdp.send('Page.getInstallabilityErrors')};}finally{await cdp.detach();}}
+async function manifestSnapshot(page,includeInstallability=false){
+ const cdp=await page.context().newCDPSession(page);
+ async function command(name){let timer;try{return await Promise.race([cdp.send(name),new Promise((_,reject)=>{timer=setTimeout(()=>reject(new Error(name+' did not respond within 10 seconds')),10000);})]);}finally{clearTimeout(timer);}}
+ try{await command('Page.enable');const data={manifest:await command('Page.getAppManifest'),identity:await command('Page.getAppId')};if(includeInstallability)data.installability=await command('Page.getInstallabilityErrors');return data;}finally{await cdp.detach();}
+}
 let legacy,current,published={};
 try{
  const opened=await openProfile();context=opened.ctx;const page=opened.page;
@@ -60,7 +64,7 @@ try{
   current=await manifestSnapshot(page);assert.equal(current.manifest.url,base+'manifest.webmanifest');assert.equal(current.manifest.errors.length,0);
   assert.equal(JSON.parse(current.manifest.data).id,'/Silhueta/index.html');assert.equal(current.identity.appId,legacy?.identity.appId,'Adding explicit id changed the installed application identity');return{identity:current.identity,manifestUrl:current.manifest.url};
  });
- await check('Desktop Chromium reports no installability errors',async()=>{assert.deepEqual(current?.installability.installabilityErrors,[]);return current.installability;});
+ await check('Desktop Chromium reports no installability errors',async()=>{const data=await manifestSnapshot(page,true);assert.deepEqual(data.installability.installabilityErrors,[]);return data.installability;});
  await check('Installation PNG icons have the declared dimensions',async()=>{
   const images=[];for(const icon of manifest.icons.filter(x=>x.type==='image/png')){const response=await fetch(new URL(icon.src,base));assert.equal(response.status,200);const bytes=Buffer.from(await response.arrayBuffer());assert.equal(bytes.subarray(1,4).toString(),'PNG');const size=bytes.readUInt32BE(16)+'x'+bytes.readUInt32BE(20);assert.equal(size,icon.sizes);images.push({src:icon.src,contentType:response.headers.get('content-type'),size});}return{images};
  });
@@ -83,7 +87,7 @@ try{
  });
  await context.close();context=null;
  await check('Chromium Android emulation also parses the manifest and reports no installability errors',async()=>{
-  const mobile=await openProfile({...devices['Pixel 7']});try{await mobile.page.evaluate(()=>navigator.serviceWorker.ready);await mobile.page.waitForFunction(()=>navigator.serviceWorker.controller!==null);const data=await manifestSnapshot(mobile.page);assert.equal(data.manifest.errors.length,0);assert.equal(data.identity.appId,legacy?.identity.appId);assert.deepEqual(data.installability.installabilityErrors,[]);return{identity:data.identity,installability:data.installability};}finally{await mobile.ctx.close();}
+  const mobile=await openProfile({...devices['Pixel 7']});try{await mobile.page.evaluate(()=>navigator.serviceWorker.ready);await mobile.page.waitForFunction(()=>navigator.serviceWorker.controller!==null);const data=await manifestSnapshot(mobile.page,true);assert.equal(data.manifest.errors.length,0);assert.equal(data.identity.appId,legacy?.identity.appId);assert.deepEqual(data.installability.installabilityErrors,[]);return{identity:data.identity,installability:data.installability};}finally{await mobile.ctx.close();}
  });
  try{const page=await fetch('https://sosoft142.github.io/Silhueta/',{signal:AbortSignal.timeout(15000)}),text=await page.text(),manifestResponse=await fetch('https://sosoft142.github.io/Silhueta/manifest.webmanifest',{signal:AbortSignal.timeout(15000)}),remote=await manifestResponse.json();published={status:page.status,version:text.match(/const APP_VERSION='([^']+)'/)?.[1],manifestHref:text.match(/<link rel="manifest" href="([^"]+)"/)?.[1],manifestStatus:manifestResponse.status,manifestContentType:manifestResponse.headers.get('content-type'),id:remote.id||null};}catch(error){published={error:error.message};}
 }catch(error){results.push({name:'Audit execution',status:'fail',error:error.stack});}
