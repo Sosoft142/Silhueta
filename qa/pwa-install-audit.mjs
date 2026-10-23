@@ -12,7 +12,7 @@ const [html,worker,legacyWorker,legacyManifest]=await Promise.all(['index.html',
 const manifest=JSON.parse(await readFile(path.join(root,'manifest.webmanifest'),'utf8'));
 const version=html.match(/const APP_VERSION='([^']+)'/)[1],cacheName='silhueta-app-v'+version;
 let phase='legacy',manifestRevision='',manifestRequests=0;
-const results=[],runtimeErrors=[],profiles=[];let context,browserVersion='';
+const results=[],runtimeErrors=[],profiles=[],contexts=new Set();let context,browserVersion='';
 async function check(name,fn){
  console.log('SILHUETA_PWA_CHECK_START '+name);let timer,timedOut=false;
  try{const detail=await Promise.race([fn(),new Promise((_,reject)=>{timer=setTimeout(()=>{timedOut=true;reject(new Error('Diagnostic exceeded 45 seconds: '+name));},45000);})]);results.push({name,status:'pass',...detail});}
@@ -34,12 +34,13 @@ const server=createServer(async(req,res)=>{
   res.writeHead(200,{'Content-Type':mime[path.extname(name)]||'application/octet-stream','Cache-Control':'no-store'});res.end(bytes);
  }catch{res.writeHead(404);res.end('Not found');}
 });
-await new Promise(resolve=>server.listen(4174,'localhost',resolve));
+await new Promise(resolve=>server.listen(4174,resolve));
 const base='http://localhost:4174/Silhueta/',origin=new URL(base).origin;
 const seed={version:7,meta:{historyMigratedV23:true},profile:{startDate:'2026-10-01'},macros:{},measurements:{},metricEntries:{m_pwa_test:{metric:'weight',value:75,date:'2026-10-20',note:'Synthetic PWA migration record',updatedAt:'2026-10-20T12:00:00.000Z'}}};
 async function openProfile(options={}){
  const dir=await mkdtemp(path.join(os.tmpdir(),'silhueta-pwa-'));profiles.push(dir);
  const ctx=await chromium.launchPersistentContext(dir,{headless:true,locale:'pt-BR',...(process.env.PWA_CHROME_CHANNEL?{channel:process.env.PWA_CHROME_CHANNEL}:{}),...options});
+ contexts.add(ctx);
  browserVersion=ctx.browser()?.version()||browserVersion;
  await ctx.route('https://api.github.com/**',route=>route.abort());
  await ctx.addInitScript(data=>{if(!localStorage.getItem('silhueta.app.v1'))localStorage.setItem('silhueta.app.v1',JSON.stringify(data));},seed);
@@ -101,7 +102,7 @@ try{
  try{const page=await fetch('https://sosoft142.github.io/Silhueta/',{signal:AbortSignal.timeout(15000)}),text=await page.text(),manifestResponse=await fetch('https://sosoft142.github.io/Silhueta/manifest.webmanifest',{signal:AbortSignal.timeout(15000)}),remote=await manifestResponse.json();published={status:page.status,version:text.match(/const APP_VERSION='([^']+)'/)?.[1],manifestHref:text.match(/<link rel="manifest" href="([^"]+)"/)?.[1],manifestStatus:manifestResponse.status,manifestContentType:manifestResponse.headers.get('content-type'),id:remote.id||null};}catch(error){published={error:error.message};}
 }catch(error){results.push({name:'Audit execution',status:'fail',error:error.stack});}
 finally{
- if(context)await context.close();await new Promise(resolve=>server.close(resolve));for(const dir of profiles)await rm(dir,{recursive:true,force:true});
+ for(const ctx of contexts)await ctx.close().catch(()=>{});server.closeAllConnections();await new Promise(resolve=>server.close(resolve));for(const dir of profiles)await rm(dir,{recursive:true,force:true});
  results.push({name:'No page runtime errors during PWA checks',status:runtimeErrors.length?'fail':'pass',errors:runtimeErrors});
  const report={testedSource:process.env.GITHUB_SHA||'local',browser:browserVersion,channel:process.env.PWA_CHROME_CHANNEL||'chromium',environment:'Persistent isolated browser profiles, desktop and Pixel 7 emulation; no physical Android WebAPK installer; synthetic local records only',version,summary:{total:results.length,passed:results.filter(x=>x.status==='pass').length,failed:results.filter(x=>x.status==='fail').length},results,published};
  await writeFile(path.join(output,'report.json'),JSON.stringify(report,null,2));console.log('SILHUETA_PWA_AUDIT_JSON '+JSON.stringify(report));process.exitCode=report.summary.failed?1:0;
