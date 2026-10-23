@@ -12,7 +12,7 @@ const [html,worker,legacyWorker,legacyManifest]=await Promise.all(['index.html',
 const manifest=JSON.parse(await readFile(path.join(root,'manifest.webmanifest'),'utf8'));
 const version=html.match(/const APP_VERSION='([^']+)'/)[1],cacheName='silhueta-app-v'+version;
 let phase='legacy',manifestRevision='',manifestRequests=0;
-const results=[],runtimeErrors=[],profiles=[];let context;
+const results=[],runtimeErrors=[],profiles=[];let context,browserVersion='';
 async function check(name,fn){try{const detail=await fn();results.push({name,status:'pass',...detail});}catch(error){results.push({name,status:'fail',error:error.message});}}
 const mime={'.html':'text/html; charset=utf-8','.js':'application/javascript','.webmanifest':'application/manifest+json','.png':'image/png','.svg':'image/svg+xml'};
 const server=createServer(async(req,res)=>{
@@ -34,7 +34,8 @@ const base='http://localhost:4174/Silhueta/',origin=new URL(base).origin;
 const seed={version:7,meta:{historyMigratedV23:true},profile:{startDate:'2026-10-01'},macros:{},measurements:{},metricEntries:{m_pwa_test:{metric:'weight',value:75,date:'2026-10-20',note:'Synthetic PWA migration record',updatedAt:'2026-10-20T12:00:00.000Z'}}};
 async function openProfile(options={}){
  const dir=await mkdtemp(path.join(os.tmpdir(),'silhueta-pwa-'));profiles.push(dir);
- const ctx=await chromium.launchPersistentContext(dir,{headless:true,locale:'pt-BR',...options});
+ const ctx=await chromium.launchPersistentContext(dir,{headless:true,locale:'pt-BR',...(process.env.PWA_CHROME_CHANNEL?{channel:process.env.PWA_CHROME_CHANNEL}:{}),...options});
+ browserVersion=ctx.browser()?.version()||browserVersion;
  await ctx.route('https://api.github.com/**',route=>route.abort());
  await ctx.addInitScript(data=>{if(!localStorage.getItem('silhueta.app.v1'))localStorage.setItem('silhueta.app.v1',JSON.stringify(data));},seed);
  const page=ctx.pages()[0]||await ctx.newPage();page.setDefaultTimeout(20000);page.on('pageerror',e=>runtimeErrors.push(e.message));
@@ -89,6 +90,6 @@ try{
 finally{
  if(context)await context.close();await new Promise(resolve=>server.close(resolve));for(const dir of profiles)await rm(dir,{recursive:true,force:true});
  results.push({name:'No page runtime errors during PWA checks',status:runtimeErrors.length?'fail':'pass',errors:runtimeErrors});
- const report={testedSource:process.env.GITHUB_SHA||'local',environment:'Chromium persistent isolated profiles, desktop and Pixel 7 emulation; no physical Android WebAPK installer; synthetic local records only',version,summary:{total:results.length,passed:results.filter(x=>x.status==='pass').length,failed:results.filter(x=>x.status==='fail').length},results,published};
+ const report={testedSource:process.env.GITHUB_SHA||'local',browser:browserVersion,channel:process.env.PWA_CHROME_CHANNEL||'chromium',environment:'Persistent isolated browser profiles, desktop and Pixel 7 emulation; no physical Android WebAPK installer; synthetic local records only',version,summary:{total:results.length,passed:results.filter(x=>x.status==='pass').length,failed:results.filter(x=>x.status==='fail').length},results,published};
  await writeFile(path.join(output,'report.json'),JSON.stringify(report,null,2));console.log('SILHUETA_PWA_AUDIT_JSON '+JSON.stringify(report));process.exitCode=report.summary.failed?1:0;
 }

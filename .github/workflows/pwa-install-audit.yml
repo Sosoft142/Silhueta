@@ -30,11 +30,13 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
-      - name: Install pinned browser tooling
+      - name: Install pinned tooling and use the runner's Chrome
         run: |
-          npm install --no-save --package-lock=false playwright@1.56.1
-          npx playwright install --with-deps chromium
+          npm install --no-audit --no-fund --no-save --package-lock=false playwright@1.56.1
+          google-chrome --version
       - name: Audit manifest identity, installability and service worker migration
+        env:
+          PWA_CHROME_CHANNEL: chrome
         run: node qa/pwa-install-audit.mjs
       - name: Preserve PWA diagnostic report
         if: always()
