@@ -1,0 +1,45 @@
+name: PWA installation and update checks
+on:
+  push:
+    branches: [main]
+    paths:
+      - index.html
+      - manifest.webmanifest
+      - service-worker.js
+      - scripts/release.mjs
+      - qa/pwa-install-audit.mjs
+      - qa/fixtures/**
+      - .github/workflows/pwa-install-audit.yml
+  pull_request:
+    paths:
+      - index.html
+      - manifest.webmanifest
+      - service-worker.js
+      - scripts/release.mjs
+      - qa/pwa-install-audit.mjs
+      - qa/fixtures/**
+      - .github/workflows/pwa-install-audit.yml
+permissions:
+  contents: read
+jobs:
+  pwa-audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Install pinned browser tooling
+        run: |
+          npm install --no-save --package-lock=false playwright@1.56.1
+          npx playwright install --with-deps chromium
+      - name: Audit manifest identity, installability and service worker migration
+        run: node qa/pwa-install-audit.mjs
+      - name: Preserve PWA diagnostic report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: silhueta-pwa-install-audit
+          path: qa/pwa-audit-output/
+          retention-days: 14
