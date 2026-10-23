@@ -1,4 +1,4 @@
-# Silhueta · versão 2.9.4 — clareza e agilidade no acompanhamento
+# Silhueta · versão 2.9.5 — clareza e agilidade no acompanhamento
 
 Aplicativo web instalável (PWA) para acompanhar medidas corporais, composição corporal, nutrição e evolução.
 
@@ -35,7 +35,13 @@ Hospedado no GitHub Pages: https://sosoft142.github.io/Silhueta/
 O aplicativo preserva alterações em campos diferentes durante a mesclagem. Se o mesmo campo for modificado simultaneamente, utiliza o horário da última edição; não há resolução avançada de conflitos nem garantia de atualização instantânea enquanto o aplicativo está fechado.
 
 ## Instalação no Android
-No Chrome, abra o site e acesse o menu ⋮ → **Instalar aplicativo** (ou **Adicionar à tela inicial**, conforme a versão). A instalação exige HTTPS, fornecido pelo GitHub Pages.
+Abra **Configurações → Instalar Silhueta** no próprio app. O botão fica disponível quando o navegador emite `beforeinstallprompt` e abre a confirmação de instalação diretamente. Cada oferta é usada uma única vez; cancelamentos e falhas aguardam uma nova oferta. A instalação exige HTTPS, fornecido pelo GitHub Pages.
+
+No Chrome 155, a tela **Instalar e criar atalho** pode informar incorretamente que uma PWA já está instalada e falhar ao abri-la. O [Chromium 568841400](https://issues.chromium.org/issues/568841400) documenta essa regressão. No [código do Chrome 155.0.8059.84](https://github.com/chromium/chromium/blob/155.0.8059.84/chrome/android/java/src/org/chromium/chrome/browser/webapps/AppInstallMenuHandler.java), esse menu consulta a origem inteira. O fluxo interno de instalação verifica o endereço de início em `WebappsClientAndroid::DoesNewWebAppConflictWithExistingInstallation`, permitindo tentar a instalação sem passar por aquela tela do menu. Isso é um contorno; a correção do registro de aplicativos pertence ao navegador.
+
+O app não salva uma marca permanente de “instalado”. Aceitar o diálogo ou receber `appinstalled` indica que o navegador recebeu o pedido; no Android, a criação do WebAPK ainda pode estar em andamento. A interface informa **Instalação solicitada**, sem prometer que o pacote já foi instalado. A abertura em modo standalone é reconhecida separadamente.
+
+Os cenários de instalação da auditoria mobile simulam os eventos do navegador para verificar o botão, a preservação de rascunhos e registros, cancelamento, nova tentativa e falhas. Eles não executam nem comprovam a instalação em um aparelho Android físico. Referência: [experiência de instalação dentro do app](https://web.dev/articles/customize-install).
 
 ## Tecnologias
 HTML, CSS, JavaScript, localStorage, Service Worker, Web Crypto API e GitHub Gist.
