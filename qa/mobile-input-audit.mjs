@@ -194,6 +194,15 @@ try{
   assert(await page.locator('#installAppButton').isDisabled(),'Failed offer was not consumed');
   assert(JSON.stringify(await state(page))===JSON.stringify(before),'Failed installation modified user records');
  },{seed:filledState()});
+ await run('Installation: an old response cannot overwrite a newer browser offer',async({page})=>{
+  await go(page,'settings');await offerInstall(page);await page.locator('#installAppButton').click();
+  await page.evaluate(()=>{window.oldInstallAudit=window.installAudit;});
+  await offerInstall(page);await page.locator('#installAppButton').click();
+  await page.evaluate(async()=>{window.oldInstallAudit.resolve({outcome:'dismissed'});await new Promise(resolve=>setTimeout(resolve,0));});
+  assert((await page.locator('#installAppButton').innerText()).includes('Aguardando confirmação'),'Late old response overwrote the current request');
+  await page.evaluate(()=>window.installAudit.resolve({outcome:'accepted'}));
+  await page.waitForFunction(()=>document.getElementById('installAppButton').textContent.includes('Instalação solicitada'));
+ });
  await run('Installation: browser offer before opening Settings remains usable',async({page})=>{
   await offerInstall(page);await go(page,'settings');assert(await page.locator('#installAppButton').isEnabled(),'Offer was lost before Settings opened');
   await page.locator('#installAppButton').scrollIntoViewIfNeeded();await snap(page,'390-install-ready');

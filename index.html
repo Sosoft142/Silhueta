@@ -572,7 +572,7 @@ const APP_VERSION='2.9.5';
 const STORAGE_KEY='silhueta.app.v1', VERSION=7;
 // Keep installation state in memory: neither a missing prompt nor an accepted
 // request proves that an Android WebAPK is present on this device.
-let deferredInstallPrompt=null,installationPhase='waiting';
+let deferredInstallPrompt=null,installationPhase='waiting',installationEpoch=0;
 const installedDisplay=window.matchMedia('(display-mode: standalone)');
 function installationInfo(){
  if(installedDisplay.matches||navigator.standalone===true)return {label:'Aberto como aplicativo',message:'Você está usando o Silhueta como aplicativo.',enabled:false};
@@ -592,7 +592,7 @@ function updateInstallControls(){
  if(status)status.textContent=info.message;
 }
 window.addEventListener('beforeinstallprompt',event=>{
- event.preventDefault();deferredInstallPrompt=event;installationPhase='ready';updateInstallControls();
+ event.preventDefault();installationEpoch++;deferredInstallPrompt=event;installationPhase='ready';updateInstallControls();
 });
 window.addEventListener('appinstalled',()=>{
  // On Android this event may precede completion of the WebAPK installation.
@@ -601,12 +601,12 @@ window.addEventListener('appinstalled',()=>{
 installedDisplay.addEventListener?.('change',updateInstallControls);
 async function installApp(){
  if(!deferredInstallPrompt||!installationInfo().enabled)return;
- const prompt=deferredInstallPrompt;deferredInstallPrompt=null;installationPhase='prompting';updateInstallControls();
+ const prompt=deferredInstallPrompt,epoch=installationEpoch;deferredInstallPrompt=null;installationPhase='prompting';updateInstallControls();
  try{
   await prompt.prompt();
   const choice=await prompt.userChoice;
-  if(installationPhase==='prompting')installationPhase=choice.outcome==='accepted'?'requested':'dismissed';
- }catch(error){if(installationPhase==='prompting')installationPhase='error';}
+  if(epoch===installationEpoch&&installationPhase==='prompting')installationPhase=choice.outcome==='accepted'?'requested':'dismissed';
+ }catch(error){if(epoch===installationEpoch&&installationPhase==='prompting')installationPhase='error';}
  updateInstallControls();
 }
 function installSection(){const info=installationInfo();return `<section class="card settings-section"><h2>Instalar Silhueta</h2><p id="appInstallStatus" role="status" aria-live="polite">${esc(info.message)}</p><div class="settings-links">${button(info.label,'download','installApp',`id="installAppButton" aria-describedby="appInstallStatus" ${info.enabled?'':'disabled'}`,'btn-primary')}</div><p class="small-muted">Se o menu do Chrome informar que o app já está instalado, mas não conseguir abri-lo, tente a instalação por este botão.</p></section>`;}
