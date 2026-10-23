@@ -7,11 +7,13 @@ on:
       - 'index.html'
       - 'qa/**'
       - '.github/workflows/anatomy-qa.yml'
+      - 'scripts/release.mjs'
   pull_request:
     paths:
       - 'index.html'
       - 'qa/**'
       - '.github/workflows/anatomy-qa.yml'
+      - 'scripts/release.mjs'
 
 jobs:
   anatomy:
@@ -28,6 +30,8 @@ jobs:
           node-version: '22'
       - name: Install image verification dependency
         run: python -m pip install Pillow==11.2.1
+      - name: Verify public version and cache metadata
+        run: node scripts/release.mjs --check
       - name: Check illustrations, tape positions and mappings
         run: python qa/check_anatomy.py
       - name: Extract inline JavaScript for syntax verification

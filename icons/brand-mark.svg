@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="128 76 256 432" role="img" aria-label="Silhueta">
+  <g fill="none" stroke="#8736BD" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M229 91 C237 122 237 145 214 163 C191 181 158 175 145 207 C136 233 151 254 163 272" stroke-width="10"/>
+    <path d="M283 91 C275 122 275 145 298 163 C321 181 354 175 367 207 C376 233 361 254 349 272" stroke-width="10"/>
+    <path d="M172 240 C162 260 170 285 193 295 C218 309 244 301 255 286 C269 302 292 308 319 294 C344 280 350 257 342 239" stroke-width="10"/>
+    <path d="M182 294 C198 321 213 354 201 383 C195 402 177 419 164 443 C153 464 154 483 158 495" stroke-width="11"/>
+    <path d="M330 294 C314 321 299 354 311 383 C317 402 335 419 348 443 C359 464 358 483 354 495" stroke-width="11"/>
+    <path d="M257 373 C253 383 253 390 261 396" stroke-width="5"/>
+  </g>
+</svg>
