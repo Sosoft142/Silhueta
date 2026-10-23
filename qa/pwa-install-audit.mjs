@@ -13,7 +13,12 @@ const manifest=JSON.parse(await readFile(path.join(root,'manifest.webmanifest'),
 const version=html.match(/const APP_VERSION='([^']+)'/)[1],cacheName='silhueta-app-v'+version;
 let phase='legacy',manifestRevision='',manifestRequests=0;
 const results=[],runtimeErrors=[],profiles=[];let context,browserVersion='';
-async function check(name,fn){console.log('SILHUETA_PWA_CHECK_START '+name);try{const detail=await fn();results.push({name,status:'pass',...detail});}catch(error){results.push({name,status:'fail',error:error.message});}console.log('SILHUETA_PWA_CHECK '+JSON.stringify(results.at(-1)));}
+async function check(name,fn){
+ console.log('SILHUETA_PWA_CHECK_START '+name);let timer,timedOut=false;
+ try{const detail=await Promise.race([fn(),new Promise((_,reject)=>{timer=setTimeout(()=>{timedOut=true;reject(new Error('Diagnostic exceeded 45 seconds: '+name));},45000);})]);results.push({name,status:'pass',...detail});}
+ catch(error){results.push({name,status:'fail',error:error.message});if(timedOut)throw error;}
+ finally{clearTimeout(timer);console.log('SILHUETA_PWA_CHECK '+JSON.stringify(results.at(-1)));}
+}
 const mime={'.html':'text/html; charset=utf-8','.js':'application/javascript','.webmanifest':'application/manifest+json','.png':'image/png','.svg':'image/svg+xml'};
 const server=createServer(async(req,res)=>{
  try{
@@ -46,13 +51,16 @@ async function manifestSnapshot(page,includeInstallability=false){
  async function command(name){let timer;try{return await Promise.race([cdp.send(name),new Promise((_,reject)=>{timer=setTimeout(()=>reject(new Error(name+' did not respond within 10 seconds')),10000);})]);}finally{clearTimeout(timer);}}
  try{await command('Page.enable');const data={manifest:await command('Page.getAppManifest'),identity:await command('Page.getAppId')};if(includeInstallability)data.installability=await command('Page.getInstallabilityErrors');return data;}finally{await cdp.detach();}
 }
+async function waitForWorker(page){
+ await page.waitForFunction(async()=>{const r=await navigator.serviceWorker.getRegistration();return r?.active?.state==='activated';});
+ await page.waitForFunction(()=>navigator.serviceWorker.controller!==null);
+}
 let legacy,current,published={};
 try{
  const opened=await openProfile();context=opened.ctx;const page=opened.page;
  await check('Legacy manifest identity is captured by Chromium',async()=>{legacy=await manifestSnapshot(page);assert.equal(legacy.manifest.errors.length,0);assert(legacy.identity.appId,'Chromium did not compute the legacy App ID');return{identity:legacy.identity,manifestUrl:legacy.manifest.url};});
  await check('Service worker 2.9.3 upgrades without losing records or other projects caches',async()=>{
-  await page.evaluate(()=>navigator.serviceWorker.ready);
-  await page.waitForFunction(()=>navigator.serviceWorker.controller!==null);
+  await waitForWorker(page);
   await page.evaluate(async()=>{const c=await caches.open('another-project-cache');await c.put('/another-project-marker',new Response('preserve'));});
   phase='current';await page.evaluate(async()=>{const r=await navigator.serviceWorker.getRegistration();await r.update();});
   await page.waitForFunction(async name=>{const keys=await caches.keys();return keys.includes(name)&&!keys.includes('silhueta-app-v2.9.3');},cacheName);
@@ -60,8 +68,9 @@ try{
   const info=await page.evaluate(async()=>({scope:(await navigator.serviceWorker.ready).scope,updateViaCache:(await navigator.serviceWorker.ready).updateViaCache,keys:await caches.keys(),saved:JSON.parse(localStorage.getItem('silhueta.app.v1')).metricEntries.m_pwa_test}));
   assert.equal(info.scope,base);assert.equal(info.updateViaCache,'none');assert(info.keys.includes('another-project-cache'));assert.equal(info.saved.value,75);assert.equal(info.saved.note,seed.metricEntries.m_pwa_test.note);assert.equal(info.saved.date,'2026-10-20');return info;
  });
+ phase='current';
  await check('Canonical manifest parses and preserves the original native App ID',async()=>{
-  current=await manifestSnapshot(page);assert.equal(current.manifest.url,base+'manifest.webmanifest');assert.equal(current.manifest.errors.length,0);
+  await page.reload({waitUntil:'networkidle'});current=await manifestSnapshot(page);assert.equal(current.manifest.url,base+'manifest.webmanifest');assert.equal(current.manifest.errors.length,0);
   assert.equal(JSON.parse(current.manifest.data).id,'/Silhueta/index.html');assert.equal(current.identity.appId,legacy?.identity.appId,'Adding explicit id changed the installed application identity');return{identity:current.identity,manifestUrl:current.manifest.url};
  });
  await check('Desktop Chromium reports no installability errors',async()=>{const data=await manifestSnapshot(page,true);assert.deepEqual(data.installability.installabilityErrors,[]);return data.installability;});
@@ -87,7 +96,7 @@ try{
  });
  await context.close();context=null;
  await check('Chromium Android emulation also parses the manifest and reports no installability errors',async()=>{
-  const mobile=await openProfile({...devices['Pixel 7']});try{await mobile.page.evaluate(()=>navigator.serviceWorker.ready);await mobile.page.waitForFunction(()=>navigator.serviceWorker.controller!==null);const data=await manifestSnapshot(mobile.page,true);assert.equal(data.manifest.errors.length,0);assert.equal(data.identity.appId,legacy?.identity.appId);assert.deepEqual(data.installability.installabilityErrors,[]);return{identity:data.identity,installability:data.installability};}finally{await mobile.ctx.close();}
+  const mobile=await openProfile({...devices['Pixel 7']});try{await waitForWorker(mobile.page);const data=await manifestSnapshot(mobile.page,true);assert.equal(data.manifest.errors.length,0);assert.equal(data.identity.appId,legacy?.identity.appId);assert.deepEqual(data.installability.installabilityErrors,[]);return{identity:data.identity,installability:data.installability};}finally{await mobile.ctx.close();}
  });
  try{const page=await fetch('https://sosoft142.github.io/Silhueta/',{signal:AbortSignal.timeout(15000)}),text=await page.text(),manifestResponse=await fetch('https://sosoft142.github.io/Silhueta/manifest.webmanifest',{signal:AbortSignal.timeout(15000)}),remote=await manifestResponse.json();published={status:page.status,version:text.match(/const APP_VERSION='([^']+)'/)?.[1],manifestHref:text.match(/<link rel="manifest" href="([^"]+)"/)?.[1],manifestStatus:manifestResponse.status,manifestContentType:manifestResponse.headers.get('content-type'),id:remote.id||null};}catch(error){published={error:error.message};}
 }catch(error){results.push({name:'Audit execution',status:'fail',error:error.stack});}
