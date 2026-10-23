@@ -1,6 +1,11 @@
-# Silhueta · versão 2.9.2 — clareza e agilidade no acompanhamento
+# Silhueta · versão 2.9.3 — clareza e agilidade no acompanhamento
 
 Aplicativo web instalável (PWA) para acompanhar medidas corporais, composição corporal, nutrição e evolução.
+
+## Atualização da versão
+A versão exibida ao final de **Configurações** vem de `APP_VERSION` em `index.html`. Em cada atualização, execute `node scripts/release.mjs patch` (ou uma versão X.Y.Z maior). O comando também atualiza o cache PWA, a referência do manifest e este README. A integração contínua verifica a consistência com `node scripts/release.mjs --check`.
+
+A marca usada dentro do app é `icons/brand-mark.svg`, sem fundo e com os traços da silhueta aprovada. Os ícones de instalação permanecem nos arquivos originais.
 
 ## Publicação
 Hospedado no GitHub Pages: https://sosoft142.github.io/Silhueta/
