@@ -7,3 +7,5 @@
 - O rodapé de Configurações deve sempre mostrar `APP_VERSION`, sem manter outra cópia do número. Execute `node scripts/release.mjs --check` antes de publicar.
 - A logo interna usa `icons/brand-mark.svg`, com fundo transparente e os mesmos traços da silhueta aprovada. Os ícones de instalação, o favicon e os arquivos referenciados pelo manifest são separados: só os altere mediante solicitação explícita.
 - Preserve os registros existentes, a compatibilidade dos backups e as 12 ilustrações anatômicas aprovadas.
+- `silhueta.ui.quickMetric` guarda apenas a última região, por aparelho. `silhueta.ui.lastSyncConfirmation` só pode ser atualizado depois da verificação bem-sucedida do Gist; não use datas importadas/sincronizadas para afirmar que este aparelho confirmou a nuvem.
+- Desfazer uma exclusão conserva o ID e os dados da medição, com relógio de sincronização posterior ao marcador excluído. Recuse a restauração se o registro tiver sido alterado novamente; não substitua uma versão mais recente.

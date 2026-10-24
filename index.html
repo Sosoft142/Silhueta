@@ -545,6 +545,12 @@ form .btn,.settings-links .btn{max-width:100%;white-space:normal;text-align:cent
  .settings-summary{flex-direction:column;align-items:stretch;gap:12px}
  .settings-summary .btn{width:100%}
 }
+.sync-last-confirmed{font-size:12px;line-height:1.6;color:#746d65;margin:10px 0;overflow-wrap:anywhere}
+.toast{display:flex;align-items:center;flex-wrap:wrap;gap:9px 12px;width:max-content;max-width:min(90vw,600px)}
+.toast-message{flex:1 1 130px;min-width:0;overflow-wrap:anywhere;line-height:1.5}
+.toast-undo-context{flex-basis:100%;font-size:12px;font-weight:500;line-height:1.5;color:#eee4ed;overflow-wrap:anywhere}
+.toast-action{min-height:44px;padding:8px 12px;border:1px solid #d3b4cc;border-radius:9px;background:#fff;color:#713c60;font-weight:750;pointer-events:none}
+.toast.show .toast-action{pointer-events:auto}
 </style>
 </head>
 <body>
@@ -572,7 +578,8 @@ form .btn,.settings-links .btn{max-width:100%;white-space:normal;text-align:cent
    <label class="sync-remember"><input type="checkbox" id="gistRemember" checked /><span>Manter conectado neste aparelho</span></label>
   </div>
   <div class="sync-buttons"><button class="sync-primary" id="syncMainButton" data-action="gistSync">Conectar e sincronizar</button></div>
-  <p class="sync-message" id="gistStatus" role="status" aria-live="polite">Nenhuma sincronização confirmada neste aparelho.</p>
+  <p class="sync-message" id="gistStatus" role="status" aria-live="polite">Conecte e sincronize para conferir a nuvem neste aparelho.</p>
+  <p class="sync-last-confirmed" id="syncLastConfirmed" aria-live="polite" hidden></p>
   <p class="sync-caution">A nuvem fica verde depois de confirmar uma sincronização com o Gist neste aparelho. O outro aparelho precisa abrir o aplicativo e estar conectado para receber atualizações.</p>
   <div class="sync-footer"><button class="sync-link" data-action="gistRemoveToken">Desconectar este aparelho</button><button class="sync-link" data-action="exportJSON">Baixar cópia dos dados</button></div>
  </section>
@@ -581,14 +588,16 @@ form .btn,.settings-links .btn{max-width:100%;white-space:normal;text-align:cent
 <input type="file" id="importFile" accept=".json,.csv,text/csv,application/json" hidden />
 <script>
 (()=>{'use strict';
-const APP_VERSION='2.9.6';
+const APP_VERSION='2.9.7';
 const STORAGE_KEY='silhueta.app.v1', VERSION=7;
+const QUICK_METRIC_PREF_KEY='silhueta.ui.quickMetric';
 // Keep installation state in memory: neither a missing prompt nor an accepted
 // request proves that an Android WebAPK is present on this device.
 let deferredInstallPrompt=null,installationPhase='waiting',installationEpoch=0;
 const installedDisplay=window.matchMedia('(display-mode: standalone)');
+function isRunningInstalled(){return installedDisplay.matches||navigator.standalone===true;}
 function installationInfo(){
- if(installedDisplay.matches||navigator.standalone===true)return {label:'Aberto como aplicativo',message:'Você está usando o Silhueta como aplicativo.',enabled:false};
+ if(isRunningInstalled())return {label:'Aberto como aplicativo',message:'Você está usando o Silhueta como aplicativo.',enabled:false};
  const phases={
   waiting:{label:'Instalar Silhueta',message:'O botão fica disponível quando o navegador permite instalar. Você pode continuar usando o site enquanto isso.'},
   ready:{label:'Instalar Silhueta',message:'Abra o Silhueta pela lista de aplicativos. O navegador pedirá sua confirmação para instalar.',enabled:true},
@@ -600,6 +609,8 @@ function installationInfo(){
  return phases[installationPhase]||phases.waiting;
 }
 function updateInstallControls(){
+ const section=document.getElementById('appInstallSection');
+ if(section&&section.hidden!==isRunningInstalled())section.outerHTML=installSection();
  const info=installationInfo(),control=document.getElementById('installAppButton'),status=document.getElementById('appInstallStatus');
  if(control){control.disabled=!info.enabled;control.innerHTML=ico('download',16)+esc(info.label);}
  if(status)status.textContent=info.message;
@@ -622,7 +633,7 @@ async function installApp(){
  }catch(error){if(epoch===installationEpoch&&installationPhase==='prompting')installationPhase='error';}
  updateInstallControls();
 }
-function installSection(){const info=installationInfo();return `<section class="card settings-section"><h2>Instalar Silhueta</h2><p id="appInstallStatus" role="status" aria-live="polite">${esc(info.message)}</p><div class="settings-links">${button(info.label,'download','installApp',`id="installAppButton" aria-describedby="appInstallStatus" ${info.enabled?'':'disabled'}`,'btn-primary')}</div><p class="small-muted">Se o menu do Chrome informar que o app já está instalado, mas não conseguir abri-lo, tente a instalação por este botão.</p></section>`;}
+function installSection(){if(isRunningInstalled())return '<div id="appInstallSection" hidden></div>';const info=installationInfo();return `<section id="appInstallSection" class="card settings-section"><h2>Instalar Silhueta</h2><p id="appInstallStatus" role="status" aria-live="polite">${esc(info.message)}</p><div class="settings-links">${button(info.label,'download','installApp',`id="installAppButton" aria-describedby="appInstallStatus" ${info.enabled?'':'disabled'}`,'btn-primary')}</div><p class="small-muted">Se o menu do Chrome informar que o app já está instalado, mas não conseguir abri-lo, tente a instalação por este botão.</p></section>`;}
 const ICONS={settings:'<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.8 1.8 0 0 0 .36 1.99l.1.11-2.16 2.15-.11-.1A1.8 1.8 0 0 0 15.6 19l-.14.05v3.04h-3.05v-.14A1.8 1.8 0 0 0 10.9 20l-.17.05-2.1 2.13-2.14-2.16.1-.12a1.8 1.8 0 0 0-.25-1.91l-.17-.15H3.2v-3.05h.14A1.8 1.8 0 0 0 5 13.3v-2.14a1.8 1.8 0 0 0-1.66-1.52H3.2V6.6h3.05l.15-.18a1.8 1.8 0 0 0 .15-1.9l-.1-.11 2.16-2.16.11.1a1.8 1.8 0 0 0 1.97.29l.16-.06V0h3.05v2.58a1.8 1.8 0 0 0 2.1-.2l.1-.1 2.16 2.15-.1.12a1.8 1.8 0 0 0-.2 1.9l.06.14H21v3.05h-.14a1.8 1.8 0 0 0-1.46 1.55v2.15c.06.68.6 1.22 1.46 1.45H21V15z"/>',cloud:'<path d="M6 18h11.2A4 4 0 0 0 18 10a6 6 0 0 0-11.8.7A3.7 3.7 0 0 0 6 18Z"/>',dashboard:'<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>',measure:'<path d="M4 7h16v10H4z"/><path d="M7 7v4m4-4v3m4-3v4m3-4v3"/>',trends:'<path d="M3 19h18M4 15l5-5 4 3 7-8"/>',nutrition:'<path d="M12 21c4 0 8-5 8-10a8 8 0 0 0-16 0c0 5 4 10 8 10Z"/><path d="M12 20V4M5 10h14"/>',profile:'<circle cx="12" cy="8" r="4"/><path d="M4 21c0-5 3-8 8-8s8 3 8 8"/>',help:'<circle cx="12" cy="12" r="9"/><path d="M9.5 9a2.6 2.6 0 1 1 4.2 2.1C12 12.5 12 13.5 12 14m0 3h.01"/>',plus:'<path d="M12 5v14M5 12h14"/>',chevron:'<path d="m9 18 6-6-6-6"/>',arrow:'<path d="M12 19V5m-6 6 6-6 6 6"/>',download:'<path d="M12 3v12m-5-5 5 5 5-5M4 17v4h16v-4"/>',upload:'<path d="M12 17V4M7 9l5-5 5 5M4 17v4h16v-4"/>',heart:'<path d="M20.5 8.5c0 4.3-8.5 10-8.5 10s-8.5-5.7-8.5-10a4.5 4.5 0 0 1 8.5-2 4.5 4.5 0 0 1 8.5 2Z"/>',calendar:'<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M7 3v4m10-4v4M3 10h18"/>',scale:'<rect x="3" y="4" width="18" height="17" rx="3"/><path d="M8 10a4 4 0 0 1 8 0M12 10l2-2"/>',waist:'<path d="M7 3c0 4 3 5 3 9 0 3-3 5-3 9m10-18c0 4-3 5-3 9 0 3 3 5 3 9M7 9h10M7 16h10"/>',chart:'<path d="M3 20V4m0 16h18M6 17l4-5 4 2 6-9"/>',check:'<path d="m5 12 4 4L19 6"/>',edit:'<path d="m4 18 12-12 3 3-12 12H4zM14 8l3 3"/>',trash:'<path d="M4 7h16M9 7V4h6v3m3 0-1 14H7L6 7m4 4v6m4-6v6"/>',clock:'<circle cx="12" cy="12" r="9"/><path d="M12 6v6l4 2"/>',lock:'<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>',info:'<circle cx="12" cy="12" r="9"/><path d="M12 10v7m0-10h.01"/>'};
 function ico(name, size=20){return `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[name]||ICONS.heart}</svg>`;}
 const NAV=[['dashboard','Início','dashboard'],['measure','Medidas','measure'],['trends','Evolução','trends'],['nutrition','Nutrição','nutrition']];
@@ -754,8 +765,10 @@ function nowISO(){const d=new Date();return `${d.getFullYear()}-${String(d.getMo
 function nowStamp(){return new Date().toISOString()}
 function load(){try{const raw=localStorage.getItem(STORAGE_KEY);if(!raw)return DEFAULT();const s=JSON.parse(raw);if(!s||typeof s!=='object'||!s.profile||!s.macros)return DEFAULT();return normalizeStateData(s)}catch(e){return DEFAULT()}}
 let state=load(), storageOK=true, toastTimer=0;
-function persist(opts={}){const keepSync=!!opts.keepSync,preserveTimestamp=!!opts.preserveTimestamp;state.meta={...DEFAULT().meta,...(state.meta||{})};if(!opts.suppressSync&&typeof syncClockDiff==='function')syncClockDiff(lastSyncSnapshot,state);if(!preserveTimestamp)state.meta.updatedAt=nowStamp();if(!keepSync&&typeof syncVerifiedAt!=='undefined'&&syncVerifiedAt){syncVerifiedAt=0;setSyncState('Alterações aguardando envio','dirty')}try{localStorage.setItem(STORAGE_KEY,JSON.stringify(state));storageOK=true;document.getElementById('storageNotice').innerHTML=''}catch(e){storageOK=false;document.getElementById('storageNotice').innerHTML='<div class="notice">O navegador não permitiu salvar localmente. Exporte um backup JSON antes de fechar o aplicativo.</div>'}if(typeof syncStateKind!=='undefined')updateSyncTrigger(syncStateKind);if(typeof lastSyncSnapshot!=='undefined')lastSyncSnapshot=makeSyncSnapshot();if(!opts.suppressSync&&typeof scheduleSync==='function')scheduleSync()}
-let ui={view:'dashboard',week:0,nutWeek:0,measureTab:'primary',extraChartKey:'bust',measureMode:'quick',quickMetric:'weight',editEntryId:null,historyFilter:'all',historyLimit:30,chartMetric:'weight',guideMetric:'waist'};
+function persist(opts={}){const keepSync=!!opts.keepSync,preserveTimestamp=!!opts.preserveTimestamp;state.meta={...DEFAULT().meta,...(state.meta||{})};if(!opts.suppressSync&&typeof syncClockDiff==='function')syncClockDiff(lastSyncSnapshot,state,opts.clockFloor);if(!preserveTimestamp)state.meta.updatedAt=nowStamp();if(!keepSync&&typeof syncVerifiedAt!=='undefined'&&syncVerifiedAt){syncVerifiedAt=0;setSyncState('Alterações aguardando envio','dirty')}try{localStorage.setItem(STORAGE_KEY,JSON.stringify(state));storageOK=true;document.getElementById('storageNotice').innerHTML=''}catch(e){storageOK=false;document.getElementById('storageNotice').innerHTML='<div class="notice">O navegador não permitiu salvar localmente. Exporte um backup JSON antes de fechar o aplicativo.</div>'}if(typeof syncStateKind!=='undefined')updateSyncTrigger(syncStateKind);if(typeof lastSyncSnapshot!=='undefined')lastSyncSnapshot=makeSyncSnapshot();if(!opts.suppressSync&&typeof scheduleSync==='function')scheduleSync()}
+const rememberedQuickMetric=localRead(QUICK_METRIC_PREF_KEY);
+let ui={view:'dashboard',week:0,nutWeek:0,measureTab:'primary',extraChartKey:'bust',measureMode:'quick',quickMetric:METRIC_KEYS.includes(rememberedQuickMetric)?rememberedQuickMetric:'weight',editEntryId:null,historyFilter:'all',historyLimit:30,chartMetric:'weight',guideMetric:'waist'};
+function rememberQuickMetric(metric){if(!METRIC_KEYS.includes(metric))return;ui.quickMetric=metric;localWrite(QUICK_METRIC_PREF_KEY,metric);}
 function currentWeek(){if(!state.profile.startDate)return 0;return Math.max(0,Math.min(52,Math.floor(dateDiff(nowISO(),state.profile.startDate)/7)||0))}
 function record(w){return state.measurements[String(w)]||{}}
 function records(){return Array.from({length:53},(_,i)=>({week:i,date:dateAdd(state.profile.startDate,i*7),...record(i)}))}
@@ -771,7 +784,27 @@ function delta(key){let a=firstWith(key),z=lastWith(key);if(!a||!z||a.week===z.w
 function signed(n,units=''){return Number.isFinite(n)?`${n>0?'+':''}${nfmt(n,1)}${units}`:'Aguardando comparativo'}
 function pickWeek(){const baseline=record(0);if(!Number.isFinite(baseline.waist)||!Number.isFinite(baseline.hip))return 0;const done=records().filter(r=>realData(r)).map(r=>r.week);let current=currentWeek();if(!done.length)return current;let last=Math.max(...done);return last<current?current:Math.min(52,last+1)}
 function metricStatus(r){if(!realData(r))return 'Pendente';return Number.isFinite(r.weight)&&Number.isFinite(r.waist)&&Number.isFinite(r.hip)?'Completo':'Parcial'}
-function toast(msg){const el=document.getElementById('toast');el.textContent=msg;el.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>el.classList.remove('show'),3200)}
+let pendingDeletion=null,deletionUndoTimer=0;
+function clearDeletionUndo(){pendingDeletion=null;clearTimeout(deletionUndoTimer);const el=document.getElementById('toast');el.querySelector('.toast-action')?.remove();el.querySelector('.toast-undo-context')?.remove();}
+function toast(msg){
+ const el=document.getElementById('toast'),message=document.createElement('span');message.className='toast-message';message.textContent=msg;el.replaceChildren(message);
+ const remaining=pendingDeletion?pendingDeletion.expiresAt-Date.now():0;
+ if(remaining>0){
+  const action=document.createElement('button');action.type='button';action.className='toast-action';action.dataset.action='undoDelete';action.textContent='Desfazer';action.setAttribute('aria-label','Desfazer exclusão de '+BODY_LABELS[pendingDeletion.entry.metric]);el.append(action);
+  const context=document.createElement('span');context.className='toast-undo-context';context.textContent='Exclusão de '+BODY_LABELS[pendingDeletion.entry.metric]+' · '+fmtMetric(pendingDeletion.entry.metric,pendingDeletion.entry.value);el.append(context);
+ }
+ el.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>{el.classList.remove('show');el.replaceChildren();},Math.max(3200,remaining));
+}
+function offerDeletionUndo(id,entry){clearDeletionUndo();pendingDeletion={id,entry:{...entry},deletedAt:state.metricEntries[id].updatedAt,expiresAt:Date.now()+10000};deletionUndoTimer=setTimeout(clearDeletionUndo,10000);toast('Medição excluída.');}
+function undoLastDeletion(){
+ const undo=pendingDeletion;clearDeletionUndo();if(!undo||Date.now()>undo.expiresAt){toast('O prazo para desfazer terminou.');return;}
+ const current=state.metricEntries[undo.id];
+ if(!current?.deleted||current.updatedAt!==undo.deletedAt){toast('O registro recebeu outra alteração. A versão mais recente foi preservada.');return;}
+ const key='metricEntries.'+undo.id,previousClock=Number(state.meta.clock?.[key])||0;
+ const clock=Math.max(Date.now(),previousClock+1,(Date.parse(current.updatedAt)||0)+1);
+ state.metricEntries[undo.id]={...undo.entry,deleted:false,updatedAt:new Date(clock).toISOString()};
+ persist({clockFloor:{[key]:clock}});render({preserveDrafts:true});toast('Medição restaurada.');
+}
 function setView(view){if(view==='profile')view='settings';closeMobileDrawer();ui.view=view;if(view==='measure'&&ui.week===null)ui.week=pickWeek();render();window.scrollTo({top:0,behavior:'smooth'})}
 function openMobileDrawer(){const d=document.getElementById('mobileDrawer');if(!d)return;d.hidden=false;document.body.classList.add('drawer-open');document.querySelector('.mobile-menu-trigger[aria-controls]')?.setAttribute('aria-expanded','true');d.querySelector('.mobile-drawer-head [data-action=closeDrawer]')?.focus()}
 function closeMobileDrawer(){const d=document.getElementById('mobileDrawer');if(!d||d.hidden)return;d.hidden=true;document.body.classList.remove('drawer-open');document.querySelector('.mobile-menu-trigger[aria-controls]')?.setAttribute('aria-expanded','false');document.querySelector('.mobile-menu-trigger[aria-controls]')?.focus()}
@@ -880,7 +913,7 @@ function measurement(){
 function saveQuick(form){
  if(!form.reportValidity())return;const d=inputObj(form);let id=ui.editEntryId;
  try{saveMetricEntry(d.quickMetric,d.quickValue,d.quickDate,id,d.quickNote)}catch(e){toast(e.message);return}
- ui.editEntryId=null;ui.quickMetric=d.quickMetric;persist();toast(id?'Registro atualizado.':'Medição salva.');render({preserveDrafts:true,excludeForm:'quickForm'});
+ ui.editEntryId=null;rememberQuickMetric(d.quickMetric);persist();toast(id?'Registro atualizado.':'Medição salva.');render({preserveDrafts:true,excludeForm:'quickForm'});
 }
 function saveBatch(form){
  if(!form.reportValidity())return;const data=inputObj(form),inputs=METRIC_KEYS.filter(k=>data[k]!==''&&data[k]!==undefined);
@@ -958,13 +991,22 @@ function settings(){const p=state.profile,hasDate=!!p.startDate;
  <section class="card settings-section"><h2>Outras opções</h2><p>As preferências ficam junto das funções que você utiliza.</p><div class="settings-links">${button('Metas de nutrição','nutrition','go','data-view="nutrition"','btn-plain')}${button('Metas corporais','trends','go','data-view="trends"','btn-plain')}${button('Backups e ajuda','help','go','data-view="help"','btn-plain')}</div><details class="help-extra"><summary>Sobre os dados do perfil antigo</summary><p class="small-muted">Idade, altura, peso de referência e demais informações anteriores continuam preservados nos dados salvos e nos backups, mas não são exigidos para registrar medidas.</p></details></section>${installSection()}</div><footer class="app-version" aria-label="Versão do aplicativo">Silhueta · Versão <span data-app-version>${APP_VERSION}</span></footer>`;
 }
 /* Sincronização de duas vias, por campo, preservando dados existentes e backups legados. */
-const GIST_ID_KEY='silhueta.gist.id.v1',TOKEN_KEY='silhueta.github.token.v2',GIST_FILENAME='silhueta.enc.json';
+const GIST_ID_KEY='silhueta.gist.id.v1',TOKEN_KEY='silhueta.github.token.v2',GIST_FILENAME='silhueta.enc.json',SYNC_CONFIRM_KEY='silhueta.ui.lastSyncConfirmation';
 let gistBusy=false,gistSessionToken='',syncVerifiedAt=0,syncStateKind='',syncDebounce=null,lastRemotePoll=0,lastVerifiedGist='',syncPending=false;
+let lastSyncConfirmation=readLastSyncConfirmation();
 function localRead(k){try{return localStorage.getItem(k)||''}catch(e){return ''}}
 function localWrite(k,v){try{localStorage.setItem(k,v)}catch(e){}}
 function localRemove(k){try{localStorage.removeItem(k)}catch(e){}}
+function readLastSyncConfirmation(){try{const value=JSON.parse(localRead(SYNC_CONFIRM_KEY)||'null');return value&&typeof value.gistId==='string'&&value.gistId.length>0&&typeof value.at==='string'&&Number.isFinite(Date.parse(value.at))?{gistId:value.gistId,at:value.at}:null;}catch(e){return null;}}
+function updateLastSyncConfirmation(){
+ const el=document.getElementById('syncLastConfirmed');if(!el)return;
+ const valid=lastSyncConfirmation&&lastSyncConfirmation.gistId===savedGistId();el.hidden=!valid;
+ if(valid){const date=new Date(lastSyncConfirmation.at);el.textContent='Última sincronização confirmada neste aparelho: '+date.toLocaleDateString('pt-BR')+' às '+date.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})+'.';}else el.textContent='';
+}
+function recordLastSyncConfirmation(gistId,at){lastSyncConfirmation={gistId,at};localWrite(SYNC_CONFIRM_KEY,JSON.stringify(lastSyncConfirmation));updateLastSyncConfirmation();}
+function clearLastSyncConfirmation(){lastSyncConfirmation=null;localRemove(SYNC_CONFIRM_KEY);updateLastSyncConfirmation();}
 function savedGistId(){return localRead(GIST_ID_KEY)}
-function rememberGistId(id){localWrite(GIST_ID_KEY,id)}
+function rememberGistId(id){localWrite(GIST_ID_KEY,id);updateLastSyncConfirmation();}
 function setGistInput(id){rememberGistId(id)}
 function updateSyncTrigger(kind='',text=''){
  const el=document.querySelector('.sync-trigger');if(!el)return;
@@ -981,7 +1023,7 @@ function normalizeStateData(data){data=migrateMetricHistory(stripLegacyDemo(data
 function flattenSyncFields(data){const o={};for(const section of ['profile','macros','measurements','nutritionLogs','preferences','metricEntries']){for(const [key,value] of Object.entries(data[section]||{})){if(section==='profile'||section==='macros'||section==='preferences'||section==='metricEntries')o[section+'.'+key]=value;else if(value&&typeof value==='object')for(const [field,item] of Object.entries(value))o[section+'.'+key+'.'+field]=item;}}return o}
 const absentSyncMarker='__SILHUETA_ABSENT__';
 function bootstrapClocks(d){d.meta={...DEFAULT().meta,...(d.meta||{})};d.meta.clock=d.meta.clock&&typeof d.meta.clock==='object'?d.meta.clock:{};const base=flattenSyncFields(DEFAULT()),fields=flattenSyncFields(d);const t=Date.parse(d.meta.updatedAt)||1;for(const [key,value] of Object.entries(fields)){if(!d.meta.clock[key]&&JSON.stringify(value)!==JSON.stringify(base[key]))d.meta.clock[key]=t;}return d}
-function syncClockDiff(before,after){bootstrapClocks(after);const a=flattenSyncFields(before),b=flattenSyncFields(after),now=Date.now();for(const key of new Set([...Object.keys(a),...Object.keys(b)])){if(JSON.stringify(a[key])!==JSON.stringify(b[key]))after.meta.clock[key]=now}}
+function syncClockDiff(before,after,clockFloor={}){bootstrapClocks(after);const a=flattenSyncFields(before),b=flattenSyncFields(after),now=Date.now();for(const key of new Set([...Object.keys(a),...Object.keys(b)])){if(JSON.stringify(a[key])!==JSON.stringify(b[key]))after.meta.clock[key]=Math.max(now,Number(clockFloor[key])||0)}}
 function makeSyncSnapshot(){return normalizeStateData(JSON.parse(JSON.stringify(state)))}
 let lastSyncSnapshot=makeSyncSnapshot();
 function mergeSyncStates(local,remote){local=bootstrapClocks(normalizeStateData(local));remote=bootstrapClocks(normalizeStateData(remote));const lf=flattenSyncFields(local),rf=flattenSyncFields(remote),lclock=local.meta.clock||{},rclock=remote.meta.clock||{};const output=normalizeStateData(remote);output.meta.clock={};const flatKeys=new Set([...Object.keys(lf),...Object.keys(rf),...Object.keys(lclock),...Object.keys(rclock)]);let conflicts=0;
@@ -996,7 +1038,7 @@ output.meta.updatedAt=new Date(Math.max(Date.parse(local.meta.updatedAt)||0,Date
 function syncComparable(d){return JSON.stringify({fields:Object.entries(flattenSyncFields(d)).sort((a,b)=>a[0].localeCompare(b[0])),clock:Object.entries(d.meta?.clock||{}).sort((a,b)=>a[0].localeCompare(b[0]))})}
 function commitSyncState(data){state=normalizeStateData(data);persist({keepSync:true,preserveTimestamp:true,suppressSync:true});lastSyncSnapshot=makeSyncSnapshot();ui.week=pickWeek();ui.nutWeek=currentWeek();render();}
 function hasTokenSaved(){return !!(localRead(TOKEN_KEY)||gistSessionToken)}
-function openSync(){document.getElementById('syncModal').hidden=false;document.body.classList.add('sync-open');const token=localRead(TOKEN_KEY),input=document.getElementById('gistToken');input.value='';input.placeholder=token?'Token já conectado neste dispositivo':'Cole seu token clássico aqui';document.getElementById('gistRemember').checked=true;document.getElementById('syncConnectArea').hidden=hasTokenSaved();document.getElementById('syncMainButton').textContent=hasTokenSaved()?'Sincronizar agora':'Conectar e sincronizar';if(syncVerifiedAt)setSyncState('Nuvem verificada neste aparelho','ok');else if(hasTokenSaved())setSyncState('Aguardando confirmação da nuvem', 'ready');else setSyncState('Não conectado');}
+function openSync(){document.getElementById('syncModal').hidden=false;document.body.classList.add('sync-open');const token=localRead(TOKEN_KEY),input=document.getElementById('gistToken');input.value='';input.placeholder=token?'Token já conectado neste dispositivo':'Cole seu token clássico aqui';document.getElementById('gistRemember').checked=true;document.getElementById('syncConnectArea').hidden=hasTokenSaved();document.getElementById('syncMainButton').textContent=hasTokenSaved()?'Sincronizar agora':'Conectar e sincronizar';if(syncVerifiedAt)setSyncState('Nuvem verificada neste aparelho','ok');else if(hasTokenSaved())setSyncState('Aguardando confirmação da nuvem', 'ready');else setSyncState('Não conectado');updateLastSyncConfirmation();}
 function closeSync(){document.getElementById('syncModal').hidden=true;document.body.classList.remove('sync-open')}
 function currentToken(){return document.getElementById('gistToken')?.value.trim()||gistSessionToken||localRead(TOKEN_KEY)||''}
 function saveTokenPreference(){const token=currentToken();if(!token)throw Error('Informe seu token clássico com a permissão gist.');gistSessionToken=token;if(document.getElementById('gistRemember')?.checked!==false){localWrite(TOKEN_KEY,token);const input=document.getElementById('gistToken');if(input){input.value='';input.placeholder='Token conectado neste dispositivo'}}else localRemove(TOKEN_KEY);document.getElementById('syncConnectArea').hidden=true;document.getElementById('syncMainButton').textContent='Sincronizar agora';return token}
@@ -1033,7 +1075,7 @@ async function syncNow(reason='manual'){if(gistBusy){syncPending=true;return}if(
  if(pendingFormChanges()){setSyncState('Formulário em edição — sincronize após salvar','dirty');gistStatus('Seus campos em edição foram preservados. Salve para atualizar a nuvem.');return;}
  // If this device was edited mid-request, schedule another round rather than hiding those changes.
  const fresh=mergeSyncStates(state,verified).data;if(syncComparable(fresh)!==syncComparable(verified)){syncPending=true;setSyncState('Alterações aguardando envio','dirty');gistStatus('Uma alteração local ainda precisa ser enviada.');return;}
- commitSyncState(target);syncVerifiedAt=Date.now();lastRemotePoll=Date.now();lastVerifiedGist=id;setSyncState('Nuvem atualizada e verificada','ok');gistStatus('Conferido agora com GitHub Gist. Outros aparelhos atualizam quando abertos ou enquanto estão ativos.');
+ commitSyncState(target);syncVerifiedAt=Date.now();lastRemotePoll=Date.now();lastVerifiedGist=id;recordLastSyncConfirmation(id,new Date(syncVerifiedAt).toISOString());setSyncState('Nuvem atualizada e verificada','ok');gistStatus('Conferido agora com GitHub Gist. Outros aparelhos atualizam quando abertos ou enquanto estão ativos.');
  }catch(e){syncVerifiedAt=0;setSyncState('Sincronização não confirmada','error');gistStatus(e.message||'Falha ao sincronizar.',true)}finally{gistBusy=false;if(syncPending&&hasTokenSaved()){syncPending=false;setTimeout(()=>syncNow('retry'),2200)}}}
 async function runGist(action){if(action==='gistSync')return syncNow('manual')}
 function scheduleSync(delay=1400){if(!hasTokenSaved())return;clearTimeout(syncDebounce);syncVerifiedAt=0;setSyncState('Alterações aguardando envio','dirty');syncDebounce=setTimeout(()=>syncNow('save'),delay)}
@@ -1041,9 +1083,9 @@ function refreshSyncIfNeeded(){if(!hasTokenSaved()||document.hidden||Date.now()-
 document.addEventListener('visibilitychange',()=>{if(!document.hidden)refreshSyncIfNeeded()});window.addEventListener('online',()=>{if(hasTokenSaved())syncNow('online')});window.addEventListener('focus',()=>{if(hasTokenSaved())refreshSyncIfNeeded()});setInterval(()=>{if(hasTokenSaved()&&!document.hidden)refreshSyncIfNeeded()},45000);
 async function gistCopyBackup(){const t=JSON.stringify({app:'Silhueta',exportDate:nowISO(),data:state},null,2);try{await navigator.clipboard.writeText(t);gistStatus('Backup JSON copiado para a área de transferência. Contém seus dados em texto legível.');toast('Backup copiado.')}catch(e){gistStatus('Não foi possível copiar. Use Como usar → Baixar backup JSON.',true)}}
 function gistRestoreBackup(){gistStatus('Use Como usar → Importar backup JSON para restaurar um arquivo.',false)}
-function gistRemoveToken(){if(!confirm('Desconectar este aparelho da sincronização? Os dados locais serão preservados.'))return;localRemove(TOKEN_KEY);gistSessionToken='';syncVerifiedAt=0;document.getElementById('syncConnectArea').hidden=false;document.getElementById('gistToken').value='';document.getElementById('syncMainButton').textContent='Conectar e sincronizar';setSyncState('Não conectado');gistStatus('Desconectado. Os dados locais foram mantidos.')}
+function gistRemoveToken(){if(!confirm('Desconectar este aparelho da sincronização? Os dados locais serão preservados.'))return;localRemove(TOKEN_KEY);gistSessionToken='';syncVerifiedAt=0;clearLastSyncConfirmation();document.getElementById('syncConnectArea').hidden=false;document.getElementById('gistToken').value='';document.getElementById('syncMainButton').textContent='Conectar e sincronizar';setSyncState('Não conectado');gistStatus('Desconectado. Os dados locais foram mantidos.')}
 function help(){return heading('Como usar','O essencial para registrar seus dados com segurança e entender os resultados.')+
- `<section class="howto-steps"><article class="howto-step"><span class="howto-num">1</span><div><h2>Comece por uma medição</h2><p>Em <strong>Medidas</strong>, escolha uma região, informe o valor e a data. Outros dados são opcionais.</p><button class="text-action" data-action="go" data-view="measure">Registrar medida ${ico('chevron',15)}</button></div></article><article class="howto-step"><span class="howto-num">2</span><div><h2>Consulte e ajuste os registros</h2><p>O histórico em <strong>Medidas</strong> permite consultar, editar ou excluir cada registro separadamente. O guia anatômico está disponível quando precisar.</p><button class="text-action" data-action="go" data-view="measure">Consultar histórico ${ico('chevron',15)}</button></div></article><article class="howto-step"><span class="howto-num">3</span><div><h2>Observe a evolução</h2><p>Em <strong>Evolução</strong>, os gráficos usam somente registros reais. Você também pode definir metas opcionais de peso, cintura e quadril.</p><button class="text-action" data-action="go" data-view="trends">Ver evolução ${ico('chevron',15)}</button></div></article></section>`+
+ `<section class="howto-steps"><article class="howto-step"><span class="howto-num">1</span><div><h2>Comece por uma medição</h2><p>Em <strong>Medidas</strong>, escolha uma região, informe o valor e a data. Outros dados são opcionais.</p><button class="text-action" data-action="go" data-view="measure">Registrar medida ${ico('chevron',15)}</button></div></article><article class="howto-step"><span class="howto-num">2</span><div><h2>Consulte e ajuste os registros</h2><p>O histórico em <strong>Medidas</strong> permite consultar, editar ou excluir cada registro separadamente. Após excluir, você tem dez segundos para desfazer. O guia anatômico está disponível quando precisar.</p><button class="text-action" data-action="go" data-view="measure">Consultar histórico ${ico('chevron',15)}</button></div></article><article class="howto-step"><span class="howto-num">3</span><div><h2>Observe a evolução</h2><p>Em <strong>Evolução</strong>, os gráficos usam somente registros reais. Você também pode definir metas opcionais de peso, cintura e quadril.</p><button class="text-action" data-action="go" data-view="trends">Ver evolução ${ico('chevron',15)}</button></div></article></section>`+
  `<div class="help-bottom"><article class="card"><h2>Entenda os números</h2><div class="glossary-row"><strong>Medidas anteriores</strong><span>Referências do antigo perfil são preservadas, mas não geram medições.</span></div><div class="glossary-row"><strong>Peso medido</strong><span>Uma pesagem salva com sua própria data, independente da semana.</span></div><div class="glossary-row"><strong>Relação cintura/quadril</strong><span>Cintura dividida pelo quadril; compare preferencialmente valores medidos na mesma data.</span></div><div class="glossary-row"><strong>Metas opcionais</strong><span>Configure alimentação em Nutrição e objetivos corporais em Evolução.</span></div></article>
  <article class="card"><h2>Seus dados e dispositivos</h2><p class="help-mini">O Silhueta salva primeiro neste aparelho. Quando a nuvem está conectada, envia alterações após salvar e verifica atualizações enquanto o app está aberto.</p><button class="btn btn-soft" data-action="openSync">${ico('cloud',16)} Configurar sincronização</button><div class="help-divider"></div><h3>Faça uma cópia de segurança</h3><div class="help-backup-actions">${button('Baixar backup JSON','download','exportJSON','','btn-plain')}${button('Importar arquivo','upload','import','','btn-plain')}</div><details class="help-extra"><summary>Mais opções de exportação</summary><div class="help-backup-actions">${button('Medições CSV','download','exportCSV','','btn-plain')}${button('Nutrição CSV','download','exportNutCSV','','btn-plain')}</div></details><p class="fine-print">O backup JSON contém dados pessoais em texto legível. Guarde-o em local privado.</p><details class="help-extra danger-section"><summary>Reiniciar apenas este dispositivo</summary><p>Apaga os dados locais e desconecta da nuvem. Não apaga o backup no Gist.</p><button class="btn btn-danger" data-action="reset">Reiniciar este aparelho</button></details></article></div>`;
 }
@@ -1182,7 +1224,7 @@ function applyCSVImport(text,target){
 function importCSV(text){
  const candidate=JSON.parse(JSON.stringify(state)),count=applyCSVImport(text,candidate);
  const validated=validateBackupData(candidate);
- state=validated;return count;
+ clearDeletionUndo();state=validated;return count;
 }
 function importFile(file){
  if(!file)return;const reader=new FileReader();
@@ -1192,7 +1234,7 @@ function importFile(file){
    const parsed=JSON.parse(txt),data=parsed&&Object.prototype.hasOwnProperty.call(parsed,'data')?parsed.data:parsed;
    const candidate=validateBackupData(data);
    if(!confirm('Importar este backup substituindo os dados atuais? Faça um backup antes, se necessário.'))return;
-   state=candidate;ui.week=0;ui.nutWeek=0;ui.editEntryId=null;persist();toast('Backup importado com sucesso.');setView('dashboard');
+   clearDeletionUndo();state=candidate;ui.week=0;ui.nutWeek=0;ui.editEntryId=null;persist();toast('Backup importado com sucesso.');setView('dashboard');
   }else if(file.name.toLowerCase().endsWith('.csv')){
    if(!confirm('Importar os registros deste CSV para o projeto atual? Os registros existentes serão preservados; semanas correspondentes poderão ser atualizadas.'))return;
    const n=importCSV(txt);persist();toast(n?n+' registro(s) importado(s).':'Nenhum registro novo. Os dados existentes foram preservados.');setView('dashboard');
@@ -1206,22 +1248,23 @@ function reset(){
  if(!confirm('Confirmar: apagar os registros deste aparelho e desconectar da sincronização?'))return;
  // Do not propagate an empty state to the Gist. Reconnecting later restores the cloud copy.
  clearTimeout(syncDebounce);syncPending=false;
- localRemove(TOKEN_KEY);gistSessionToken='';syncVerifiedAt=0;
- state=DEFAULT();ui.week=0;ui.nutWeek=0;
+ localRemove(TOKEN_KEY);gistSessionToken='';syncVerifiedAt=0;clearLastSyncConfirmation();clearDeletionUndo();localRemove(QUICK_METRIC_PREF_KEY);
+ state=DEFAULT();ui.quickMetric='weight';ui.editEntryId=null;ui.week=0;ui.nutWeek=0;
  persist({keepSync:true,suppressSync:true});
  setSyncState('Não conectado');toast('Aparelho reiniciado. O backup na nuvem não foi apagado.');setView('dashboard');
 }
 document.addEventListener('click',e=>{const el=e.target.closest('[data-action]');if(!el)return;const act=el.dataset.action;
  switch(act){
+ case'undoDelete':undoLastDeletion();break;
  case'installApp':installApp();break;
  case'inspectChartPoint':inspectHistoryPoint(el);break;
  case'openGuide':{const guide=document.querySelector('.anatomy-guide');if(guide){guide.open=true;guide.scrollIntoView({behavior:'smooth',block:'start'});guide.querySelector('summary').focus()}break}
- case'quickMetric':{const key=el.dataset.metric;if(METRIC_KEYS.includes(key)){if(!confirmDiscardEdits())break;ui.quickMetric=key;ui.editEntryId=null;ui.measureMode='quick';setView('measure')}break}
+ case'quickMetric':{const key=el.dataset.metric;if(METRIC_KEYS.includes(key)){if(!confirmDiscardEdits())break;rememberQuickMetric(key);ui.editEntryId=null;ui.measureMode='quick';setView('measure')}break}
  case'guideMetric':{const key=el.dataset.metric;if(METRIC_KEYS.includes(key)){ui.guideMetric=key;const tip=document.querySelector('.guide-tip');if(tip){tip.innerHTML=guideFigure(key);tip.setAttribute('aria-label','Como medir: '+BODY_LABELS[key])}document.querySelectorAll('.guide-region').forEach(btn=>{const active=btn.dataset.metric===key;btn.classList.toggle('selected',active);btn.setAttribute('aria-pressed',String(active))})}break}
  case'measureMode':{if(!confirmDiscardEdits())break;ui.measureMode=el.dataset.mode==='batch'?'batch':'quick';ui.editEntryId=null;render();break}
  case'cancelEditMetric':if(confirmDiscardEdits()){ui.editEntryId=null;render()}break;
  case'editMetric':{if(!confirmDiscardEdits())break;const item=state.metricEntries[el.dataset.id];if(item&&!item.deleted){ui.editEntryId=el.dataset.id;ui.quickMetric=item.metric;ui.measureMode='quick';setView('measure')}break}
- case'deleteMetric':{const item=state.metricEntries[el.dataset.id];if(item&&!item.deleted&&confirm('Excluir somente esta medição? Ela deixará de aparecer nos gráficos, mas as demais serão preservadas.')){const wasEditing=ui.editEntryId===el.dataset.id;deleteMetricEntry(el.dataset.id);if(wasEditing)ui.editEntryId=null;persist();render({preserveDrafts:true,excludeForm:wasEditing?'quickForm':''});toast('Medição excluída.')}break}
+ case'deleteMetric':{const item=state.metricEntries[el.dataset.id];if(item&&!item.deleted&&confirm('Excluir somente esta medição? Ela deixará de aparecer nos gráficos, mas as demais serão preservadas.')){const wasEditing=ui.editEntryId===el.dataset.id,previous={...item};deleteMetricEntry(el.dataset.id);if(wasEditing)ui.editEntryId=null;persist();render({preserveDrafts:true,excludeForm:wasEditing?'quickForm':''});offerDeletionUndo(el.dataset.id,previous);}break}
  case'favMove':{const f=state.preferences.favoriteMetrics,key=el.dataset.metric,i=f.indexOf(key),n=i+Number(el.dataset.direction);if(i>=0&&n>=0&&n<f.length){[f[i],f[n]]=[f[n],f[i]];persist();render()}break}
  case'moreHistory':ui.historyLimit+=40;render({preserveDrafts:true});break;
  case'measureTab':{ui.measureTab=el.dataset.tab==='extra'?'extra':'primary';for(const tab of document.querySelectorAll('.body-tab'))tab.setAttribute('aria-selected',String(tab.dataset.tab===ui.measureTab));for(const panel of document.querySelectorAll('.measure-pane'))panel.hidden=panel.id!=='pane-'+ui.measureTab;break}case'toggleSidebar':toggleSidebar();break;case'openDrawer':openMobileDrawer();break;case'closeDrawer':closeMobileDrawer();break;case'openSync':openSync();break;case'closeSync':closeSync();break;case'gistSync':case'gistUpload':case'gistDownload':runGist(act);break;case'gistCopyBackup':gistCopyBackup();break;case'gistRestoreOpen':document.getElementById('syncRestoreBox').hidden=false;document.getElementById('gistRestoreText').focus();break;case'gistRestoreCancel':document.getElementById('syncRestoreBox').hidden=true;break;case'gistRestore':gistRestoreBackup();break;case'gistRemoveToken':gistRemoveToken();break;case'go':if(confirmDiscardEdits())setView(el.dataset.view);break;case'newMeasurement':if(!confirmDiscardEdits())break;ui.week=pickWeek();setView('measure');break;case'editWeek':if(!confirmDiscardEdits())break;ui.week=Number(el.dataset.week);setView('measure');break;case'prevWeek':if(!confirmDiscardEdits())break;ui.week=Math.max(0,ui.week-1);render();break;case'nextWeek':if(!confirmDiscardEdits())break;ui.week=Math.min(52,ui.week+1);render();break;case'prevNutWeek':if(!confirmDiscardEdits())break;ui.nutWeek=Math.max(0,ui.nutWeek-1);render();break;case'nextNutWeek':if(!confirmDiscardEdits())break;ui.nutWeek=Math.min(52,ui.nutWeek+1);render();break;case'editNutWeek':if(!confirmDiscardEdits())break;ui.nutWeek=Number(el.dataset.week);setView('nutrition');break;case'saveMeasure':saveMeasure();break;case'saveNutrition':saveNutrition();break;case'saveSettings':saveSettings();break;case'saveMacroTargets':saveMacroTargets();break;case'saveGoals':saveGoals();break;case'deleteMeasure':if(confirm('Apagar os dados desta semana?')){delete state.measurements[String(ui.week)];persist();toast('Semana apagada.');render()}break;case'exportCSV':exportCSV();break;case'exportNutCSV':exportNutCSV();break;case'exportJSON':exportJSON();break;case'import':document.getElementById('importFile').click();break;case'reset':reset();break;}
@@ -1231,12 +1274,12 @@ document.addEventListener('change',e=>{if(e.target.dataset.action==='favToggle')
    if(e.target.checked&&!f.includes(key)){if(f.length>=8){toast('Selecione até oito indicadores.');e.target.checked=false;return}f.push(key)}
    else if(!e.target.checked){if(f.length===1){toast('Mantenha pelo menos um indicador.');e.target.checked=true;return}state.preferences.favoriteMetrics=f.filter(k=>k!==key)}
    persist();render();return;
- }if(e.target.id==='quickMetric'){ui.quickMetric=e.target.value;const label=document.querySelector('label[for="quickValue"]'),field=document.getElementById('quickValue');if(label)label.textContent='Valor ('+metricUnit(e.target.value)+')';if(field){field.min=e.target.value==='weight'?'20':e.target.value==='bodyFat'?'0':'10';field.max=e.target.value==='bodyFat'?'100':'300';field.placeholder=metricUnit(e.target.value);field.value='';}return}
+ }if(e.target.id==='quickMetric'){if(!METRIC_KEYS.includes(e.target.value))return;rememberQuickMetric(e.target.value);const label=document.querySelector('label[for="quickValue"]'),field=document.getElementById('quickValue');if(label)label.textContent='Valor ('+metricUnit(e.target.value)+')';if(field){field.min=e.target.value==='weight'?'20':e.target.value==='bodyFat'?'0':'10';field.max=e.target.value==='bodyFat'?'100':'300';field.placeholder=metricUnit(e.target.value);field.value='';}return}
  if(e.target.id==='historyFilter'){ui.historyFilter=e.target.value;ui.historyLimit=30;render({preserveDrafts:true});return}
  if(e.target.id==='chartMetric'){ui.chartMetric=e.target.value;render({preserveDrafts:true});return}
  if(e.target.id==='weekPicker'){if(!confirmDiscardEdits()){e.target.value=String(ui.week);return}ui.week=Number(e.target.value);render()}if(e.target.id==='nutWeekPicker'){if(!confirmDiscardEdits()){e.target.value=String(ui.nutWeek);return}ui.nutWeek=Number(e.target.value);render()}if(e.target.id==='extraChartSelect'){ui.extraChartKey=e.target.value;render({preserveDrafts:true})}if(e.target.id==='importFile'){importFile(e.target.files[0]);e.target.value=''}});
 document.addEventListener('submit',e=>{if(['quickForm','batchForm','measureForm','nutritionForm','settingsForm','macroForm','goalForm'].includes(e.target.id)){e.preventDefault();if(e.target.id==='quickForm')saveQuick(e.target);if(e.target.id==='batchForm')saveBatch(e.target);if(e.target.id==='nutritionForm')saveNutrition();if(e.target.id==='settingsForm')saveSettings();if(e.target.id==='macroForm')saveMacroTargets();if(e.target.id==='goalForm')saveGoals()}});
-setSidebarCollapsed(localRead(SIDEBAR_PREF_KEY)==='1');persist({preserveTimestamp:true,keepSync:true,suppressSync:true});ui.week=pickWeek();ui.nutWeek=currentWeek();render();setSyncState(hasTokenSaved()?'Verificando nuvem…':'Não conectado',hasTokenSaved()?'ready':'');if(hasTokenSaved())setTimeout(()=>syncNow('startup'),500);
+setSidebarCollapsed(localRead(SIDEBAR_PREF_KEY)==='1');persist({preserveTimestamp:true,keepSync:true,suppressSync:true});ui.week=pickWeek();ui.nutWeek=currentWeek();render();updateLastSyncConfirmation();setSyncState(hasTokenSaved()?'Verificando nuvem…':'Não conectado',hasTokenSaved()?'ready':'');if(hasTokenSaved())setTimeout(()=>syncNow('startup'),500);
 })();
 </script>
 <script>document.addEventListener('keydown',e=>{
