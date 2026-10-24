@@ -94,7 +94,7 @@ async function offerInstall(page,rejectPrompt=false){return page.evaluate(reject
  event.userChoice=new Promise(resolve=>{fixture.resolve=resolve;});
  window.dispatchEvent(event);return event.defaultPrevented;
 },rejectPrompt);}
-async function snap(page,name){const file=path.join(output,name+'.jpg');const bytes=await page.screenshot({path:file,type:'jpeg',quality:45,fullPage:false});shots.push({name,bytes});}
+async function snap(page,name){const file=path.join(output,name+'.jpg');const bytes=await page.screenshot({path:file,type:'jpeg',quality:45,fullPage:false,animations:'disabled'});shots.push({name,bytes});}
 async function run(name,fn,opts={}){
  let h;try{h=await openPage(opts.width||390,opts.seed||emptyState(),!!opts.acceptDialogs);const detail=await fn(h);results.push({name,status:'pass',...detail});}catch(e){results.push({name,status:'fail',error:e.message});}finally{if(h){if(h.errors.length)runtimeErrors.push({test:name,errors:h.errors});await h.context.close();}}
 }
