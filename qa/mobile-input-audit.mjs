@@ -34,10 +34,12 @@ async function mockGist(context,data){
  // These synthetic requests never leave the browser test context.
  await context.route('https://api.github.com/**',async route=>{
   const req=route.request(),url=new URL(req.url());mock.requests.push(req.method()+' '+url.pathname);
+  const headers={'Access-Control-Allow-Origin':'*','Access-Control-Allow-Methods':'GET, PATCH, OPTIONS','Access-Control-Allow-Headers':'authorization, content-type, x-github-api-version, accept'};
+  if(req.method()==='OPTIONS'&&url.pathname==='/gists/'+TEST_GIST_ID){await route.fulfill({status:204,headers});return;}
   if(url.pathname!=='/gists/'+TEST_GIST_ID||!['GET','PATCH'].includes(req.method())){await route.abort();return;}
   if(req.method()==='PATCH'){mock.patches++;mock.envelope=JSON.parse(req.postDataJSON().files['silhueta.enc.json'].content);}
   const envelope=mock.mode==='valid'?mock.envelope:{format:'invalid-synthetic-backup'};
-  await route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({id:TEST_GIST_ID,files:{'silhueta.enc.json':{content:JSON.stringify(envelope),truncated:false}}})});
+  await route.fulfill({status:200,headers,contentType:'application/json',body:JSON.stringify({id:TEST_GIST_ID,files:{'silhueta.enc.json':{content:JSON.stringify(envelope),truncated:false}}})});
  });return mock;
 }
 async function startMockSync(page,{remember=false}={}){
