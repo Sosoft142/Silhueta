@@ -69,9 +69,12 @@ try{
  await check('Legacy manifest identity is captured by Chromium',async()=>{legacy=await manifestSnapshot(page);assert.equal(legacy.manifest.errors.length,0);assert(legacy.identity.appId,'Chromium did not compute the legacy App ID');return{identity:legacy.identity,manifestUrl:legacy.manifest.url};});
  await check('Service worker 2.9.3 upgrades without losing records or other projects caches',async()=>{
   await waitForWorker(page);
-  await page.evaluate(async()=>{const c=await caches.open('another-project-cache');await c.put('/another-project-marker',new Response('preserve'));});
+  await page.evaluate(async()=>{window.previousPwaController=navigator.serviceWorker.controller;const c=await caches.open('another-project-cache');await c.put('/another-project-marker',new Response('preserve'));});
   phase='current';await page.evaluate(async()=>{const r=await navigator.serviceWorker.getRegistration();await r.update();});
   await page.waitForFunction(async name=>{const keys=await caches.keys();return keys.includes(name)&&!keys.includes('silhueta-app-v2.9.3');},cacheName);
+  // An activated registration is not enough: the new worker must have claimed
+  // this page before testing its first navigation and network-first manifest.
+  await page.waitForFunction(()=>navigator.serviceWorker.controller!==null&&navigator.serviceWorker.controller!==window.previousPwaController);
   await waitForWorker(page);
   await page.reload({waitUntil:'domcontentloaded'});await readyApp(page);
   const info=await page.evaluate(async()=>({scope:(await navigator.serviceWorker.ready).scope,updateViaCache:(await navigator.serviceWorker.ready).updateViaCache,keys:await caches.keys(),saved:JSON.parse(localStorage.getItem('silhueta.app.v1')).metricEntries.m_pwa_test}));
