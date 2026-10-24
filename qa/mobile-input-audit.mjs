@@ -2,7 +2,7 @@
 import { createServer } from 'node:http';
 import { readFile, mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
-import { createHash } from 'node:crypto';
+import { createHash, webcrypto } from 'node:crypto';
 import { chromium } from 'playwright';
 
 const root=process.cwd(),output=path.join(root,'qa/mobile-audit-output');
@@ -24,6 +24,27 @@ async function openPage(width=390,seed=emptyState(),acceptDialogs=false){
 }
 async function go(page,view){let link=page.locator('[data-action="go"][data-view="'+view+'"]:visible').first();if(!(await link.count())){await page.locator('[data-action="openDrawer"]:visible').first().click();link=page.locator('#mobileDrawer [data-view="'+view+'"]:visible').first();}await link.click();await page.waitForTimeout(200);}
 async function state(page){return page.evaluate(()=>JSON.parse(localStorage.getItem('silhueta.app.v1')));}
+const TEST_GIST_ID='0123456789abcdef0123456789abcdef',TEST_GIST_TOKEN='silhueta-synthetic-token-not-a-credential';
+const SYNC_CONFIRM_KEY='silhueta.ui.lastSyncConfirmation',QUICK_METRIC_KEY='silhueta.ui.quickMetric';
+async function fixtureKey(salt,iterations){const material=await webcrypto.subtle.importKey('raw',new TextEncoder().encode(TEST_GIST_TOKEN),'PBKDF2',false,['deriveKey']);return webcrypto.subtle.deriveKey({name:'PBKDF2',salt,iterations,hash:'SHA-256'},material,{name:'AES-GCM',length:256},false,['encrypt','decrypt']);}
+async function encryptedFixture(data){const salt=webcrypto.getRandomValues(new Uint8Array(16)),iv=webcrypto.getRandomValues(new Uint8Array(12)),iterations=100000,key=await fixtureKey(salt,iterations),plain=new TextEncoder().encode(JSON.stringify({app:'Silhueta',data})),ciphertext=await webcrypto.subtle.encrypt({name:'AES-GCM',iv},key,plain);return{format:'silhueta-gist-encrypted-v1',algorithm:'AES-256-GCM',kdf:'PBKDF2-SHA256',iterations,salt:Buffer.from(salt).toString('base64'),iv:Buffer.from(iv).toString('base64'),ciphertext:Buffer.from(ciphertext).toString('base64')};}
+async function decryptedFixture(envelope){const key=await fixtureKey(Buffer.from(envelope.salt,'base64'),envelope.iterations),raw=await webcrypto.subtle.decrypt({name:'AES-GCM',iv:Buffer.from(envelope.iv,'base64')},key,Buffer.from(envelope.ciphertext,'base64'));return JSON.parse(new TextDecoder().decode(raw)).data;}
+async function mockGist(context,data){
+ const mock={envelope:await encryptedFixture(data),mode:'valid',patches:0,requests:[]};
+ // These synthetic requests never leave the browser test context.
+ await context.route('https://api.github.com/**',async route=>{
+  const req=route.request(),url=new URL(req.url());mock.requests.push(req.method()+' '+url.pathname);
+  if(url.pathname!=='/gists/'+TEST_GIST_ID||!['GET','PATCH'].includes(req.method())){await route.abort();return;}
+  if(req.method()==='PATCH'){mock.patches++;mock.envelope=JSON.parse(req.postDataJSON().files['silhueta.enc.json'].content);}
+  const envelope=mock.mode==='valid'?mock.envelope:{format:'invalid-synthetic-backup'};
+  await route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({id:TEST_GIST_ID,files:{'silhueta.enc.json':{content:JSON.stringify(envelope),truncated:false}}})});
+ });return mock;
+}
+async function startMockSync(page,{remember=false}={}){
+ await page.evaluate(id=>localStorage.setItem('silhueta.gist.id.v1',id),TEST_GIST_ID);
+ await page.locator('.sync-trigger').click();await page.locator('#gistToken').fill(TEST_GIST_TOKEN);await page.locator('#gistRemember').setChecked(remember);await page.locator('#syncMainButton').click();
+}
+async function waitSyncSuccess(page){await page.waitForFunction(()=>document.getElementById('syncState').classList.contains('sync-ok'));}
 async function formGeometry(page,label,pairs=[]){
  const data=await page.evaluate(pairs=>{
   const rect=el=>{const r=el.getBoundingClientRect();return{left:r.left,right:r.right,top:r.top,bottom:r.bottom,width:r.width,height:r.height};};
@@ -278,10 +299,92 @@ try{
  await run('Installation: standalone display does not offer to reinstall or save an installed flag',async({page})=>{
   await page.addInitScript(()=>{const match=window.matchMedia.bind(window);window.matchMedia=query=>{const media=match(query);if(query==='(display-mode: standalone)')Object.defineProperty(media,'matches',{value:true});return media;};});
   await page.reload({waitUntil:'networkidle'});await go(page,'settings');const before=await state(page);await offerInstall(page);
-  assert(await page.locator('#installAppButton').isDisabled(),'Running standalone app offers to reinstall');
-  assert((await page.locator('#appInstallStatus').innerText()).includes('como aplicativo'),'Standalone launch is not identified');
+  assert(await page.locator('#installAppButton').count()===0,'Standalone launch keeps a redundant installation action');
+  assert(await page.locator('#appInstallSection').isHidden(),'Standalone launch keeps installation instructions visible');
+  assert(await page.locator('[data-app-version]').isVisible(),'Simplified Settings lost the version footer');
   assert(JSON.stringify(await state(page))===JSON.stringify(before),'Standalone detection modified records');
  });
+ await run('Installation: display-mode changes simplify only the install block and preserve the date draft',async({page})=>{
+  await page.addInitScript(()=>{const match=window.matchMedia.bind(window);window.matchMedia=query=>{const media=match(query);if(query==='(display-mode: standalone)'){window.testInstalledMode=false;window.testInstalledMedia=media;Object.defineProperty(media,'matches',{get:()=>window.testInstalledMode});}return media;};});
+  await page.reload({waitUntil:'networkidle'});await go(page,'settings');await page.locator('#startDate').fill('2026-10-16');await offerInstall(page);
+  await page.locator('#settingsForm').evaluate(form=>{window.installDateForm=form;});
+  await page.evaluate(()=>{window.testInstalledMode=true;window.testInstalledMedia.dispatchEvent(new Event('change'));});
+  assert(await page.locator('#appInstallSection').isHidden()&&await page.locator('#installAppButton').count()===0,'Installed mode does not simplify Settings');
+  await page.evaluate(()=>{window.testInstalledMode=false;window.testInstalledMedia.dispatchEvent(new Event('change'));});
+  assert(await page.locator('#installAppButton').isEnabled(),'Browser installation offer was lost when returning from installed mode');
+  assert(await page.locator('#startDate').inputValue()==='2026-10-16'&&await page.locator('#settingsForm').evaluate(form=>form===window.installDateForm),'Display-mode transition erased or replaced the date form');
+ });
+ await run('Quick metric: remember the region across reloads without retaining values, notes or old dates',async({page})=>{
+  const before=await state(page);await go(page,'measure');await page.locator('#quickMetric').selectOption('waist');await page.locator('#quickValue').fill('82.5');await page.locator('#quickDate').fill('2026-01-02');await page.locator('#quickForm .help-extra summary').click();await page.locator('#quickNote').fill('Synthetic unsaved note');
+  await page.reload({waitUntil:'networkidle'});await go(page,'measure');
+  assert(await page.locator('#quickMetric').inputValue()==='waist','Selected region was not remembered');
+  assert(await page.locator('#quickValue').inputValue()===''&&await page.locator('#quickNote').inputValue()===''&&await page.locator('#quickDate').inputValue()!=='2026-01-02','Remembering a region retained old measurement data');
+  assert(JSON.stringify(await state(page))===JSON.stringify(before),'Remembering a region changed records or synchronized preferences');
+ });
+ await run('Quick metric: dashboard shortcuts remember only the selected region',async({page})=>{
+  await page.locator('[data-action="quickMetric"][data-metric="hip"]').click();await page.reload({waitUntil:'networkidle'});await go(page,'measure');
+  assert(await page.locator('#quickMetric').inputValue()==='hip'&&await page.locator('#quickValue').inputValue()==='','Dashboard shortcut was not remembered safely');
+  assert(await page.evaluate(key=>localStorage.getItem(key),QUICK_METRIC_KEY)==='hip','Region preference was not saved on this device');
+ },{seed:filledState()});
+ await run('Quick metric: invalid device preference falls back to a valid empty registration',async({page})=>{
+  await page.addInitScript(key=>localStorage.setItem(key,'not-a-body-region'),QUICK_METRIC_KEY);await page.reload({waitUntil:'networkidle'});await go(page,'measure');
+  assert(await page.locator('#quickMetric').inputValue()==='weight'&&await page.locator('#quickValue').inputValue()==='','Malformed region preference broke quick registration');
+ });
+ await run('Undo: restore the same measurement and preserve another unsaved draft',async({page})=>{
+  await go(page,'measure');const before=await state(page),id='m_test_waist_new';await page.locator('#quickValue').fill('76.1');
+  await page.locator('[data-action="deleteMetric"][data-id="'+id+'"]').click();const removed=await state(page);assert(removed.metricEntries[id].deleted===true,'Delete did not retain its deletion marker');
+  assert(await page.locator('#toast [data-action="undoDelete"]').isVisible(),'Deletion has no undo action');
+  await snap(page,'320-undo-deletion');
+  const bounds=await page.locator('#toast').boundingBox();assert(bounds.x>=0&&bounds.x+bounds.width<=321,'Undo message overflows mobile viewport');
+  await page.locator('#toast [data-action="undoDelete"]').click();const restored=await state(page),entry=restored.metricEntries[id];
+  assert(entry.deleted===false&&entry.value===before.metricEntries[id].value&&entry.date===before.metricEntries[id].date&&entry.note===before.metricEntries[id].note,'Undo did not restore the original measurement');
+  assert(restored.meta.clock['metricEntries.'+id]>removed.meta.clock['metricEntries.'+id],'Restored record cannot supersede its synced deletion marker');
+  assert(await page.locator('#quickValue').inputValue()==='76.1','Undo erased the unsaved quick-registration draft');
+  assert(JSON.stringify(restored.metricEntries.m_test_weight_new)===JSON.stringify(before.metricEntries.m_test_weight_new),'Undo changed an unrelated measurement');
+ },{width:320,seed:filledState(),acceptDialogs:true});
+ await run('Undo: another save retains the exclusion action without undoing the new record',async({page})=>{
+  await go(page,'measure');const id='m_test_hip_new';await page.locator('[data-action="deleteMetric"][data-id="'+id+'"]').click();await page.locator('#quickValue').fill('75.9');await page.locator('#quickForm button[type="submit"]').click();
+  assert(await page.locator('#toast [data-action="undoDelete"]').isVisible()&&(await page.locator('#toast').innerText()).includes('Exclusão de Quadril'),'Another notification hid or mislabelled the undo action');
+  await page.locator('#toast [data-action="undoDelete"]').click();const s=await state(page);
+  assert(s.metricEntries[id].deleted===false&&Object.values(s.metricEntries).some(e=>!e.deleted&&e.metric==='weight'&&e.value===75.9),'Undo reverted the wrong action or lost the new record');
+ },{seed:filledState(),acceptDialogs:true});
+ await run('Undo: the action expires after ten seconds and preserves the deletion',async({page})=>{
+  await go(page,'measure');const id='m_test_waist_new';await page.locator('[data-action="deleteMetric"][data-id="'+id+'"]').click();await page.waitForTimeout(10200);
+  assert(await page.locator('#toast [data-action="undoDelete"]').count()===0&&(await state(page)).metricEntries[id].deleted===true,'Expired undo is still available or silently restored a record');
+ },{seed:filledState(),acceptDialogs:true});
+ await run('Sync time: only verified synthetic synchronization creates a device-local timestamp',async({context,page})=>{
+  const before=await state(page),mock=await mockGist(context,before);await startMockSync(page);await waitSyncSuccess(page);
+  const saved=await page.evaluate(key=>localStorage.getItem(key),SYNC_CONFIRM_KEY),confirmation=JSON.parse(saved);
+  assert(confirmation.gistId===TEST_GIST_ID&&Number.isFinite(Date.parse(confirmation.at)),'Verified sync did not save its confirmation time');
+  assert(await page.locator('#syncLastConfirmed').isVisible()&&(await page.locator('#syncLastConfirmed').innerText()).includes('às'),'Confirmation time has no readable local date and time');
+  await snap(page,'390-sync-confirmed-time');
+  assert(!(await state(page)).meta.lastSyncConfirmation,'Device confirmation leaked into synchronized records');
+  await page.reload({waitUntil:'networkidle'});await page.locator('.sync-trigger').click();
+  assert(await page.locator('#syncLastConfirmed').isVisible()&&await page.evaluate(key=>localStorage.getItem(key),SYNC_CONFIRM_KEY)===saved,'Confirmation history was lost after reopening the app');
+  assert(!(await page.locator('#syncState').getAttribute('class')).includes('sync-ok'),'Historical time incorrectly claims a fresh verification');
+  mock.mode='invalid';await page.locator('#gistToken').fill(TEST_GIST_TOKEN);await page.locator('#gistRemember').uncheck();await page.locator('#syncMainButton').click();await page.waitForFunction(()=>document.getElementById('syncState').classList.contains('sync-error'));
+  assert(await page.evaluate(key=>localStorage.getItem(key),SYNC_CONFIRM_KEY)===saved,'Failed synchronization changed the last confirmed time');
+  await page.locator('[data-action="gistRemoveToken"]').click();assert(await page.locator('#syncLastConfirmed').isHidden()&&await page.evaluate(key=>localStorage.getItem(key),SYNC_CONFIRM_KEY)===null,'Disconnect did not clear device confirmation history');
+ },{seed:filledState(),acceptDialogs:true});
+ await run('Sync time: a failed first connection never displays imported sync metadata as device confirmation',async({context,page})=>{
+  const mock=await mockGist(context,await state(page));mock.mode='invalid';await startMockSync(page);await page.waitForFunction(()=>document.getElementById('syncState').classList.contains('sync-error'));
+  assert(await page.locator('#syncLastConfirmed').isHidden()&&await page.evaluate(key=>localStorage.getItem(key),SYNC_CONFIRM_KEY)===null,'Failed first connection invented a confirmation');
+ },{seed:(()=>{const s=filledState();s.meta.lastSyncAt='2026-01-01T12:00:00.000Z';return s;})()});
+ await run('Sync time: invalid or unrelated device histories remain hidden',async({page})=>{
+  for(const record of [{gistId:TEST_GIST_ID,at:'not-a-date'},{gistId:'another-synthetic-gist',at:'2026-10-20T12:00:00.000Z'}]){
+   await page.evaluate(({key,record,gist})=>{localStorage.setItem(key,JSON.stringify(record));localStorage.setItem('silhueta.gist.id.v1',gist);},{key:SYNC_CONFIRM_KEY,record,gist:TEST_GIST_ID});await page.reload({waitUntil:'networkidle'});await page.locator('.sync-trigger').click();assert(await page.locator('#syncLastConfirmed').isHidden(),'Invalid or unrelated confirmation time was displayed');
+  }
+ });
+ await run('Undo and sync: restoring a record supersedes a previously synchronized deletion',async({context,page})=>{
+  await go(page,'measure');const id='m_test_waist_new';await page.locator('[data-action="deleteMetric"][data-id="'+id+'"]').click();const tombstoneState=await state(page),mock=await mockGist(context,tombstoneState);await page.locator('#toast [data-action="undoDelete"]').click();
+  await startMockSync(page);await waitSyncSuccess(page);const remote=await decryptedFixture(mock.envelope);
+  assert(mock.patches>0&&remote.metricEntries[id].deleted===false&&(await state(page)).metricEntries[id].deleted===false,'Old remote deletion suppressed the restored measurement');
+ },{seed:filledState(),acceptDialogs:true});
+ await run('Undo and sync: a newer remote change is preserved instead of restoring a stale snapshot',async({context,page})=>{
+  await go(page,'measure');const id='m_test_waist_new';await page.locator('[data-action="deleteMetric"][data-id="'+id+'"]').click();const remote=await state(page),clock=Date.now()+60000;remote.metricEntries[id]={...remote.metricEntries[id],value:86.5,note:'Newer synthetic remote change',updatedAt:new Date(clock).toISOString()};remote.meta.clock['metricEntries.'+id]=clock;await mockGist(context,remote);
+  await startMockSync(page);await waitSyncSuccess(page);await page.locator('.sync-close').click();await page.locator('#toast [data-action="undoDelete"]').click();const latest=(await state(page)).metricEntries[id];
+  assert(latest.deleted===true&&latest.value===86.5&&latest.note==='Newer synthetic remote change','Undo overwrote a newer remote version');
+ },{seed:filledState(),acceptDialogs:true});
  await run('Installation: background browser signals preserve an unsaved measurement',async({page})=>{
   await go(page,'measure');await page.locator('#quickValue').fill('75.5');await offerInstall(page);
   await page.evaluate(()=>window.dispatchEvent(new Event('appinstalled')));
