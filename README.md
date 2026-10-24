@@ -1,6 +1,8 @@
-# Silhueta · versão 2.9.5 — clareza e agilidade no acompanhamento
+# Silhueta · versão 2.9.6 — clareza e agilidade no acompanhamento
 
 Aplicativo web instalável (PWA) para acompanhar medidas corporais, composição corporal, nutrição e evolução.
+
+A versão 2.9.6 corrige a separação entre a data e a ação de salvar em Configurações, o espaço antes das observações de Nutrição e o alinhamento de campos com rótulos de alturas diferentes. As metas alimentares se adaptam à largura do cartão e botões de formulários permitem quebra de linha. A auditoria cobre os formulários expandidos e as telas principais em dez larguras, de 320 a 1440 pixels.
 
 ## Atualização da versão
 A versão exibida ao final de **Configurações** vem de `APP_VERSION` em `index.html`. Em cada atualização, execute `node scripts/release.mjs patch` (ou uma versão X.Y.Z maior). O comando também atualiza o cache PWA e este README. A URL do manifest e a identidade de instalação permanecem fixas. A integração contínua verifica a consistência com `node scripts/release.mjs --check`.

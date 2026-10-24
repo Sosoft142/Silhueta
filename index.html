@@ -532,6 +532,19 @@ body{font-size:15px;line-height:1.55;background:#fcfafd}
 .brand-sm .brand-symbol{width:26px;height:44px;object-fit:contain;border-radius:0;flex:none}
 .app-version{max-width:790px;margin:18px 0 0;padding:15px 0 3px;border-top:1px solid var(--border);text-align:center;color:var(--sub);font-size:12px;line-height:1.5}
 #installAppButton:disabled{opacity:.65;cursor:default;box-shadow:none}
+/* Form spacing follows the available card width on mobile and desktop. */
+#settingsForm{display:grid;gap:16px}
+.settings-summary .small-muted{min-width:0;line-height:1.6}
+.form-grid,.quick-fields,.batch-metrics{align-items:end}
+.detail-panel>.form-grid+.field{margin-top:16px}
+.inline-goal-form .form-grid,.inline-macro-form .form-grid{margin-bottom:16px}
+.inline-macro-form .form-grid{grid-template-columns:repeat(auto-fit,minmax(min(100%,160px),1fr))}
+form .btn,.settings-links .btn{max-width:100%;white-space:normal;text-align:center}
+.btn svg{flex-shrink:0}
+@media(max-width:660px){
+ .settings-summary{flex-direction:column;align-items:stretch;gap:12px}
+ .settings-summary .btn{width:100%}
+}
 </style>
 </head>
 <body>
@@ -568,7 +581,7 @@ body{font-size:15px;line-height:1.55;background:#fcfafd}
 <input type="file" id="importFile" accept=".json,.csv,text/csv,application/json" hidden />
 <script>
 (()=>{'use strict';
-const APP_VERSION='2.9.5';
+const APP_VERSION='2.9.6';
 const STORAGE_KEY='silhueta.app.v1', VERSION=7;
 // Keep installation state in memory: neither a missing prompt nor an accepted
 // request proves that an Android WebAPK is present on this device.
