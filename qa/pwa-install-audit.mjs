@@ -47,6 +47,8 @@ async function openProfile(options={}){
  await ctx.route('https://api.github.com/**',route=>route.abort());
  await ctx.addInitScript(data=>{if(!localStorage.getItem('silhueta.app.v1'))localStorage.setItem('silhueta.app.v1',JSON.stringify(data));},seed);
  const page=ctx.pages()[0]||await ctx.newPage();page.setDefaultTimeout(20000);page.on('pageerror',e=>runtimeErrors.push(e.message));
+ page.on('crash',()=>runtimeErrors.push('Browser renderer crashed'));
+ page.on('dialog',async dialog=>{runtimeErrors.push('Unexpected '+dialog.type()+': '+dialog.message());await dialog.dismiss().catch(()=>{});});
  page.on('request',r=>pendingRequests.add(r));page.on('requestfinished',r=>pendingRequests.delete(r));page.on('requestfailed',r=>pendingRequests.delete(r));
  // A service worker and Chrome's background installation checks need not be idle
  // for the page to be usable. Check the rendered app and worker explicitly.
@@ -70,13 +72,16 @@ try{
   await page.evaluate(async()=>{const c=await caches.open('another-project-cache');await c.put('/another-project-marker',new Response('preserve'));});
   phase='current';await page.evaluate(async()=>{const r=await navigator.serviceWorker.getRegistration();await r.update();});
   await page.waitForFunction(async name=>{const keys=await caches.keys();return keys.includes(name)&&!keys.includes('silhueta-app-v2.9.3');},cacheName);
+  await waitForWorker(page);
   await page.reload({waitUntil:'domcontentloaded'});await readyApp(page);
   const info=await page.evaluate(async()=>({scope:(await navigator.serviceWorker.ready).scope,updateViaCache:(await navigator.serviceWorker.ready).updateViaCache,keys:await caches.keys(),saved:JSON.parse(localStorage.getItem('silhueta.app.v1')).metricEntries.m_pwa_test}));
   assert.equal(info.scope,base);assert.equal(info.updateViaCache,'none');assert(info.keys.includes('another-project-cache'));assert.equal(info.saved.value,75);assert.equal(info.saved.note,seed.metricEntries.m_pwa_test.note);assert.equal(info.saved.date,'2026-10-20');return info;
  });
  phase='current';
  await check('Canonical manifest parses and preserves the original native App ID',async()=>{
-  await page.reload({waitUntil:'domcontentloaded'});await readyApp(page);current=await manifestSnapshot(page);assert.equal(current.manifest.url,base+'manifest.webmanifest');assert.equal(current.manifest.errors.length,0);
+  // Inspect the first navigation after the upgrade; a second immediate reload
+  // can race Chrome's background manifest checks and would hide stale first loads.
+  await readyApp(page);current=await manifestSnapshot(page);assert.equal(current.manifest.url,base+'manifest.webmanifest');assert.equal(current.manifest.errors.length,0);
   assert.equal(JSON.parse(current.manifest.data).id,'/Silhueta/index.html');assert.equal(current.identity.appId,legacy?.identity.appId,'Adding explicit id changed the installed application identity');return{identity:current.identity,manifestUrl:current.manifest.url};
  });
  await check('Desktop Chromium reports no installability errors',async()=>{const data=await manifestSnapshot(page,true);assert.deepEqual(data.installability.installabilityErrors,[]);return data.installability;});

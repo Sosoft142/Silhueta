@@ -43,8 +43,12 @@ async function formGeometry(page,label,pairs=[]){
    for(const grid of form.querySelectorAll('.form-grid,.quick-fields,.batch-metrics')){
     if(!visible(grid))continue;const columns=getComputedStyle(grid).gridTemplateColumns.split(' ').filter(Boolean).length;
     const fields=Array.from(grid.children).filter(el=>el.classList.contains('field')&&visible(el));
-    for(let i=0;i<fields.length;i+=columns){const row=fields.slice(i,i+columns),bottoms=row.map(el=>el.querySelector('input,select,textarea')).filter(Boolean).map(el=>rect(el).bottom);
-     if(bottoms.length>1&&Math.max(...bottoms)-Math.min(...bottoms)>1.5)issues.push('Inputs are misaligned within '+form.id+' row '+(Math.floor(i/columns)+1));
+    // A field may span several columns. Compare fields that actually share a
+    // rendered row instead of assuming a fixed number of items per row.
+    for(let i=0;i<fields.length;i++)for(let j=i+1;j<fields.length;j++){
+     const a=rect(fields[i]),b=rect(fields[j]),first=fields[i].querySelector('input,select,textarea'),second=fields[j].querySelector('input,select,textarea');
+     const shareRow=Math.min(a.bottom,b.bottom)-Math.max(a.top,b.top)>1;
+     if(shareRow&&first&&second&&Math.abs(rect(first).bottom-rect(second).bottom)>1.5)issues.push('Inputs are misaligned within '+form.id+': '+first.id+' / '+second.id);
     }
     grids.push({form:form.id,columns,fieldWidths:fields.map(el=>rect(el).width)});
    }
