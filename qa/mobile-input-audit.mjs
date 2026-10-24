@@ -24,6 +24,41 @@ async function openPage(width=390,seed=emptyState(),acceptDialogs=false){
 }
 async function go(page,view){let link=page.locator('[data-action="go"][data-view="'+view+'"]:visible').first();if(!(await link.count())){await page.locator('[data-action="openDrawer"]:visible').first().click();link=page.locator('#mobileDrawer [data-view="'+view+'"]:visible').first();}await link.click();await page.waitForTimeout(200);}
 async function state(page){return page.evaluate(()=>JSON.parse(localStorage.getItem('silhueta.app.v1')));}
+async function formGeometry(page,label,pairs=[]){
+ const data=await page.evaluate(pairs=>{
+  const rect=el=>{const r=el.getBoundingClientRect();return{left:r.left,right:r.right,top:r.top,bottom:r.bottom,width:r.width,height:r.height};};
+  const visible=el=>el.getClientRects().length&&el.getBoundingClientRect().width>0&&el.getBoundingClientRect().height>0;
+  const forms=Array.from(document.querySelectorAll('#main form')).filter(visible),issues=[],grids=[],controls=[];
+  for(const form of forms){
+   const bounds=rect(form),items=Array.from(form.querySelectorAll('input:not([type="hidden"]),select,textarea,button')).filter(visible);
+   for(const el of items){const r=rect(el),name=el.id||el.textContent.trim();controls.push({name,...r});
+    if(r.left<bounds.left-1||r.right>bounds.right+1)issues.push(name+' exceeds '+form.id+' width');
+    if(el.scrollWidth>el.clientWidth+2&&el.tagName==='BUTTON')issues.push(name+' clips its content');
+    if(r.height<40)issues.push(name+' has a compressed control height');
+   }
+   for(let i=0;i<items.length;i++)for(let j=i+1;j<items.length;j++){
+    const a=rect(items[i]),b=rect(items[j]);
+    if(Math.min(a.right,b.right)-Math.max(a.left,b.left)>1&&Math.min(a.bottom,b.bottom)-Math.max(a.top,b.top)>1)issues.push('Overlapping controls: '+(items[i].id||items[i].textContent.trim())+' / '+(items[j].id||items[j].textContent.trim()));
+   }
+   for(const grid of form.querySelectorAll('.form-grid,.quick-fields,.batch-metrics')){
+    if(!visible(grid))continue;const columns=getComputedStyle(grid).gridTemplateColumns.split(' ').filter(Boolean).length;
+    const fields=Array.from(grid.children).filter(el=>el.classList.contains('field')&&visible(el));
+    for(let i=0;i<fields.length;i+=columns){const row=fields.slice(i,i+columns),bottoms=row.map(el=>el.querySelector('input,select,textarea')).filter(Boolean).map(el=>rect(el).bottom);
+     if(bottoms.length>1&&Math.max(...bottoms)-Math.min(...bottoms)>1.5)issues.push('Inputs are misaligned within '+form.id+' row '+(Math.floor(i/columns)+1));
+    }
+    grids.push({form:form.id,columns,fieldWidths:fields.map(el=>rect(el).width)});
+   }
+  }
+  const gaps=pairs.map(([above,below])=>{const a=document.querySelector(above),b=document.querySelector(below);return{above,below,gap:a&&b?rect(b).top-rect(a).bottom:null};});
+  for(const pair of gaps)if(pair.gap===null||pair.gap<12)issues.push('Insufficient space: '+pair.above+' → '+pair.below+' = '+pair.gap);
+  const date=document.getElementById('startDate'),save=document.querySelector('[data-action="saveSettings"]');
+  if(date&&save&&innerWidth<=660&&Math.abs(rect(date).width-rect(save).width)>1)issues.push('Mobile date input and save button do not share the same width');
+  const macro=document.getElementById('macroForm');
+  if(macro&&visible(macro))for(const input of macro.querySelectorAll('input'))if(rect(input).width<Math.min(160,rect(macro).width)-1)issues.push(input.id+' is too narrow for its values and placeholder');
+  return{issues,gaps,grids,controlCount:controls.length,viewport:innerWidth,pageWidth:document.documentElement.scrollWidth};
+ },pairs);
+ assert(data.issues.length===0,label+': '+JSON.stringify(data));assert(data.pageWidth<=data.viewport+1,label+' creates horizontal overflow');return{label,...data};
+}
 // Synthetic browser signals exercise the app's UI, not Android's WebAPK installer.
 async function offerInstall(page,rejectPrompt=false){return page.evaluate(reject=>{
  const fixture=window.installAudit={calls:0};
@@ -39,7 +74,8 @@ async function run(name,fn,opts={}){
 try{
  const local=await readFile(path.join(root,'index.html'));let live={};try{const r=await fetch('https://sosoft142.github.io/Silhueta/',{signal:AbortSignal.timeout(20000)}),bytes=Buffer.from(await r.arrayBuffer());live={httpStatus:r.status,sameAsRepository:local.equals(bytes),sha256:createHash('sha256').update(bytes).digest('hex')};}catch(e){live={error:e.message};}
  results.push({name:'Published source comparison',status:live.sameAsRepository?'pass':'info',...live,repositoryBlob:createHash('sha1').update('blob '+local.length+'\0').update(local).digest('hex')});
- for(const width of [320,360,390,414,768,1024,1440]){
+ const layoutWidths=[320,360,390,414,660,768,851,1024,1101,1440];
+ for(const width of layoutWidths){
   await run('Layout normal and navigation '+width+'px',async({page,errors})=>{
    const checks=[];
    for(const view of ['dashboard','measure','trends','nutrition','settings','help']){
@@ -52,6 +88,34 @@ try{
    assert(errors.length===0,'Browser errors: '+errors.join(' | '));return{checks};
   },{width,seed:filledState()});
  }
+ for(const width of layoutWidths)await run('Form spacing, alignment and expanded controls '+width+'px',async({page})=>{
+  const before=await state(page),checks=[];
+  await go(page,'settings');
+  checks.push(await formGeometry(page,'Settings', [['#startDate','.settings-summary']]));
+  if(width===390||width===1440)await snap(page,width+'-settings-spacing');
+  await go(page,'measure');await page.locator('#quickForm .help-extra summary').click();
+  checks.push(await formGeometry(page,'Quick registration', [['#quickNote','.quick-actions']]));
+  await page.locator('[data-action="measureMode"][data-mode="batch"]').click();
+  checks.push(await formGeometry(page,'Batch registration', [['#batchDate','.batch-metrics'],['.batch-metrics','#batchForm button[type="submit"]']]));
+  if(width===320)await page.locator('#batchForm button[type="submit"]').evaluate(el=>el.scrollIntoView({block:'center'}));
+  if(width===320)await snap(page,'320-batch-actions');
+  await go(page,'trends');await page.locator('.inline-goal-form summary').click();
+  checks.push(await formGeometry(page,'Body goals', [['#goalForm .form-grid','#goalForm [data-action="saveGoals"]']]));
+  await go(page,'nutrition');
+  if(!(await page.locator('#nutritionForm .detail-panel').evaluate(el=>el.open)))await page.locator('#nutritionForm .detail-panel summary').click();
+  await page.locator('.inline-macro-form summary').click();
+  checks.push(await formGeometry(page,'Nutrition and food goals', [
+   ['#nutritionForm .measure-extras','#nutritionForm .detail-panel > .field'],
+   ['#nutritionForm .detail-panel','#nutritionForm .form-actions'],
+   ['#macroForm .form-grid','#macroForm [data-action="saveMacroTargets"]']
+  ]));
+  if(width===390)await page.locator('#notes').evaluate(el=>el.scrollIntoView({block:'center'}));
+  if(width===390)await snap(page,'390-nutrition-spacing');
+  if(width===1440)await page.locator('#macroForm').evaluate(el=>el.scrollIntoView({block:'center'}));
+  if(width===1440)await snap(page,'1440-food-goals-spacing');
+  assert(JSON.stringify(await state(page))===JSON.stringify(before),'Layout inspection modified existing records');
+  return{checks};
+ },{width,seed:filledState()});
  await run('Empty mobile dashboard and mobile drawer',async({page})=>{await snap(page,'390-empty-home');await page.locator('[data-action="openDrawer"]:visible').first().click();assert(await page.locator('#mobileDrawer').isVisible(),'Drawer did not open');await snap(page,'390-menu');await page.keyboard.press('Escape');assert(await page.locator('#mobileDrawer').isHidden(),'Escape did not close drawer');});
  await run('Quick registration repeats, isolated edit, isolated delete, persistence',async({page})=>{
   await go(page,'measure');
