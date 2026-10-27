@@ -152,6 +152,52 @@ try{
   page.removeAllListeners('dialog');page.on('dialog',d=>d.accept());await page.locator('[data-action="deleteMetric"][data-id="'+ids[0]+'"]').click();s=await state(page);assert(s.metricEntries[ids[0]].deleted===true,'Delete did not create tombstone');
   await page.reload({waitUntil:'networkidle'});s=await state(page);assert(s.metricEntries[ids[1]].value===75.6,'Persisted value lost');return{remainingRecords:1};
  });
+ for(const width of [320,390,1440])await run('Quick reference: latest real date, region changes and drafts at '+width+'px',async({page})=>{
+  const before=await state(page);await go(page,'measure');
+  assert((await page.locator('#quickLastMeasurement').innerText()).includes('74,5 kg em 20/10/2026'),'Weight reference did not use the last real weighing');
+  await page.locator('#quickDate').fill('2026-10-18');await page.locator('#quickForm .help-extra summary').click();await page.locator('#quickNote').fill('Synthetic note to preserve');await page.locator('#quickValue').fill('75.5');
+  await page.locator('#quickMetric').selectOption('waist');const reference=await page.locator('#quickLastMeasurement').innerText();
+  assert(reference.includes('cintura: 84,5 cm em 20/10/2026'),'Reference used edit time, a deleted record or another region: '+reference);
+  assert(await page.locator('#quickValue').inputValue()===''&&await page.locator('#quickDate').inputValue()==='2026-10-18'&&await page.locator('#quickNote').inputValue()==='Synthetic note to preserve','Changing the reference filled a value or erased date/notes');
+  await page.locator('#quickValue').fill('83.7');await page.locator('#historyFilter').selectOption('waist');
+  assert(await page.locator('#quickValue').inputValue()==='83.7'&&(await page.locator('#quickLastMeasurement').innerText())===reference,'A history render changed the draft or reference');
+  assert(await page.locator('#quickValue').getAttribute('aria-describedby')==='quickLastMeasurement','Value input is not associated with its reference');
+  const geometry=await page.locator('#quickLastMeasurement').evaluate(el=>{const r=el.getBoundingClientRect(),fields=document.querySelector('.quick-fields').getBoundingClientRect(),next=el.nextElementSibling.getBoundingClientRect();return{left:r.left,right:r.right,width:innerWidth,gapBefore:r.top-fields.bottom,gapAfter:next.top-r.bottom};});
+  assert(geometry.left>=0&&geometry.right<=width+1&&geometry.gapBefore>=12&&geometry.gapAfter>=12,'Reference is clipped or touches its neighbours: '+JSON.stringify(geometry));
+  assert(JSON.stringify(await state(page))===JSON.stringify(before),'Reading the reference changed saved data');
+  await page.locator('#quickForm').evaluate(el=>el.scrollIntoView({block:'start',behavior:'instant'}));await snap(page,width+'-last-measurement-reference');
+ },{width,seed:(()=>{const s=filledState();s.profile.baselineWeight=90;s.metricEntries.m_edited_old_waist={metric:'waist',value:99,date:'2026-10-10',updatedAt:'2026-10-27T12:00:00.000Z'};s.metricEntries.m_deleted_waist={metric:'waist',value:93,date:'2026-10-26',deleted:true,updatedAt:'2026-10-27T12:00:00.000Z'};return s;})()});
+ await run('Quick reference: missing history never presents a profile value as a measurement',async({page})=>{
+  await go(page,'measure');assert((await page.locator('#quickLastMeasurement').innerText()).includes('Nenhuma medição de peso registrada'),'Profile reference appeared as a weighing');
+  await page.locator('#quickMetric').selectOption('bodyFat');assert((await page.locator('#quickLastMeasurement').innerText()).includes('Nenhuma medição de gordura corporal registrada')&&await page.locator('#quickValue').inputValue()==='','An empty region has invented values');
+ },{seed:(()=>{const s=emptyState();s.profile.baselineWeight=75;return s;})()});
+ for(const width of [320,1440])await run('Save confirmation: exact values, dates, units and editing at '+width+'px',async({page})=>{
+  await go(page,'measure');const before=await state(page);await page.locator('#quickMetric').selectOption('waist');await page.locator('#quickValue').fill('84.2');await page.locator('#quickDate').fill('2026-10-02');await page.locator('#quickForm button[type="submit"]').click();
+  assert((await page.locator('#toast .toast-message').innerText())==='Medição salva neste aparelho: Cintura · 84,2 cm · 02/10/2026.','Saving did not confirm the exact stored measurement');
+  assert((await page.locator('#quickLastMeasurement').innerText()).includes('84,5 cm em 20/10/2026')&&await page.locator('#quickValue').inputValue()==='','Backdated saving replaced the latest reference or refilled the input');
+  const saved=await state(page),id=Object.keys(saved.metricEntries).find(key=>!before.metricEntries[key]);assert(id,'No independent measurement was created');
+  await page.locator('[data-action="editMetric"][data-id="'+id+'"]').click();await page.locator('#quickValue').fill('83.1');await page.locator('#quickDate').fill('2026-10-23');await page.locator('#quickForm button[type="submit"]').click();
+  const edited=await state(page);assert(edited.metricEntries[id].value===83.1&&Object.keys(edited.metricEntries).length===Object.keys(saved.metricEntries).length,'Editing duplicated the record');
+  assert((await page.locator('#toast .toast-message').innerText())==='Registro atualizado neste aparelho: Cintura · 83,1 cm · 23/10/2026.'&&(await page.locator('#quickLastMeasurement').innerText()).includes('83,1 cm em 23/10/2026'),'Editing did not update both confirmation and latest reference');
+  for(const [metric,value,label,unit]of [['weight','74.2','Peso','kg'],['bodyFat','22.3','Gordura corporal','%']]){
+   await page.locator('#quickMetric').selectOption(metric);await page.locator('#quickValue').fill(value);await page.locator('#quickDate').fill('2026-10-24');await page.locator('#quickForm button[type="submit"]').click();
+   const message=await page.locator('#toast .toast-message').innerText();assert(message.includes(label+' · '+value.replace('.',',')+' '+unit+' · 24/10/2026.'),'Wrong unit, value or date in confirmation: '+message);
+  }
+  await snap(page,width+'-detailed-save-confirmation');const bounds=await page.locator('#toast').boundingBox(),nav=await page.locator('#mobileNav').isVisible()?await page.locator('#mobileNav').boundingBox():null;
+  assert(bounds.x>=0&&bounds.x+bounds.width<=width+1&&(!nav||bounds.y+bounds.height<=nav.y+1),'Detailed confirmation is clipped or overlaps mobile navigation');
+ },{width,seed:filledState()});
+ await run('Quick reference: delete and undo refresh the reference without losing the draft',async({page})=>{
+  await go(page,'measure');await page.locator('#quickMetric').selectOption('waist');await page.locator('#quickValue').fill('83.7');
+  await page.locator('[data-action="deleteMetric"][data-id="m_test_waist_new"]').click();assert((await page.locator('#quickLastMeasurement').innerText()).includes('85,0 cm em 01/10/2026'),'Deletion left the removed value in the reference');
+  await page.locator('#toast [data-action="undoDelete"]').click();assert((await page.locator('#quickLastMeasurement').innerText()).includes('84,5 cm em 20/10/2026')&&await page.locator('#quickValue').inputValue()==='83.7','Undo did not restore the reference safely');
+ },{seed:filledState(),acceptDialogs:true});
+ await run('Save confirmation: a local storage failure never claims a successful save',async({page})=>{
+  await go(page,'measure');const before=await state(page);await page.locator('#quickValue').fill('75.2');
+  await page.evaluate(()=>{const write=Storage.prototype.setItem;Storage.prototype.setItem=function(key,value){if(key==='silhueta.app.v1')throw new DOMException('Synthetic quota failure','QuotaExceededError');return write.call(this,key,value);};});
+  await page.locator('#quickForm button[type="submit"]').click();const message=await page.locator('#toast .toast-message').innerText();
+  assert(message.includes('Não foi possível salvar neste aparelho')&&!message.includes('Medição salva'),'Failed storage still shows a success confirmation');
+  assert(JSON.stringify(await state(page))===JSON.stringify(before)&&await page.locator('#storageNotice .notice').isVisible(),'Failed local write changed stored records or hid the recovery notice');
+ });
  await run('Native number constraints block weight below minimum',async({page})=>{await go(page,'measure');await page.locator('#quickValue').fill('19');assert(await page.locator('#quickValue').evaluate(el=>el.validity.rangeUnderflow),'Browser did not detect minimum');await page.locator('#quickForm button[type="submit"]').click();assert(Object.keys((await state(page)).metricEntries).length===0,'Invalid weight saved');});
  await run('Invalid date is rejected before saving',async({page})=>{await go(page,'measure');await page.locator('#quickValue').fill('75');await page.locator('#quickDate').evaluate(el=>el.value='2026-02-30');await page.locator('#quickForm button[type="submit"]').click();assert(Object.keys((await state(page)).metricEntries).length===0,'Impossible date saved');});
  await run('Batch rejection is atomic',async({page})=>{await go(page,'measure');await page.locator('[data-action="measureMode"][data-mode="batch"]').click();await page.locator('#batch_weight').fill('75');await page.locator('#batch_waist').fill('85');await page.locator('#batch_bodyFat').fill('150');await page.locator('#batchForm button[type="submit"]').click();assert(Object.keys((await state(page)).metricEntries).length===0,'Batch partially saved');});

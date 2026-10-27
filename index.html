@@ -551,6 +551,7 @@ form .btn,.settings-links .btn{max-width:100%;white-space:normal;text-align:cent
 .toast-undo-context{flex-basis:100%;font-size:12px;font-weight:500;line-height:1.5;color:#eee4ed;overflow-wrap:anywhere}
 .toast-action{min-height:44px;padding:8px 12px;border:1px solid #d3b4cc;border-radius:9px;background:#fff;color:#713c60;font-weight:750;pointer-events:none}
 .toast.show .toast-action{pointer-events:auto}
+.quick-last-measurement{font-size:13px;line-height:1.6;color:var(--sub);margin:14px 0 16px;overflow-wrap:anywhere}
 </style>
 </head>
 <body>
@@ -588,7 +589,7 @@ form .btn,.settings-links .btn{max-width:100%;white-space:normal;text-align:cent
 <input type="file" id="importFile" accept=".json,.csv,text/csv,application/json" hidden />
 <script>
 (()=>{'use strict';
-const APP_VERSION='2.9.7';
+const APP_VERSION='2.9.8';
 const STORAGE_KEY='silhueta.app.v1', VERSION=7;
 const QUICK_METRIC_PREF_KEY='silhueta.ui.quickMetric';
 // Keep installation state in memory: neither a missing prompt nor an accepted
@@ -786,14 +787,14 @@ function pickWeek(){const baseline=record(0);if(!Number.isFinite(baseline.waist)
 function metricStatus(r){if(!realData(r))return 'Pendente';return Number.isFinite(r.weight)&&Number.isFinite(r.waist)&&Number.isFinite(r.hip)?'Completo':'Parcial'}
 let pendingDeletion=null,deletionUndoTimer=0;
 function clearDeletionUndo(){pendingDeletion=null;clearTimeout(deletionUndoTimer);const el=document.getElementById('toast');el.querySelector('.toast-action')?.remove();el.querySelector('.toast-undo-context')?.remove();}
-function toast(msg){
+function toast(msg,duration=3200){
  const el=document.getElementById('toast'),message=document.createElement('span');message.className='toast-message';message.textContent=msg;el.replaceChildren(message);
  const remaining=pendingDeletion?pendingDeletion.expiresAt-Date.now():0;
  if(remaining>0){
   const action=document.createElement('button');action.type='button';action.className='toast-action';action.dataset.action='undoDelete';action.textContent='Desfazer';action.setAttribute('aria-label','Desfazer exclusão de '+BODY_LABELS[pendingDeletion.entry.metric]);el.append(action);
   const context=document.createElement('span');context.className='toast-undo-context';context.textContent='Exclusão de '+BODY_LABELS[pendingDeletion.entry.metric]+' · '+fmtMetric(pendingDeletion.entry.metric,pendingDeletion.entry.value);el.append(context);
  }
- el.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>{el.classList.remove('show');el.replaceChildren();},Math.max(3200,remaining));
+ el.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>{el.classList.remove('show');el.replaceChildren();},Math.max(duration,remaining));
 }
 function offerDeletionUndo(id,entry){clearDeletionUndo();pendingDeletion={id,entry:{...entry},deletedAt:state.metricEntries[id].updatedAt,expiresAt:Date.now()+10000};deletionUndoTimer=setTimeout(clearDeletionUndo,10000);toast('Medição excluída.');}
 function undoLastDeletion(){
@@ -899,21 +900,24 @@ function anatomyGuide(){
  return `<details class="card anatomy-card anatomy-guide"><summary>Guia anatômico <span>Consultar onde e como medir</span></summary><div class="anatomy-guide-content"><p class="card-sub">Selecione uma região para consultar a ilustração e as instruções, sem sair desta página.</p><div class="anatomy-shell"><div class="guide-pick"><div class="guide-region-list">${GUIDE_REGIONS.map(([metric,label])=>`<button type="button" data-action="guideMetric" data-metric="${metric}" class="guide-region ${selected===metric?'selected':''}" aria-pressed="${selected===metric}"><span>${esc(label)}</span>${ico('chevron',13)}</button>`).join('')}</div><div class="guide-scroll-label">Deslize para ver outras regiões ↓</div></div><div class="guide-tip" role="region" aria-live="polite" aria-label="Como medir: ${esc(BODY_LABELS[selected])}">${guideFigure(selected)}</div></div></div></details>`;
 }
 function metricOptions(selected){const fav=state.preferences.quickMetrics;let options=METRIC_KEYS.map(metric=>`<option value="${metric}" ${selected===metric?'selected':''}>${esc(BODY_LABELS[metric])} (${metricUnit(metric)})</option>`).join('');return `<select name="quickMetric" id="quickMetric" required>${options}</select>`}
+function quickLastMeasurementText(metric){const last=latestMetric(metric),label=BODY_LABELS[metric].toLocaleLowerCase('pt-BR');return last?'Último registro de '+label+': '+fmtMetric(metric,last.value)+(last.date?' em '+dateBR(last.date):' · data não informada')+'.':'Nenhuma medição de '+label+' registrada.';}
+function updateQuickLastMeasurement(){const reference=document.getElementById('quickLastMeasurement'),metric=document.getElementById('quickMetric')?.value;if(reference&&METRIC_KEYS.includes(metric))reference.textContent=quickLastMeasurementText(metric);}
 function measurement(){
  const current=ui.editEntryId?state.metricEntries[ui.editEntryId]:null;
  const selected=current?.metric||ui.quickMetric;
  const val=current&&!current.deleted?current.value:'';
  const date=current&&!current.deleted?current.date:nowISO();
- const quick=`<form id="quickForm" class="quick-form"><div class="quick-form-title"><h2>${current?'Editar medição':'Registro rápido'}</h2><p>Salve um valor de cada vez, sem substituir outros registros.</p></div><div class="quick-fields"><div class="field"><label for="quickMetric">Parte do corpo</label>${metricOptions(selected)}</div>${dateField('quickDate','Data da medição',date)}${numberField('quickValue','Valor',val,metricUnit(selected),selected==='weight'?20:selected==='bodyFat'?0:10,selected==='bodyFat'?100:300,'.1')}</div><details class="help-extra"><summary>Observações desta medição (opcional)</summary>${textField('quickNote','Anotações',current?.note||'','Ex.: após o treino, horário, condições...')}</details><div class="quick-actions"><button type="submit" class="btn btn-primary">${ico('check',16)} ${current?'Salvar alteração':'Salvar medição'}</button>${current?`<button type="button" class="btn btn-plain" data-action="cancelEditMetric">Cancelar edição</button>`:''}</div></form>`;
+ const quick=`<form id="quickForm" class="quick-form"><div class="quick-form-title"><h2>${current?'Editar medição':'Registro rápido'}</h2><p>Salve um valor de cada vez, sem substituir outros registros.</p></div><div class="quick-fields"><div class="field"><label for="quickMetric">Parte do corpo</label>${metricOptions(selected)}</div>${dateField('quickDate','Data da medição',date)}${numberField('quickValue','Valor',val,metricUnit(selected),selected==='weight'?20:selected==='bodyFat'?0:10,selected==='bodyFat'?100:300,'.1').replace('id="quickValue"','id="quickValue" aria-describedby="quickLastMeasurement"')}</div><p id="quickLastMeasurement" class="quick-last-measurement" aria-live="polite" aria-atomic="true">${esc(quickLastMeasurementText(selected))}</p><details class="help-extra"><summary>Observações desta medição (opcional)</summary>${textField('quickNote','Anotações',current?.note||'','Ex.: após o treino, horário, condições...')}</details><div class="quick-actions"><button type="submit" class="btn btn-primary">${ico('check',16)} ${current?'Salvar alteração':'Salvar medição'}</button>${current?`<button type="button" class="btn btn-plain" data-action="cancelEditMetric">Cancelar edição</button>`:''}</div></form>`;
  const batch=`<form id="batchForm" class="batch-form"><h2>Registrar várias medidas</h2><p>Use quando medir diferentes regiões no mesmo dia. Cada valor cria um registro independente.</p>${dateField('batchDate','Data dessas medidas',nowISO())}<div class="batch-metrics">${METRIC_KEYS.map(metric=>`<div class="field"><label for="batch_${metric}">${esc(BODY_LABELS[metric])} (${metricUnit(metric)})</label><input id="batch_${metric}" name="${metric}" type="number" inputmode="decimal" step="0.1" min="${metricRange(metric)[0]}" max="${metricRange(metric)[1]}" placeholder="—"/></div>`).join('')}</div><button type="submit" class="btn btn-primary">${ico('check',16)} Salvar medidas preenchidas</button></form>`;
  const links=`<div class="entry-mode"><button type="button" data-action="measureMode" data-mode="quick" class="${ui.measureMode==='quick'?'selected':''}" aria-pressed="${ui.measureMode==='quick'}">Registro rápido</button><button type="button" data-action="measureMode" data-mode="batch" class="${ui.measureMode==='batch'?'selected':''}" aria-pressed="${ui.measureMode==='batch'}">Várias medidas</button></div>`;
  return heading('Registrar medidas','Cada medição fica salva com sua própria data, mesmo dentro da mesma semana.',button('Ver evolução','trends','go','data-view="trends"','btn-soft'))+
  `<div class="measurement-layout has-anatomy"><div class="measure-main"><article class="card">${links}${ui.measureMode==='batch'?batch:quick}<button type="button" class="text-action measure-guide-link" data-action="openGuide">Consultar guia anatômico →</button></article></div><aside class="measure-aside"><div class="card"><h2>Sobre as datas</h2><p class="card-sub">Você pode registrar várias medidas da mesma região, inclusive no mesmo dia. O painel sempre usa a data da medição mais recente.</p><button class="text-action" data-action="go" data-view="help">Como medir com consistência →</button></div></aside><article class="card history-full-width"><div class="card-head"><div><h2>Histórico de medidas</h2><p class="card-sub">Editar ou excluir não altera outros registros.</p></div><span class="subtle-chip">${allMetricEntries().length} registro(s)</span></div>${historyList()}${legacyArchivedNotes()}</article><div class="anatomy-full-width">${anatomyGuide()}</div></div>`;
 }
 function saveQuick(form){
- if(!form.reportValidity())return;const d=inputObj(form);let id=ui.editEntryId;
- try{saveMetricEntry(d.quickMetric,d.quickValue,d.quickDate,id,d.quickNote)}catch(e){toast(e.message);return}
- ui.editEntryId=null;rememberQuickMetric(d.quickMetric);persist();toast(id?'Registro atualizado.':'Medição salva.');render({preserveDrafts:true,excludeForm:'quickForm'});
+ if(!form.reportValidity())return;const d=inputObj(form),id=ui.editEntryId;let savedId;
+ try{savedId=saveMetricEntry(d.quickMetric,d.quickValue,d.quickDate,id,d.quickNote)}catch(e){toast(e.message);return}
+ const entry=state.metricEntries[savedId];ui.editEntryId=null;rememberQuickMetric(d.quickMetric);persist();
+ toast(storageOK?(id?'Registro atualizado':'Medição salva')+' neste aparelho: '+BODY_LABELS[entry.metric]+' · '+fmtMetric(entry.metric,entry.value)+' · '+dateBR(entry.date)+'.':'Não foi possível salvar neste aparelho. Exporte um backup JSON antes de fechar.',5000);render({preserveDrafts:true,excludeForm:'quickForm'});
 }
 function saveBatch(form){
  if(!form.reportValidity())return;const data=inputObj(form),inputs=METRIC_KEYS.filter(k=>data[k]!==''&&data[k]!==undefined);
@@ -1100,7 +1104,7 @@ function restoreFormDrafts(snapshot){
  [...document.querySelectorAll('#main details')].forEach((el,i)=>{const saved=snapshot.details[i];if(saved&&el.className===saved.className)el.open=saved.open;});
  if(snapshot.focusId)document.getElementById(snapshot.focusId)?.focus({preventScroll:true});
 }
-function render(options={}){const drafts=options.preserveDrafts?captureFormDrafts(options.excludeForm):null;navRender();const views={dashboard,measure:measurement,trends,nutrition,settings,help};document.getElementById('main').innerHTML=(views[ui.view]||dashboard)();document.title=({dashboard:'Painel',measure:'Medições',trends:'Evolução',nutrition:'Nutrição',settings:'Configurações',help:'Como usar'})[ui.view]+' · Silhueta';document.getElementById('topPeriod').textContent=`${state.profile.months} meses de projeto`;restoreFormDrafts(drafts);fitHistoryCharts();}
+function render(options={}){const drafts=options.preserveDrafts?captureFormDrafts(options.excludeForm):null;navRender();const views={dashboard,measure:measurement,trends,nutrition,settings,help};document.getElementById('main').innerHTML=(views[ui.view]||dashboard)();document.title=({dashboard:'Painel',measure:'Medições',trends:'Evolução',nutrition:'Nutrição',settings:'Configurações',help:'Como usar'})[ui.view]+' · Silhueta';document.getElementById('topPeriod').textContent=`${state.profile.months} meses de projeto`;restoreFormDrafts(drafts);updateQuickLastMeasurement();fitHistoryCharts();}
 
 function inputObj(form){return Object.fromEntries(new FormData(form).entries())}
 function saveMeasure(){const f=document.getElementById('quickForm');if(f)saveQuick(f)}
@@ -1274,7 +1278,7 @@ document.addEventListener('change',e=>{if(e.target.dataset.action==='favToggle')
    if(e.target.checked&&!f.includes(key)){if(f.length>=8){toast('Selecione até oito indicadores.');e.target.checked=false;return}f.push(key)}
    else if(!e.target.checked){if(f.length===1){toast('Mantenha pelo menos um indicador.');e.target.checked=true;return}state.preferences.favoriteMetrics=f.filter(k=>k!==key)}
    persist();render();return;
- }if(e.target.id==='quickMetric'){if(!METRIC_KEYS.includes(e.target.value))return;rememberQuickMetric(e.target.value);const label=document.querySelector('label[for="quickValue"]'),field=document.getElementById('quickValue');if(label)label.textContent='Valor ('+metricUnit(e.target.value)+')';if(field){field.min=e.target.value==='weight'?'20':e.target.value==='bodyFat'?'0':'10';field.max=e.target.value==='bodyFat'?'100':'300';field.placeholder=metricUnit(e.target.value);field.value='';}return}
+ }if(e.target.id==='quickMetric'){if(!METRIC_KEYS.includes(e.target.value))return;rememberQuickMetric(e.target.value);const label=document.querySelector('label[for="quickValue"]'),field=document.getElementById('quickValue');if(label)label.textContent='Valor ('+metricUnit(e.target.value)+')';if(field){field.min=e.target.value==='weight'?'20':e.target.value==='bodyFat'?'0':'10';field.max=e.target.value==='bodyFat'?'100':'300';field.placeholder=metricUnit(e.target.value);field.value='';}updateQuickLastMeasurement();return}
  if(e.target.id==='historyFilter'){ui.historyFilter=e.target.value;ui.historyLimit=30;render({preserveDrafts:true});return}
  if(e.target.id==='chartMetric'){ui.chartMetric=e.target.value;render({preserveDrafts:true});return}
  if(e.target.id==='weekPicker'){if(!confirmDiscardEdits()){e.target.value=String(ui.week);return}ui.week=Number(e.target.value);render()}if(e.target.id==='nutWeekPicker'){if(!confirmDiscardEdits()){e.target.value=String(ui.nutWeek);return}ui.nutWeek=Number(e.target.value);render()}if(e.target.id==='extraChartSelect'){ui.extraChartKey=e.target.value;render({preserveDrafts:true})}if(e.target.id==='importFile'){importFile(e.target.files[0]);e.target.value=''}});
