@@ -28,6 +28,11 @@ async function openPage(width=390,seed=emptyState(),acceptDialogs=false,options=
 async function settleMotion(page){await page.waitForTimeout(200);}
 async function go(page,view){let link=page.locator('[data-action="go"][data-view="'+view+'"]:visible').first();if(!(await link.count())){await page.locator('[data-action="openDrawer"]:visible').first().click();link=page.locator('#mobileDrawer [data-view="'+view+'"]:visible').first();}await link.click();await settleMotion(page);}
 async function state(page){return page.evaluate(()=>JSON.parse(localStorage.getItem('silhueta.app.v1')));}
+async function calendarTemplate(context,page){
+ // Read the outbound template without contacting Google or saving real events.
+ await context.route('https://calendar.google.com/**',route=>route.fulfill({status:200,contentType:'text/html',body:'<!doctype html><title>Synthetic calendar template</title>'}));
+ const pending=context.waitForEvent('page');await page.locator('#measurementCalendarForm button[type="submit"]').click();const popup=await pending;await popup.waitForLoadState('domcontentloaded');const url=new URL(popup.url());await popup.close();return url;
+}
 const TEST_GIST_ID='0123456789abcdef0123456789abcdef',TEST_GIST_TOKEN='silhueta-synthetic-token-not-a-credential';
 const SYNC_CONFIRM_KEY='silhueta.ui.lastSyncConfirmation',QUICK_METRIC_KEY='silhueta.ui.quickMetric';
 async function fixtureKey(salt,iterations){const material=await webcrypto.subtle.importKey('raw',new TextEncoder().encode(TEST_GIST_TOKEN),'PBKDF2',false,['deriveKey']);return webcrypto.subtle.deriveKey({name:'PBKDF2',salt,iterations,hash:'SHA-256'},material,{name:'AES-GCM',length:256},false,['encrypt','decrypt']);}
@@ -123,7 +128,7 @@ try{
  for(const width of layoutWidths)await run('Form spacing, alignment and expanded controls '+width+'px',async({page})=>{
   const before=await state(page),checks=[];
   await go(page,'settings');
-  checks.push(await formGeometry(page,'Settings', [['#startDate','#settingsForm .settings-summary'],['#measurementWeekday','#measurementScheduleForm .settings-summary']]));
+  checks.push(await formGeometry(page,'Settings', [['#startDate','#settingsForm .settings-summary'],['#measurementWeekday','#measurementScheduleForm .settings-summary'],['#measurementReminderTime','#measurementCalendarForm .settings-summary']]));
   if(width===390||width===1440)await snap(page,width+'-settings-spacing');
   await go(page,'measure');await page.locator('#quickForm .help-extra summary').click();
   checks.push(await formGeometry(page,'Quick registration', [['#quickNote','.quick-actions']]));
@@ -148,6 +153,34 @@ try{
   assert(JSON.stringify(await state(page))===JSON.stringify(before),'Layout inspection modified existing records');
   return{checks};
  },{width,seed:filledState()});
+ for(const width of [320,390,1440])await run('Google Calendar: weekly template, private data and draft preservation '+width+'px',async({context,page,dialogs})=>{
+  const before=await state(page);await page.goto('http://127.0.0.1:4173/?private-note=synthetic-calendar-secret#synthetic',{waitUntil:'networkidle'});await go(page,'settings');await page.locator('#startDate').fill('2026-10-02');await page.locator('#measurementReminderTime').fill('09:30');await page.locator('#settingsForm').evaluate(form=>{window.calendarDateForm=form;});
+  const url=await calendarTemplate(context,page),params=Object.fromEntries(url.searchParams);
+  assert(url.origin==='https://calendar.google.com'&&url.pathname==='/calendar/render'&&params.action==='TEMPLATE','Calendar template opened an unexpected destination');
+  assert(params.recur==='RRULE:FREQ=WEEKLY;BYDAY=FR'&&params.ctz==='America/Sao_Paulo'&&params.dates==='20261030T123000Z/20261030T124500Z','Calendar day, duration, recurrence or local time is wrong: '+JSON.stringify(params));
+  assert(params.text==='Silhueta: dia das medições'&&params.details.includes('http://127.0.0.1:4173/'),'Calendar event lacks its generic title or return link');
+  assert(Object.keys(params).sort().join(',')==='action,ctz,dates,details,recur,text'&&!url.href.includes('m_test')&&!url.href.includes('token')&&!url.href.includes('synthetic-calendar-secret')&&!params.details.includes('74.5'),'Calendar template includes unrelated data');
+  assert(await page.locator('#startDate').inputValue()==='2026-10-02'&&await page.locator('#settingsForm').evaluate(form=>form===window.calendarDateForm),'Opening the external calendar erased or replaced an unsaved form');assert(JSON.stringify(await state(page))===JSON.stringify(before)&&dialogs.length===0,'Opening a template changed saved records or discarded drafts');
+  assert(await page.locator('#measurementReminderTime').evaluate(el=>el.defaultValue===el.value),'Opening the calendar left its time preference unsaved');await formGeometry(page,'Google Calendar reminder', [['#measurementReminderTime','#measurementCalendarForm .settings-summary']]);await page.locator('#measurementCalendarSection').evaluate(el=>el.scrollIntoView({block:'start',behavior:'instant'}));await snap(page,width+'-google-calendar-reminder');
+  await page.reload({waitUntil:'networkidle'});await go(page,'settings');assert(await page.locator('#measurementReminderTime').inputValue()==='09:30','Chosen calendar time was not remembered on this device');return{calendar:params};
+ },{width,seed:(()=>{const s=filledState();s.preferences.measurementWeekday=5;return s;})(),clockTime:'2026-10-27T12:00:00-03:00'});
+ const calendarDates=[
+  {name:'today before the selected time',day:5,clock:'2026-10-30T08:00:00-03:00',time:'09:00',dates:'20261030T120000Z/20261030T121500Z',byday:'FR'},
+  {name:'today after the selected time',day:5,clock:'2026-10-30T10:00:00-03:00',time:'09:00',dates:'20261106T120000Z/20261106T121500Z',byday:'FR'},
+  {name:'Sunday zero at midnight across months',day:0,clock:'2026-10-31T12:00:00-03:00',time:'00:00',dates:'20261101T030000Z/20261101T031500Z',byday:'SU'},
+  {name:'end time crosses midnight and a year boundary',day:4,clock:'2026-12-31T23:50:00-03:00',time:'23:55',dates:'20270101T025500Z/20270101T031000Z',byday:'TH'},
+  {name:'next week follows local daylight saving time',day:0,clock:'2027-03-07T13:00:00-05:00',time:'09:00',dates:'20270314T130000Z/20270314T131500Z',byday:'SU',zone:'America/New_York'}
+ ];
+ for(const item of calendarDates)await run('Google Calendar: '+item.name,async({context,page})=>{await go(page,'settings');await page.locator('#measurementReminderTime').fill(item.time);const url=await calendarTemplate(context,page);assert(url.searchParams.get('dates')===item.dates&&url.searchParams.get('ctz')===(item.zone||'America/Sao_Paulo')&&url.searchParams.get('recur')==='RRULE:FREQ=WEEKLY;BYDAY='+item.byday,'First future occurrence or recurrence zone is wrong: '+url.href);return{dates:url.searchParams.get('dates'),zone:url.searchParams.get('ctz')};},{clockTime:item.clock,timezoneId:item.zone,seed:(()=>{const s=filledState();s.preferences.measurementWeekday=item.day;return s;})()});
+ await run('Google Calendar: missing day, invalid time and changed-day guard',async({page})=>{
+  let popups=0;page.context().on('page',popup=>{popups++;popup.close();});await go(page,'settings');assert(await page.locator('#measurementCalendarForm button').isDisabled()&&await page.locator('#measurementReminderTime').isDisabled(),'An unconfigured day enables calendar creation');
+  await page.locator('#measurementWeekday').selectOption('5');await page.locator('#measurementScheduleForm button').click();await page.locator('#measurementReminderTime').fill('');await page.locator('#measurementCalendarForm button').click();assert(await page.locator('#measurementReminderTime').evaluate(el=>!el.validity.valid),'An empty time was accepted');
+  await page.locator('#measurementReminderTime').fill('09:00');await page.locator('#measurementWeekday').selectOption('1');await page.locator('#measurementCalendarForm button').click();assert((await page.locator('#toast').innerText()).includes('Salve o dia das medições')&&popups===0,'Unsaved day change opened an event for the wrong weekday');
+  await page.locator('#measurementScheduleForm button').click();await page.context().setOffline(true);await page.locator('#measurementCalendarForm button').click();assert(popups===0&&(await page.locator('#toast').innerText()).includes('Conecte-se à internet'),'Offline calendar creation opened a broken external page');await page.context().setOffline(false);await page.locator('#measurementWeekday').selectOption('');await page.locator('#measurementScheduleForm button').click();assert(await page.locator('#measurementCalendarForm button').isDisabled(),'Removing the chosen day left calendar creation enabled');
+ });
+ await run('Google Calendar: a nonexistent daylight saving time is not silently changed',async({page})=>{
+  let popups=0;page.context().on('page',popup=>{popups++;popup.close();});await go(page,'settings');await page.locator('#measurementReminderTime').fill('02:30');await page.locator('#measurementCalendarForm button').click();assert(popups===0&&(await page.locator('#toast').innerText()).includes('horário não está disponível'),'An unavailable local time was silently rescheduled');
+ },{clockTime:'2027-03-13T12:00:00-05:00',timezoneId:'America/New_York',seed:(()=>{const s=filledState();s.preferences.measurementWeekday=0;return s;})()});
  for(const width of [320,390,1440])await run('Measurement day: configure, persist and remove the weekly countdown at '+width+'px',async({page})=>{
   const before=await state(page);assert(await page.locator('#measurementSchedule').isHidden(),'An unconfigured day should not invent a schedule');
   await go(page,'settings');await page.locator('#measurementWeekday').selectOption('5');await page.locator('#measurementScheduleForm button[type="submit"]').click();

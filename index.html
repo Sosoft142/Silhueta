@@ -535,7 +535,10 @@ body{font-size:15px;line-height:1.55;background:#fcfafd}
 .app-version{max-width:790px;margin:18px 0 0;padding:15px 0 3px;border-top:1px solid var(--border);text-align:center;color:var(--sub);font-size:12px;line-height:1.5}
 #installAppButton:disabled{opacity:.65;cursor:default;box-shadow:none}
 /* Form spacing follows the available card width on mobile and desktop. */
-#settingsForm,#measurementScheduleForm{display:grid;gap:16px}
+#settingsForm,#measurementScheduleForm,#measurementCalendarForm{display:grid;gap:16px}
+#measurementCalendarForm .field{min-width:0}
+#measurementCalendarForm input{width:100%;min-width:0}
+#measurementCalendarForm button:disabled{opacity:.6;cursor:default;box-shadow:none}
 .settings-summary .small-muted{min-width:0;line-height:1.6}
 .form-grid,.quick-fields,.batch-metrics{align-items:end}
 .detail-panel>.form-grid+.field{margin-top:16px}
@@ -610,9 +613,10 @@ form .btn,.settings-links .btn{max-width:100%;white-space:normal;text-align:cent
 <input type="file" id="importFile" accept=".json,.csv,text/csv,application/json" hidden />
 <script>
 (()=>{'use strict';
-const APP_VERSION='2.9.14';
+const APP_VERSION='2.9.15';
 const STORAGE_KEY='silhueta.app.v1', VERSION=7;
 const QUICK_METRIC_PREF_KEY='silhueta.ui.quickMetric';
+const MEASUREMENT_REMINDER_TIME_KEY='silhueta.ui.measurementReminderTime';
 // Keep installation state in memory: neither a missing prompt nor an accepted
 // request proves that an Android WebAPK is present on this device.
 let deferredInstallPrompt=null,installationPhase='waiting',installationEpoch=0;
@@ -913,6 +917,25 @@ function upcomingMeasurement(today=nowISO()){
  const current=new Date(today+'T12:00:00Z').getUTCDay(),days=(weekday-current+7)%7;
  return{weekday,days,date:dateAdd(today,days)};
 }
+function measurementCalendarURL(time){
+ const next=upcomingMeasurement();if(!next)throw Error('Defina e salve o dia das medições primeiro.');
+ if(!/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(time))throw Error('Escolha um horário válido para a medição.');
+ const zone=Intl.DateTimeFormat().resolvedOptions().timeZone;if(!zone)throw Error('Não foi possível identificar o fuso horário deste aparelho.');
+ let start=new Date(next.date+'T'+time+':00');if(start<=new Date())start=new Date(dateAdd(next.date,7)+'T'+time+':00');
+ const expected=time.split(':').map(Number);if(!Number.isFinite(start.getTime())||start.getHours()!==expected[0]||start.getMinutes()!==expected[1])throw Error('Esse horário não está disponível na próxima data. Escolha outro horário.');
+ const end=new Date(start.getTime()+15*60000),stamp=date=>date.toISOString().replace(/[-:]|\.\d{3}/g,''),url=new URL('https://calendar.google.com/calendar/render');
+ url.search=new URLSearchParams({action:'TEMPLATE',text:'Silhueta: dia das medições',dates:stamp(start)+'/'+stamp(end),ctz:zone,recur:'RRULE:FREQ=WEEKLY;BYDAY='+['SU','MO','TU','WE','TH','FR','SA'][next.weekday],details:'Reserve alguns minutos para registrar suas medidas no Silhueta.\n\n'+new URL('./',location.href).href}).toString();return url.href;
+}
+function measurementCalendarSection(){
+ const weekday=state.preferences.measurementWeekday,ready=isMeasurementWeekday(weekday),saved=localRead(MEASUREMENT_REMINDER_TIME_KEY),time=/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(saved)?saved:'09:00';
+ return `<section class="card settings-section" id="measurementCalendarSection"><h2>Lembrete no Google Agenda</h2><p>Crie um evento semanal para lembrar de registrar suas medidas.</p><form id="measurementCalendarForm"><div class="field"><label for="measurementReminderTime">Horário da medição</label><input type="time" id="measurementReminderTime" name="measurementReminderTime" value="${time}" step="60" required aria-describedby="measurementCalendarDay" ${ready?'':'disabled'}/></div><div class="settings-summary"><span class="small-muted" id="measurementCalendarDay">${ready?'Dia salvo: '+MEASUREMENT_WEEKDAYS[weekday]+'. Horário local deste aparelho.':'Defina e salve o dia das medições acima para continuar.'}</span><button type="submit" class="btn btn-soft" ${ready?'':'disabled'}>${ico('calendar',16)} Adicionar ao Google Agenda</button></div></form><p class="help-mini">Na agenda, confira a repetição semanal e a notificação antes de salvar. Para mudar ou excluir um evento já criado, use o Google Agenda.</p></section>`;
+}
+function openMeasurementCalendar(){
+ const form=document.getElementById('measurementCalendarForm');if(!form||!form.reportValidity())return;
+ const day=document.getElementById('measurementWeekday');if(day&&day.value!==String(state.preferences.measurementWeekday??'')){toast('Salve o dia das medições antes de abrir o Google Agenda.');day.focus();return;}
+ if(!navigator.onLine){toast('Conecte-se à internet para abrir o Google Agenda.');return;}
+ const field=form.elements.measurementReminderTime;try{const url=measurementCalendarURL(field.value);localWrite(MEASUREMENT_REMINDER_TIME_KEY,field.value);field.defaultValue=field.value;window.open(url,'_blank','noopener,noreferrer');}catch(error){toast(error.message);}
+}
 function measurementScheduleCard(){return `<section id="measurementSchedule" class="measurement-schedule" aria-label="Próxima medição" hidden><div class="measurement-schedule-copy"><span class="measurement-schedule-label">${ico('calendar',16)} Próxima medição</span><strong id="measurementCountdown" aria-live="polite" aria-atomic="true"></strong><span id="measurementScheduleDate" class="measurement-schedule-date"></span></div><button type="button" class="text-action" data-action="go" data-view="settings">Alterar dia</button></section>`;}
 function updateMeasurementCountdown(){
  const card=document.getElementById('measurementSchedule');if(!card)return;const next=upcomingMeasurement();card.hidden=!next;if(!next)return;
@@ -1056,7 +1079,7 @@ function nutrition(){const m=macroValues(),w=ui.nutWeek,r=state.nutritionLogs[St
 }
 function settings(){const p=state.profile,hasDate=!!p.startDate,weekday=state.preferences.measurementWeekday;
  return heading('Configurações','Ajustes do projeto e preferências que não precisam aparecer durante o acompanhamento.')+
-  `<div class="settings-stack"><section class="card settings-section"><div class="card-head"><div><h2>Dia das medições</h2><p id="measurementScheduleHelp">Escolha um dia da semana. A tela inicial mostrará quantos dias faltam até ele, seguindo o calendário deste aparelho.</p></div></div><form id="measurementScheduleForm"><div class="field"><label for="measurementWeekday">Dia da semana</label><select id="measurementWeekday" name="measurementWeekday" aria-describedby="measurementScheduleHelp"><option value="" ${weekday===null?'selected':''}>Não definido</option>${[1,2,3,4,5,6,0].map(day=>`<option value="${day}" ${weekday===day?'selected':''}>${MEASUREMENT_WEEKDAYS[day]}</option>`).join('')}</select></div><div class="settings-summary"><span class="small-muted">${isMeasurementWeekday(weekday)?'Dia atual: '+MEASUREMENT_WEEKDAYS[weekday]:'Nenhum dia definido.'}</span><button type="submit" class="btn btn-primary">${ico('check',16)} Salvar dia</button></div></form></section><section class="card settings-section"><div class="card-head"><div><h2>Data de início do projeto</h2><p>Opcional. Use apenas se quiser organizar o diário de Nutrição por semanas. As medições corporais têm datas independentes.</p></div></div>
+  `<div class="settings-stack"><section class="card settings-section"><div class="card-head"><div><h2>Dia das medições</h2><p id="measurementScheduleHelp">Escolha um dia da semana. A tela inicial mostrará quantos dias faltam até ele, seguindo o calendário deste aparelho.</p></div></div><form id="measurementScheduleForm"><div class="field"><label for="measurementWeekday">Dia da semana</label><select id="measurementWeekday" name="measurementWeekday" aria-describedby="measurementScheduleHelp"><option value="" ${weekday===null?'selected':''}>Não definido</option>${[1,2,3,4,5,6,0].map(day=>`<option value="${day}" ${weekday===day?'selected':''}>${MEASUREMENT_WEEKDAYS[day]}</option>`).join('')}</select></div><div class="settings-summary"><span class="small-muted">${isMeasurementWeekday(weekday)?'Dia atual: '+MEASUREMENT_WEEKDAYS[weekday]:'Nenhum dia definido.'}</span><button type="submit" class="btn btn-primary">${ico('check',16)} Salvar dia</button></div></form></section>${measurementCalendarSection()}<section class="card settings-section"><div class="card-head"><div><h2>Data de início do projeto</h2><p>Opcional. Use apenas se quiser organizar o diário de Nutrição por semanas. As medições corporais têm datas independentes.</p></div></div>
  <form id="settingsForm">${dateField('startDate','Início do projeto',p.startDate)}<div class="settings-summary"><span class="small-muted">${hasDate?'Início atual: '+dateBR(p.startDate):'Nenhuma data definida. Você já pode registrar medidas.'}</span>${button('Salvar data','check','saveSettings','','btn-primary')}</div></form></section>
  <section class="card settings-section"><h2>Outras opções</h2><p>As preferências ficam junto das funções que você utiliza.</p><div class="settings-links">${button('Metas de nutrição','nutrition','go','data-view="nutrition"','btn-plain')}${button('Metas corporais','trends','go','data-view="trends"','btn-plain')}${button('Backups e ajuda','help','go','data-view="help"','btn-plain')}</div><details class="help-extra"><summary>Sobre os dados do perfil antigo</summary><p class="small-muted">Idade, altura, peso de referência e demais informações anteriores continuam preservados nos dados salvos e nos backups, mas não são exigidos para registrar medidas.</p></details></section>${installSection()}</div><footer class="app-version" aria-label="Versão do aplicativo">Silhueta · Versão <span data-app-version>${APP_VERSION}</span></footer>`;
 }
@@ -1318,7 +1341,7 @@ function reset(){
  if(!confirm('Confirmar: apagar os registros deste aparelho e desconectar da sincronização?'))return;
  // Do not propagate an empty state to the Gist. Reconnecting later restores the cloud copy.
  clearTimeout(syncDebounce);syncPending=false;
- localRemove(TOKEN_KEY);gistSessionToken='';syncVerifiedAt=0;clearLastSyncConfirmation();clearDeletionUndo();localRemove(QUICK_METRIC_PREF_KEY);
+ localRemove(TOKEN_KEY);gistSessionToken='';syncVerifiedAt=0;clearLastSyncConfirmation();clearDeletionUndo();localRemove(QUICK_METRIC_PREF_KEY);localRemove(MEASUREMENT_REMINDER_TIME_KEY);
  state=DEFAULT();ui.quickMetric='weight';ui.editEntryId=null;ui.week=0;ui.nutWeek=0;
  persist({keepSync:true,suppressSync:true});
  setSyncState('Não conectado');toast('Aparelho reiniciado. O backup na nuvem não foi apagado.');setView('dashboard');
@@ -1348,7 +1371,7 @@ document.addEventListener('change',e=>{if(e.target.dataset.action==='favToggle')
  if(e.target.id==='historyFilter'){ui.historyFilter=e.target.value;ui.historyLimit=30;render({preserveDrafts:true});return}
  if(e.target.id==='chartMetric'){ui.chartMetric=e.target.value;render({preserveDrafts:true});return}
  if(e.target.id==='weekPicker'){if(!confirmDiscardEdits()){e.target.value=String(ui.week);return}ui.week=Number(e.target.value);render()}if(e.target.id==='nutWeekPicker'){if(!confirmDiscardEdits()){e.target.value=String(ui.nutWeek);return}ui.nutWeek=Number(e.target.value);render()}if(e.target.id==='extraChartSelect'){ui.extraChartKey=e.target.value;render({preserveDrafts:true})}if(e.target.id==='importFile'){importFile(e.target.files[0]);e.target.value=''}});
-document.addEventListener('submit',e=>{if(['quickForm','batchForm','measureForm','nutritionForm','settingsForm','measurementScheduleForm','macroForm','goalForm'].includes(e.target.id)){e.preventDefault();if(e.target.id==='quickForm')saveQuick(e.target);if(e.target.id==='batchForm')saveBatch(e.target);if(e.target.id==='nutritionForm')saveNutrition();if(e.target.id==='settingsForm')saveSettings();if(e.target.id==='measurementScheduleForm')saveMeasurementSchedule();if(e.target.id==='macroForm')saveMacroTargets();if(e.target.id==='goalForm')saveGoals()}});
+document.addEventListener('submit',e=>{if(e.target.id==='measurementCalendarForm'){e.preventDefault();openMeasurementCalendar();return;}if(['quickForm','batchForm','measureForm','nutritionForm','settingsForm','measurementScheduleForm','macroForm','goalForm'].includes(e.target.id)){e.preventDefault();if(e.target.id==='quickForm')saveQuick(e.target);if(e.target.id==='batchForm')saveBatch(e.target);if(e.target.id==='nutritionForm')saveNutrition();if(e.target.id==='settingsForm')saveSettings();if(e.target.id==='measurementScheduleForm')saveMeasurementSchedule();if(e.target.id==='macroForm')saveMacroTargets();if(e.target.id==='goalForm')saveGoals()}});
 window.addEventListener('focus',updateMeasurementCountdown);
 document.addEventListener('visibilitychange',()=>{if(!document.hidden)updateMeasurementCountdown();});
 setInterval(updateMeasurementCountdown,60000);
