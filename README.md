@@ -1,6 +1,8 @@
-# Silhueta · versão 2.9.9 — clareza e agilidade no acompanhamento
+# Silhueta · versão 2.9.10 — clareza e agilidade no acompanhamento
 
 Aplicativo web instalável (PWA) para acompanhar medidas corporais, composição corporal, nutrição e evolução.
+
+A versão 2.9.10 corrige a engrenagem de **Configurações** no menu mobile e na barra lateral do computador. O contorno assimétrico, que encostava no limite do SVG, foi substituído pelo ícone Settings do Feather Icons, mantido dentro do HTML e com a licença MIT incluída no código. Os demais ícones e o comportamento da navegação permanecem preservados.
 
 A versão 2.9.9 substitui o roxo das cores de sistema por `#FCFAFD`, o mesmo fundo claro da página. O HTML e o manifest passam a informar a mesma cor de tema, com esquema claro explícito, e o fundo de abertura também fica alinhado à interface. As barras do Android mantêm os controles do sistema. A atualização dessas cores na instalação existente é aplicada pelo Chrome; a identidade, os ícones e os dados permanecem preservados.
 
