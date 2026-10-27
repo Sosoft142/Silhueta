@@ -23,14 +23,14 @@
   --font:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",Arial,sans-serif;
 }
 *{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:#fcfafb;color:var(--ink);font-family:var(--font);font-size:14px}button,input,select,textarea{font:inherit}button{cursor:pointer}a{color:inherit}button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:3px solid #cf89b1;outline-offset:2px}
-.app{display:grid;grid-template-columns:252px minmax(0,1fr);min-height:100vh;transition:grid-template-columns .23s ease}
+.app{display:grid;grid-template-columns:252px minmax(0,1fr);min-height:100vh;transition:grid-template-columns .16s ease}
 .sidebar{background:#fff;position:sticky;top:0;height:100vh;display:flex;flex-direction:column;padding:27px 17px;border-right:1px solid var(--border)}
 .brand{padding:2px 12px 31px;display:flex;gap:12px;align-items:center}.mark{height:45px;width:45px;border-radius:16px;background:linear-gradient(145deg,#efb2cb,#d57ca8);display:grid;place-items:center;color:white;box-shadow:0 8px 20px #e2a0bf5c}.brand h1{font-family:Georgia,serif;letter-spacing:-.6px;font-size:25px;line-height:1;margin:0;color:#73425e}.brand small{font-size:10px;letter-spacing:1.5px;color:#9a8792;font-weight:750}
 .nav-list{display:grid;gap:6px}.nav-btn{border:0;background:none;color:#746975;padding:13px 14px;text-align:left;border-radius:13px;display:flex;align-items:center;gap:13px;font-weight:650;width:100%;transition:.2s}.nav-btn:hover{background:#fbf4f7}.nav-btn.active{background:var(--rose-soft);color:var(--rose-dark)}.nav-btn svg{height:19px;width:19px;flex:none}.nav-label{font-size:12px;letter-spacing:1.1px;color:#a396a0;margin:20px 14px 10px;text-transform:uppercase;font-weight:800}.sidebar-spacer{flex:1}.sidebar-note{background:#fdf4f8;border:1px solid #f6e1eb;border-radius:15px;padding:15px;color:#80536a;font-size:12px;line-height:1.6}.sidebar-note strong{display:block;font-size:13px;margin-bottom:3px}
-.sidebar{min-width:0;transition:padding .23s ease}
+.sidebar{min-width:0;transition:padding .16s ease}
 .sidebar-toggle{position:absolute;top:48px;right:-15px;width:30px;height:30px;z-index:15;border:1px solid #eadce6;border-radius:50%;background:#fff;color:#915d7a;display:flex;align-items:center;justify-content:center;box-shadow:0 3px 12px #7b536122;transition:background .2s ease}
 .sidebar-toggle:hover{background:#f9eaf2}
-.sidebar-toggle svg{width:17px;height:17px;transition:transform .23s ease}
+.sidebar-toggle svg{width:17px;height:17px;transition:transform .16s ease}
 .app.sidebar-collapsed{grid-template-columns:82px minmax(0,1fr)}
 .app.sidebar-collapsed .sidebar{padding-left:10px;padding-right:10px}
 .app.sidebar-collapsed .brand{justify-content:center;padding:2px 0 30px}
@@ -561,6 +561,18 @@ form .btn,.settings-links .btn{max-width:100%;white-space:normal;text-align:cent
 .measurement-schedule strong{display:block;font-size:21px;line-height:1.35;color:#73425e;margin:4px 0}
 .measurement-schedule-date{font-size:13px;color:var(--sub);overflow-wrap:anywhere}
 .measurement-schedule .text-action{flex-shrink:0;min-height:44px}
+.mobile-drawer[inert]{pointer-events:none}
+@supports (interpolate-size:allow-keywords) and selector(details::details-content){
+ #main details{interpolate-size:allow-keywords}
+ #main details>summary{transition:margin-bottom 160ms ease}
+ #main details::details-content{height:0;opacity:0;overflow:clip;transition:height 160ms ease,opacity 120ms ease,content-visibility 160ms allow-discrete}
+ #main details[open]::details-content{height:auto;opacity:1}
+}
+@media(prefers-reduced-motion:reduce){
+ html{scroll-behavior:auto!important}
+ *,*::before,*::after{animation:none!important;transition:none!important}
+ #main details::details-content{transition:none!important}
+}
 </style>
 </head>
 <body>
@@ -598,7 +610,7 @@ form .btn,.settings-links .btn{max-width:100%;white-space:normal;text-align:cent
 <input type="file" id="importFile" accept=".json,.csv,text/csv,application/json" hidden />
 <script>
 (()=>{'use strict';
-const APP_VERSION='2.9.13';
+const APP_VERSION='2.9.14';
 const STORAGE_KEY='silhueta.app.v1', VERSION=7;
 const QUICK_METRIC_PREF_KEY='silhueta.ui.quickMetric';
 // Keep installation state in memory: neither a missing prompt nor an accepted
@@ -847,9 +859,28 @@ function undoLastDeletion(){
  state.metricEntries[undo.id]={...undo.entry,deleted:false,updatedAt:new Date(clock).toISOString()};
  persist({clockFloor:{[key]:clock}});render({preserveDrafts:true});toast('Medição restaurada.');
 }
-function setView(view){if(view==='profile')view='settings';closeMobileDrawer();ui.view=view;if(view==='measure'&&ui.week===null)ui.week=pickWeek();render();window.scrollTo({top:0,behavior:'smooth'})}
-function openMobileDrawer(){const d=document.getElementById('mobileDrawer');if(!d)return;d.hidden=false;document.body.classList.add('drawer-open');document.querySelector('.mobile-menu-trigger[aria-controls]')?.setAttribute('aria-expanded','true');d.querySelector('.mobile-drawer-head [data-action=closeDrawer]')?.focus()}
-function closeMobileDrawer(){const d=document.getElementById('mobileDrawer');if(!d||d.hidden)return;d.hidden=true;document.body.classList.remove('drawer-open');document.querySelector('.mobile-menu-trigger[aria-controls]')?.setAttribute('aria-expanded','false');document.querySelector('.mobile-menu-trigger[aria-controls]')?.focus()}
+// Only explicit navigation animates; renders and input handling never wait for motion.
+const REDUCED_MOTION=window.matchMedia('(prefers-reduced-motion: reduce)'),MOTION_BY_ELEMENT=new WeakMap(),ACTIVE_MOTION=new Set();
+let drawerMotionEpoch=0;
+function playMotion(element,frames,duration=160){
+ if(!element)return null;MOTION_BY_ELEMENT.get(element)?.cancel();if(REDUCED_MOTION.matches||typeof element.animate!=='function')return null;
+ const animation=element.animate(frames,{duration,easing:'cubic-bezier(.2,.65,.3,1)'});MOTION_BY_ELEMENT.set(element,animation);ACTIVE_MOTION.add(animation);
+ const clean=()=>{ACTIVE_MOTION.delete(animation);if(MOTION_BY_ELEMENT.get(element)===animation)MOTION_BY_ELEMENT.delete(element);};animation.finished.then(clean,clean);return animation;
+}
+function enterContent(element){return playMotion(element,[{opacity:.35,transform:'translateY(4px)'},{opacity:1,transform:'translateY(0)'}],140);}
+REDUCED_MOTION.addEventListener?.('change',()=>{if(REDUCED_MOTION.matches)for(const animation of [...ACTIVE_MOTION])animation.cancel();});
+function setView(view){if(view==='profile')view='settings';const changed=ui.view!==view;closeMobileDrawer();ui.view=view;if(view==='measure'&&ui.week===null)ui.week=pickWeek();render();window.scrollTo({top:0,behavior:'instant'});if(changed)enterContent(document.getElementById('main'));}
+function openMobileDrawer(){
+ const d=document.getElementById('mobileDrawer');if(!d||(!d.hidden&&!d.inert))return;const hidden=d.hidden,panel=d.querySelector('.mobile-drawer-panel'),shade=d.querySelector('.mobile-drawer-shade'),start=hidden?{opacity:0,transform:'translateX(-12px)'}:{opacity:getComputedStyle(panel).opacity,transform:getComputedStyle(panel).transform},shadeStart=hidden?0:getComputedStyle(shade).opacity;
+ drawerMotionEpoch++;d.hidden=false;d.inert=false;d.removeAttribute('aria-hidden');document.body.classList.add('drawer-open');document.querySelector('.mobile-menu-trigger[aria-controls]')?.setAttribute('aria-expanded','true');d.querySelector('.mobile-drawer-head [data-action=closeDrawer]')?.focus();
+ playMotion(panel,[start,{opacity:1,transform:'translateX(0)'}],160);playMotion(shade,[{opacity:shadeStart},{opacity:1}],160);
+}
+function closeMobileDrawer(){
+ const d=document.getElementById('mobileDrawer');if(!d||d.hidden||d.inert)return;const panel=d.querySelector('.mobile-drawer-panel'),shade=d.querySelector('.mobile-drawer-shade'),start={opacity:getComputedStyle(panel).opacity,transform:getComputedStyle(panel).transform},shadeStart=getComputedStyle(shade).opacity,epoch=++drawerMotionEpoch;
+ d.inert=true;d.setAttribute('aria-hidden','true');document.body.classList.remove('drawer-open');document.querySelector('.mobile-menu-trigger[aria-controls]')?.setAttribute('aria-expanded','false');document.querySelector('.mobile-menu-trigger[aria-controls]')?.focus();
+ // A cancelled close must not hide a drawer that has already reopened.
+ const animation=playMotion(panel,[start,{opacity:0,transform:'translateX(-12px)'}],120);playMotion(shade,[{opacity:shadeStart},{opacity:0}],120);const finish=()=>{if(drawerMotionEpoch===epoch&&d.inert)d.hidden=true;};if(animation)animation.finished.then(finish,finish);else finish();
+}
 const SIDEBAR_PREF_KEY='silhueta.ui.sidebarCollapsed';
 function setSidebarCollapsed(collapsed){
  document.querySelector('.app')?.classList.toggle('sidebar-collapsed',collapsed);
@@ -1137,7 +1168,7 @@ function restoreFormDrafts(snapshot){
  [...document.querySelectorAll('#main details')].forEach((el,i)=>{const saved=snapshot.details[i];if(saved&&el.className===saved.className)el.open=saved.open;});
  if(snapshot.focusId)document.getElementById(snapshot.focusId)?.focus({preventScroll:true});
 }
-function render(options={}){const drafts=options.preserveDrafts?captureFormDrafts(options.excludeForm):null;navRender();const views={dashboard,measure:measurement,trends,nutrition,settings,help};document.getElementById('main').innerHTML=(views[ui.view]||dashboard)();document.title=({dashboard:'Painel',measure:'Medições',trends:'Evolução',nutrition:'Nutrição',settings:'Configurações',help:'Como usar'})[ui.view]+' · Silhueta';document.getElementById('topPeriod').textContent=`${state.profile.months} meses de projeto`;restoreFormDrafts(drafts);updateQuickLastMeasurement();updateMeasurementCountdown();fitHistoryCharts();}
+function render(options={}){MOTION_BY_ELEMENT.get(document.getElementById('main'))?.cancel();const drafts=options.preserveDrafts?captureFormDrafts(options.excludeForm):null;navRender();const views={dashboard,measure:measurement,trends,nutrition,settings,help};document.getElementById('main').innerHTML=(views[ui.view]||dashboard)();document.title=({dashboard:'Painel',measure:'Medições',trends:'Evolução',nutrition:'Nutrição',settings:'Configurações',help:'Como usar'})[ui.view]+' · Silhueta';document.getElementById('topPeriod').textContent=`${state.profile.months} meses de projeto`;restoreFormDrafts(drafts);updateQuickLastMeasurement();updateMeasurementCountdown();fitHistoryCharts();}
 
 function inputObj(form){return Object.fromEntries(new FormData(form).entries())}
 function saveMeasure(){const f=document.getElementById('quickForm');if(f)saveQuick(f)}
@@ -1297,10 +1328,10 @@ document.addEventListener('click',e=>{const el=e.target.closest('[data-action]')
  case'undoDelete':undoLastDeletion();break;
  case'installApp':installApp();break;
  case'inspectChartPoint':inspectHistoryPoint(el);break;
- case'openGuide':{const guide=document.querySelector('.anatomy-guide');if(guide){guide.open=true;guide.scrollIntoView({behavior:'smooth',block:'start'});guide.querySelector('summary').focus()}break}
+ case'openGuide':{const guide=document.querySelector('.anatomy-guide');if(guide){guide.open=true;guide.scrollIntoView({behavior:'instant',block:'start'});guide.querySelector('summary').focus()}break}
  case'quickMetric':{const key=el.dataset.metric;if(METRIC_KEYS.includes(key)){if(!confirmDiscardEdits())break;rememberQuickMetric(key);ui.editEntryId=null;ui.measureMode='quick';setView('measure')}break}
- case'guideMetric':{const key=el.dataset.metric;if(METRIC_KEYS.includes(key)){ui.guideMetric=key;const tip=document.querySelector('.guide-tip');if(tip){tip.innerHTML=guideFigure(key);tip.setAttribute('aria-label','Como medir: '+BODY_LABELS[key])}document.querySelectorAll('.guide-region').forEach(btn=>{const active=btn.dataset.metric===key;btn.classList.toggle('selected',active);btn.setAttribute('aria-pressed',String(active))})}break}
- case'measureMode':{if(!confirmDiscardEdits())break;ui.measureMode=el.dataset.mode==='batch'?'batch':'quick';ui.editEntryId=null;render();break}
+ case'guideMetric':{const key=el.dataset.metric;if(METRIC_KEYS.includes(key)){ui.guideMetric=key;const tip=document.querySelector('.guide-tip');if(tip){tip.innerHTML=guideFigure(key);tip.setAttribute('aria-label','Como medir: '+BODY_LABELS[key]);enterContent(tip)}document.querySelectorAll('.guide-region').forEach(btn=>{const active=btn.dataset.metric===key;btn.classList.toggle('selected',active);btn.setAttribute('aria-pressed',String(active))})}break}
+ case'measureMode':{if(!confirmDiscardEdits())break;ui.measureMode=el.dataset.mode==='batch'?'batch':'quick';ui.editEntryId=null;render();enterContent(document.querySelector('.measure-main>.card'));break}
  case'cancelEditMetric':if(confirmDiscardEdits()){ui.editEntryId=null;render()}break;
  case'editMetric':{if(!confirmDiscardEdits())break;const item=state.metricEntries[el.dataset.id];if(item&&!item.deleted){ui.editEntryId=el.dataset.id;ui.quickMetric=item.metric;ui.measureMode='quick';setView('measure')}break}
  case'deleteMetric':{const item=state.metricEntries[el.dataset.id];if(item&&!item.deleted&&confirm('Excluir somente esta medição? Ela deixará de aparecer nos gráficos, mas as demais serão preservadas.')){const wasEditing=ui.editEntryId===el.dataset.id,previous={...item};deleteMetricEntry(el.dataset.id);if(wasEditing)ui.editEntryId=null;persist();render({preserveDrafts:true,excludeForm:wasEditing?'quickForm':''});offerDeletionUndo(el.dataset.id,previous);}break}
@@ -1326,7 +1357,7 @@ setSidebarCollapsed(localRead(SIDEBAR_PREF_KEY)==='1');persist({preserveTimestam
 </script>
 <script>document.addEventListener('keydown',e=>{
  if(e.key==='Escape'){if(!document.getElementById('syncModal').hidden)document.querySelector('[data-action=closeSync]').click();else if(!document.getElementById('mobileDrawer').hidden)document.querySelector('#mobileDrawer [data-action=closeDrawer]')?.click();return;}
- const drawer=document.getElementById('mobileDrawer');if(e.key==='Tab'&&drawer&&!drawer.hidden){const items=[...drawer.querySelectorAll('.mobile-drawer-panel button:not([disabled])')];if(!items.length)return;const first=items[0],last=items.at(-1);if(e.shiftKey&&document.activeElement===first){e.preventDefault();last.focus()}else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first.focus()}}
+ const drawer=document.getElementById('mobileDrawer');if(e.key==='Tab'&&drawer&&!drawer.hidden&&!drawer.inert){const items=[...drawer.querySelectorAll('.mobile-drawer-panel button:not([disabled])')];if(!items.length)return;const first=items[0],last=items.at(-1);if(e.shiftKey&&document.activeElement===first){e.preventDefault();last.focus()}else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first.focus()}}
 });</script>
 <script>if("serviceWorker" in navigator && (location.protocol === "https:" || location.hostname === "localhost")) { navigator.serviceWorker.register("./service-worker.js",{scope:"./",updateViaCache:"none"}).catch(error=>console.warn("Silhueta: não foi possível ativar os recursos offline.",error)); }</script>
 </body>

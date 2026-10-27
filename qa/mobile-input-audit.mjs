@@ -16,14 +16,17 @@ const server=createServer(async(req,res)=>{try{const pathname=decodeURIComponent
 await new Promise(resolve=>server.listen(4173,'127.0.0.1',resolve));
 const browser=await chromium.launch({headless:true,...(process.env.PWA_CHROME_CHANNEL?{channel:process.env.PWA_CHROME_CHANNEL}:{})});
 async function openPage(width=390,seed=emptyState(),acceptDialogs=false,options={}){
- const context=await browser.newContext({viewport:{width,height:844},deviceScaleFactor:1,isMobile:width<=850,hasTouch:width<=850,locale:'pt-BR',timezoneId:options.timezoneId||'America/Sao_Paulo'});
+ const context=await browser.newContext({viewport:{width,height:844},deviceScaleFactor:1,isMobile:width<=850,hasTouch:width<=850,locale:'pt-BR',timezoneId:options.timezoneId||'America/Sao_Paulo',reducedMotion:options.reducedMotion||'no-preference'});
  await context.route('https://api.github.com/**',route=>route.abort());
  await context.addInitScript(data=>{if(!localStorage.getItem('silhueta.app.v1'))localStorage.setItem('silhueta.app.v1',JSON.stringify(data));},seed);
  const page=await context.newPage(),errors=[],dialogs=[];page.on('pageerror',e=>errors.push(e.message));page.on('console',msg=>{if(msg.type()==='error')errors.push(msg.text());});page.on('dialog',async d=>{dialogs.push(d.message());acceptDialogs?await d.accept():await d.dismiss();});
  if(options.clockTime)await page.clock.install({time:new Date(options.clockTime)});
  await page.goto('http://127.0.0.1:4173/',{waitUntil:'networkidle'});return{context,page,errors,dialogs};
 }
-async function go(page,view){let link=page.locator('[data-action="go"][data-view="'+view+'"]:visible').first();if(!(await link.count())){await page.locator('[data-action="openDrawer"]:visible').first().click();link=page.locator('#mobileDrawer [data-view="'+view+'"]:visible').first();}await link.click();await page.waitForTimeout(200);}
+// Native details transitions are not consistently exposed by getAnimations().
+// Allow their 160 ms budget plus two frames; this wait belongs only to QA.
+async function settleMotion(page){await page.waitForTimeout(200);}
+async function go(page,view){let link=page.locator('[data-action="go"][data-view="'+view+'"]:visible').first();if(!(await link.count())){await page.locator('[data-action="openDrawer"]:visible').first().click();link=page.locator('#mobileDrawer [data-view="'+view+'"]:visible').first();}await link.click();await settleMotion(page);}
 async function state(page){return page.evaluate(()=>JSON.parse(localStorage.getItem('silhueta.app.v1')));}
 const TEST_GIST_ID='0123456789abcdef0123456789abcdef',TEST_GIST_TOKEN='silhueta-synthetic-token-not-a-credential';
 const SYNC_CONFIRM_KEY='silhueta.ui.lastSyncConfirmation',QUICK_METRIC_KEY='silhueta.ui.quickMetric';
@@ -49,6 +52,7 @@ async function startMockSync(page,{remember=false}={}){
 }
 async function waitSyncSuccess(page){await page.waitForFunction(()=>document.getElementById('syncState').classList.contains('sync-ok'));}
 async function formGeometry(page,label,pairs=[]){
+ await settleMotion(page);
  const data=await page.evaluate(pairs=>{
   const rect=el=>{const r=el.getBoundingClientRect();return{left:r.left,right:r.right,top:r.top,bottom:r.bottom,width:r.width,height:r.height};};
   const visible=el=>el.getClientRects().length&&el.getBoundingClientRect().width>0&&el.getBoundingClientRect().height>0;
@@ -97,7 +101,7 @@ async function offerInstall(page,rejectPrompt=false){return page.evaluate(reject
 },rejectPrompt);}
 async function snap(page,name){const file=path.join(output,name+'.jpg');const bytes=await page.screenshot({path:file,type:'jpeg',quality:45,fullPage:false,animations:'disabled'});shots.push({name,bytes});}
 async function run(name,fn,opts={}){
- let h;try{h=await openPage(opts.width||390,opts.seed||emptyState(),!!opts.acceptDialogs,opts);const detail=await fn(h);results.push({name,status:'pass',...detail});}catch(e){results.push({name,status:'fail',error:e.message});}finally{if(h){if(h.errors.length)runtimeErrors.push({test:name,errors:h.errors});await h.context.close();}}
+ let h;try{h=await openPage(opts.width||390,opts.seed||emptyState(),!!opts.acceptDialogs,opts);const detail=await fn(h);results.push({name,status:'pass',...detail});}catch(e){results.push({name,status:'fail',error:e.message});}finally{console.log('SILHUETA_TEST_RESULT '+JSON.stringify({name,status:results.at(-1)?.status,error:results.at(-1)?.error}));if(h){if(h.errors.length)runtimeErrors.push({test:name,errors:h.errors});await h.context.close();}}
 }
 try{
  const local=await readFile(path.join(root,'index.html'));let live={};try{const r=await fetch('https://sosoft142.github.io/Silhueta/',{signal:AbortSignal.timeout(20000)}),bytes=Buffer.from(await r.arrayBuffer());live={httpStatus:r.status,sameAsRepository:local.equals(bytes),sha256:createHash('sha256').update(bytes).digest('hex')};}catch(e){live={error:e.message};}
@@ -200,7 +204,45 @@ try{
   saved=await state(page);assert(JSON.stringify(saved.metricEntries)===JSON.stringify(before.metricEntries)&&JSON.stringify(saved.preferences.favoriteMetrics)===JSON.stringify(before.preferences.favoriteMetrics),'Syncing the weekday changed history or favorites');
   await page.locator('.sync-close').click();await go(page,'dashboard');assert(await page.locator('#measurementSchedule').isHidden(),'Remote removal did not hide the countdown');
  },{seed:filledState()});
- await run('Empty mobile dashboard and mobile drawer',async({page})=>{await snap(page,'390-empty-home');await page.locator('[data-action="openDrawer"]:visible').first().click();assert(await page.locator('#mobileDrawer').isVisible(),'Drawer did not open');await snap(page,'390-menu');await page.keyboard.press('Escape');assert(await page.locator('#mobileDrawer').isHidden(),'Escape did not close drawer');});
+ await run('Empty mobile dashboard and mobile drawer',async({page})=>{await snap(page,'390-empty-home');await page.locator('[data-action="openDrawer"]:visible').first().click();assert(await page.locator('#mobileDrawer').isVisible(),'Drawer did not open');await snap(page,'390-menu');await page.keyboard.press('Escape');await settleMotion(page);assert(await page.locator('#mobileDrawer').isHidden(),'Escape did not close drawer');});
+ for(const width of [390,1440])await run('Fast motion: immediate navigation, registration modes and draft-safe guide '+width+'px',async({page})=>{
+  const before=await state(page),timings=[];
+  const view=await page.evaluate(()=>{[...document.querySelectorAll('[data-action="go"][data-view="measure"]')].find(el=>el.getClientRects().length).click();return{ready:!!document.getElementById('quickForm'),durations:document.getElementById('main').getAnimations().map(a=>a.effect.getTiming().duration)};});
+  assert(view.ready&&view.durations.length===1&&view.durations.every(ms=>ms>0&&ms<=160),'Navigation waited for its animation or used a long effect: '+JSON.stringify(view));timings.push(view);await settleMotion(page);
+  for(const mode of ['batch','quick']){const result=await page.evaluate(mode=>{document.querySelector('[data-action="measureMode"][data-mode="'+mode+'"]').click();return{ready:!!document.getElementById(mode==='batch'?'batchForm':'quickForm'),durations:document.querySelector('.measure-main>.card').getAnimations().map(a=>a.effect.getTiming().duration)};},mode);assert(result.ready&&result.durations.length===1&&result.durations.every(ms=>ms<=160),'Registration mode was delayed or lacked its short transition');timings.push(result);await settleMotion(page);}
+  await page.locator('#quickValue').fill('75.5');await page.locator('.anatomy-guide>summary').click();await settleMotion(page);
+  const guide=await page.evaluate(()=>{document.querySelector('[data-action="guideMetric"][data-metric="hip"]').click();return{draft:document.getElementById('quickValue').value,durations:document.querySelector('.guide-tip').getAnimations().map(a=>a.effect.getTiming().duration)};});
+  assert(guide.draft==='75.5'&&guide.durations.length===1&&guide.durations.every(ms=>ms<=160),'Guide transition delayed selection or erased a draft');timings.push(guide);await settleMotion(page);
+  await page.locator('#historyFilter').selectOption('waist');const settled=await page.evaluate(()=>({draft:document.getElementById('quickValue').value,animations:document.getElementById('main').getAnimations().length,opacity:getComputedStyle(document.getElementById('main')).opacity,transform:getComputedStyle(document.getElementById('main')).transform}));
+  assert(settled.draft==='75.5'&&settled.animations===0&&settled.opacity==='1'&&settled.transform==='none','A background render replayed navigation or left an unfinished effect');
+  if(width>850){const sidebar=await page.evaluate(()=>{document.querySelector('[data-action="toggleSidebar"]').click();return document.querySelector('.app').getAnimations().map(a=>a.effect.getTiming().duration);});assert(sidebar.length>0&&sidebar.every(ms=>ms<=160),'Desktop sidebar uses a long transition');await settleMotion(page);assert(await page.locator('#quickValue').inputValue()==='75.5','Collapsing the sidebar lost the draft');timings.push({sidebar});}
+  assert(JSON.stringify(await state(page))===JSON.stringify(before),'Animations changed saved records');return{timings,settled};
+ },{width,seed:filledState()});
+ for(const width of [390,1440])await run('Fast motion: native details expand and collapse without losing input '+width+'px',async({page})=>{
+  await go(page,'measure');const details=page.locator('#quickForm .help-extra');
+  const opening=await details.evaluate(async el=>{el.querySelector('summary').click();await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));const style=getComputedStyle(el,'::details-content');return{open:el.open,supported:CSS.supports('interpolate-size','allow-keywords')&&CSS.supports('selector(details::details-content)'),durations:style.transitionDuration.split(',').map(value=>parseFloat(value)*(value.trim().endsWith('ms')?1:1000)),height:parseFloat(style.height)};});
+  assert(opening.open&&(!opening.supported||(opening.durations.some(ms=>ms>0)&&opening.durations.every(ms=>ms<=160))),'Details did not open with a short native transition: '+JSON.stringify(opening));await settleMotion(page);await page.locator('#quickNote').fill('Synthetic draft retained through expansion');const expanded=await details.evaluate(el=>({boxHeight:el.getBoundingClientRect().height,contentHeight:parseFloat(getComputedStyle(el,'::details-content').height)}));
+  assert(!opening.supported||(opening.height>0&&opening.height<expanded.contentHeight),'Opening skipped intermediate height: '+JSON.stringify({opening,expanded}));
+  const closing=await details.evaluate(async el=>{el.querySelector('summary').click();await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));return{open:el.open,height:parseFloat(getComputedStyle(el,'::details-content').height)};});
+  assert(!closing.open&&(!opening.supported||(closing.height>0&&closing.height<expanded.contentHeight)),'Closing skipped its height transition: '+JSON.stringify({closing,expanded}));await settleMotion(page);const collapsed=await details.evaluate(el=>el.getBoundingClientRect().height);assert(collapsed<expanded.boxHeight&&await page.locator('#quickNote').isHidden(),'Collapsed details retained an open layout');
+  await details.locator('summary').click();await settleMotion(page);assert(await page.locator('#quickNote').inputValue()==='Synthetic draft retained through expansion','Closing and reopening erased the draft');await formGeometry(page,'Settled animated details');return{opening,closing,expanded,collapsed};
+ },{width});
+ await run('Fast motion: rapid drawer reversal keeps focus, clicks and visibility consistent',async({page})=>{
+  const cycle=await page.evaluate(()=>{const opener=document.querySelector('[data-action="openDrawer"]'),drawer=document.getElementById('mobileDrawer'),closer=drawer.querySelector('.mobile-drawer-head [data-action="closeDrawer"]');opener.click();const opening=drawer.querySelector('.mobile-drawer-panel').getAnimations().map(a=>a.effect.getTiming().duration);closer.click();const closing={inert:drawer.inert,hidden:drawer.hidden,aria:drawer.getAttribute('aria-hidden'),focus:document.activeElement===opener,locked:document.body.classList.contains('drawer-open'),durations:drawer.querySelector('.mobile-drawer-panel').getAnimations().map(a=>a.effect.getTiming().duration)};opener.click();return{opening,closing,reopened:!drawer.hidden&&!drawer.inert&&document.activeElement===closer};});
+  assert(cycle.opening.every(ms=>ms<=160)&&cycle.closing.durations.every(ms=>ms<=120)&&cycle.closing.inert&&!cycle.closing.hidden&&cycle.closing.aria==='true'&&cycle.closing.focus&&!cycle.closing.locked&&cycle.reopened,'Rapid reversal blocked interaction or misplaced focus: '+JSON.stringify(cycle));await settleMotion(page);
+  assert(await page.locator('#mobileDrawer').evaluate(el=>!el.hidden&&!el.inert&&el.getAttribute('aria-hidden')===null),'An obsolete closing animation hid a reopened drawer');
+  await page.locator('#mobileDrawer [data-action="go"][data-view="settings"]').click();assert(await page.locator('#settingsForm').count()===1,'Menu navigation waited for the drawer to finish');await settleMotion(page);
+  assert(await page.locator('#mobileDrawer').isHidden(),'Drawer did not finish closing after navigation');return{cycle};
+ });
+ for(const width of [390,1440])await run('Reduced motion: immediate tabs, details and menu '+width+'px',async({page})=>{
+  await go(page,'measure');await page.locator('#quickForm .help-extra summary').click();await page.locator('#quickNote').fill('Synthetic reduced-motion draft');
+  const motion=await page.evaluate(()=>({active:document.getAnimations().filter(a=>a.playState==='running').length,scroll:getComputedStyle(document.documentElement).scrollBehavior,note:document.getElementById('quickNote').value}));assert(motion.active===0&&motion.scroll==='auto'&&motion.note==='Synthetic reduced-motion draft','Reduced-motion preference was ignored');
+  if(width<=850){const closed=await page.evaluate(()=>{document.querySelector('[data-action="openDrawer"]').click();document.querySelector('#mobileDrawer [data-action="closeDrawer"]').click();return document.getElementById('mobileDrawer').hidden;});assert(closed,'Reduced-motion drawer waited for an animation');}else{await page.locator('[data-action="toggleSidebar"]').click();assert(await page.evaluate(()=>document.getAnimations().filter(a=>a.playState==='running').length)===0,'Reduced-motion sidebar still animated');}return{motion};
+ },{width,reducedMotion:'reduce'});
+ await run('Reduced motion: changing preference settles an in-flight drawer close',async({page})=>{
+  await page.locator('[data-action="openDrawer"]:visible').first().click();await settleMotion(page);await page.locator('#mobileDrawer .mobile-drawer-head [data-action="closeDrawer"]').click();await page.emulateMedia({reducedMotion:'reduce'});await settleMotion(page);
+  assert(await page.locator('#mobileDrawer').isHidden(),'Changing the preference left a closing overlay behind');await page.locator('[data-action="openDrawer"]:visible').first().click();assert(await page.locator('#mobileDrawer').evaluate(el=>!el.hidden&&!el.inert),'Drawer could not reopen after motion was cancelled');
+ });
  await run('Quick registration repeats, isolated edit, isolated delete, persistence',async({page})=>{
   await go(page,'measure');
   for(const v of ['75.5','75.6']){await page.locator('#quickValue').fill(v);await page.locator('#quickDate').fill('2026-10-20');await page.locator('#quickForm button[type="submit"]').click();}
