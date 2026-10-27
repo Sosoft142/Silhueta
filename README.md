@@ -1,6 +1,10 @@
-# Silhueta · versão 2.9.11 — clareza e agilidade no acompanhamento
+# Silhueta · versão 2.9.12 — clareza e agilidade no acompanhamento
 
 Aplicativo web instalável (PWA) para acompanhar medidas corporais, composição corporal, nutrição e evolução.
+
+A versão 2.9.12 permite escolher o **Dia das medições** no início de **Configurações**. Depois de salvar, a tela **Início** mostra a contagem até o próximo dia escolhido, com o dia da semana e a data. No próprio dia, aparece **Hoje é dia de medir**; a contagem avança para a próxima semana quando o calendário muda, inclusive se alguma medida já foi registrada naquele dia. Escolher **Não definido** remove essa rotina. A contagem acompanha a data local do aparelho e é atualizada enquanto o painel está aberto e ao retomar o app.
+
+A preferência é guardada em `preferences.measurementWeekday` (domingo = 0; sábado = 6; sem escolha = null), incluída no backup JSON e na sincronização existente por Gist. Backups antigos são aceitos sem inventar um dia, e valores inválidos são rejeitados antes da importação. Salvar o dia e salvar a data inicial do projeto preservam os rascunhos um do outro. Os testes de tempo e sincronização usam relógios, dados e Gists sintéticos isolados.
 
 A versão 2.9.11 troca o ícone de **Nutrição** por uma cenoura em traços, usada na navegação inferior, no menu mobile, na barra lateral do computador e nos atalhos de Nutrição. O desenho vetorial Carrot do Lucide Icons é incorporado ao HTML, com a licença ISC incluída no código, e usa a mesma espessura de traço e as cores dos demais ícones.
 
