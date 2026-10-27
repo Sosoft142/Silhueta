@@ -3,7 +3,8 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-<meta name="theme-color" content="#8736BD" />
+<meta name="theme-color" content="#FCFAFD" />
+<meta name="color-scheme" content="light" />
 <meta name="description" content="Seu diário de recomposição corporal, medições, nutrição e progresso em um só lugar." />
 <title>Silhueta — Seu acompanhamento</title>
 <link rel="manifest" href="./manifest.webmanifest" />
@@ -11,6 +12,7 @@
 <link rel="apple-touch-icon" href="./icons/apple-touch-icon-v21.png" />
 <style>
 :root{
+  color-scheme:light;
   --ink:#383642;--sub:#77717f;--border:#eee7ec;--white:#fff;
   --rose:#d9789f;--rose-dark:#a94871;--rose-soft:#fae8ef;--rose-pale:#fff5f9;
   --sage:#8db8a4;--sage-soft:#e8f3ed;--sage-dark:#43745d;
@@ -589,7 +591,7 @@ form .btn,.settings-links .btn{max-width:100%;white-space:normal;text-align:cent
 <input type="file" id="importFile" accept=".json,.csv,text/csv,application/json" hidden />
 <script>
 (()=>{'use strict';
-const APP_VERSION='2.9.8';
+const APP_VERSION='2.9.9';
 const STORAGE_KEY='silhueta.app.v1', VERSION=7;
 const QUICK_METRIC_PREF_KEY='silhueta.ui.quickMetric';
 // Keep installation state in memory: neither a missing prompt nor an accepted
