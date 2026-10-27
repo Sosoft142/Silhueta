@@ -535,7 +535,7 @@ body{font-size:15px;line-height:1.55;background:#fcfafd}
 .app-version{max-width:790px;margin:18px 0 0;padding:15px 0 3px;border-top:1px solid var(--border);text-align:center;color:var(--sub);font-size:12px;line-height:1.5}
 #installAppButton:disabled{opacity:.65;cursor:default;box-shadow:none}
 /* Form spacing follows the available card width on mobile and desktop. */
-#settingsForm{display:grid;gap:16px}
+#settingsForm,#measurementScheduleForm{display:grid;gap:16px}
 .settings-summary .small-muted{min-width:0;line-height:1.6}
 .form-grid,.quick-fields,.batch-metrics{align-items:end}
 .detail-panel>.form-grid+.field{margin-top:16px}
@@ -554,6 +554,13 @@ form .btn,.settings-links .btn{max-width:100%;white-space:normal;text-align:cent
 .toast-action{min-height:44px;padding:8px 12px;border:1px solid #d3b4cc;border-radius:9px;background:#fff;color:#713c60;font-weight:750;pointer-events:none}
 .toast.show .toast-action{pointer-events:auto}
 .quick-last-measurement{font-size:13px;line-height:1.6;color:var(--sub);margin:14px 0 16px;overflow-wrap:anywhere}
+.measurement-schedule{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin:0 0 22px;padding:16px 18px;border:1px solid var(--border);border-radius:16px;background:#fff}
+.measurement-schedule[hidden]{display:none}
+.measurement-schedule-copy{flex:1 1 200px;min-width:0}
+.measurement-schedule-label{display:flex;align-items:center;gap:7px;font-size:12px;color:var(--sub)}
+.measurement-schedule strong{display:block;font-size:21px;line-height:1.35;color:#73425e;margin:4px 0}
+.measurement-schedule-date{font-size:13px;color:var(--sub);overflow-wrap:anywhere}
+.measurement-schedule .text-action{flex-shrink:0;min-height:44px}
 </style>
 </head>
 <body>
@@ -591,7 +598,7 @@ form .btn,.settings-links .btn{max-width:100%;white-space:normal;text-align:cent
 <input type="file" id="importFile" accept=".json,.csv,text/csv,application/json" hidden />
 <script>
 (()=>{'use strict';
-const APP_VERSION='2.9.11';
+const APP_VERSION='2.9.12';
 const STORAGE_KEY='silhueta.app.v1', VERSION=7;
 const QUICK_METRIC_PREF_KEY='silhueta.ui.quickMetric';
 // Keep installation state in memory: neither a missing prompt nor an accepted
@@ -685,7 +692,9 @@ profile:'<circle cx="12" cy="8" r="4"/><path d="M4 21c0-5 3-8 8-8s8 3 8 8"/>',he
 function ico(name, size=20){return `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[name]||ICONS.heart}</svg>`;}
 const NAV=[['dashboard','Início','dashboard'],['measure','Medidas','measure'],['trends','Evolução','trends'],['nutrition','Nutrição','nutrition']];
 const AUX_NAV=[['settings','Configurações','settings'],['help','Como usar','help']];
-const DEFAULT=()=>({version:VERSION,meta:{updatedAt:nowStamp(),lastSyncAt:'',syncState:'local-only',historyMigratedV23:true},profile:{age:null,height:null,baselineWeight:null,startDate:'',months:12,hormoneMonths:null,workoutsPlanned:null,goalWeight:null,goalWaist:null,goalHip:null},macros:{protein:null,carbs:null,fat:null,calorieReference:null},measurements:{},metricEntries:{},preferences:{favoriteMetrics:['weight','waist','hip'],quickMetrics:['weight','waist','hip']},nutritionLogs:{}});
+const DEFAULT=()=>({version:VERSION,meta:{updatedAt:nowStamp(),lastSyncAt:'',syncState:'local-only',historyMigratedV23:true},profile:{age:null,height:null,baselineWeight:null,startDate:'',months:12,hormoneMonths:null,workoutsPlanned:null,goalWeight:null,goalWaist:null,goalHip:null},macros:{protein:null,carbs:null,fat:null,calorieReference:null},measurements:{},metricEntries:{},preferences:{favoriteMetrics:['weight','waist','hip'],quickMetrics:['weight','waist','hip'],measurementWeekday:null},nutritionLogs:{}});
+const MEASUREMENT_WEEKDAYS=['Domingo','Segunda-feira','Terça-feira','Quarta-feira','Quinta-feira','Sexta-feira','Sábado'];
+function isMeasurementWeekday(value){return Number.isInteger(value)&&value>=0&&value<=6;}
 
 // Measures share a week, but retain their own actual dates and sync separately.
 const EXTRA_MEASURE_GROUPS=[
@@ -735,7 +744,7 @@ function migrateMetricHistory(d){
 function cleanPreferences(pref){
  const v=pref&&typeof pref==='object'?pref:{};
  const valid=x=>Array.isArray(x)?[...new Set(x.filter(k=>METRIC_KEYS.includes(k)))]:[];
- return {favoriteMetrics:valid(v.favoriteMetrics).slice(0,8),quickMetrics:valid(v.quickMetrics).slice(0,8)};
+ return {favoriteMetrics:valid(v.favoriteMetrics).slice(0,8),quickMetrics:valid(v.quickMetrics).slice(0,8),measurementWeekday:isMeasurementWeekday(v.measurementWeekday)?v.measurementWeekday:null};
 }
 function allMetricEntries(metric){return Object.entries(state.metricEntries||{}).filter(([id,r])=>r&&!r.deleted&&METRIC_KEYS.includes(r.metric)&&cleanNum(r.value)!==null&&(!metric||r.metric===metric)).map(([id,r])=>({...r,id,value:cleanNum(r.value),date:isDate(r.date)?r.date:''})).sort((a,b)=>(b.date||'').localeCompare(a.date||'')||String(b.updatedAt||'').localeCompare(String(a.updatedAt||''))||a.id.localeCompare(b.id));}
 function latestMetric(key){const item=allMetricEntries(key)[0];return item?{...item,actualDate:item.date}:null;}
@@ -900,6 +909,17 @@ function favoriteSettings(){
  const fav=state.preferences.favoriteMetrics;
  return `<details class="favorite-settings"><summary>${ico('edit',16)} Personalizar painel <span class="small-muted">Escolher indicadores e ordem</span></summary><p class="help-mini">Selecione até oito medidas. As alterações aparecem nos seus outros aparelhos após a sincronização.</p><div class="fav-options">${METRIC_KEYS.map(metric=>`<label class="fav-choice"><input type="checkbox" data-action="favToggle" data-metric="${metric}" ${fav.includes(metric)?'checked':''}/>${esc(BODY_LABELS[metric])}</label>`).join('')}</div><p class="help-mini">Ordem de exibição</p><div class="fav-order">${fav.map((metric,i)=>`<div class="fav-order-item"><span>${esc(BODY_LABELS[metric])}</span><div><button type="button" data-action="favMove" data-metric="${metric}" data-direction="-1" ${i===0?'disabled':''} aria-label="Subir ${esc(BODY_LABELS[metric])}">↑</button><button type="button" data-action="favMove" data-metric="${metric}" data-direction="1" ${i===fav.length-1?'disabled':''} aria-label="Descer ${esc(BODY_LABELS[metric])}">↓</button></div></div>`).join('')}</div></details>`;
 }
+function upcomingMeasurement(today=nowISO()){
+ const weekday=state.preferences.measurementWeekday;if(!isMeasurementWeekday(weekday)||!isDate(today))return null;
+ const current=new Date(today+'T12:00:00Z').getUTCDay(),days=(weekday-current+7)%7;
+ return{weekday,days,date:dateAdd(today,days)};
+}
+function measurementScheduleCard(){return `<section id="measurementSchedule" class="measurement-schedule" aria-label="Próxima medição" hidden><div class="measurement-schedule-copy"><span class="measurement-schedule-label">${ico('calendar',16)} Próxima medição</span><strong id="measurementCountdown" aria-live="polite" aria-atomic="true"></strong><span id="measurementScheduleDate" class="measurement-schedule-date"></span></div><button type="button" class="text-action" data-action="go" data-view="settings">Alterar dia</button></section>`;}
+function updateMeasurementCountdown(){
+ const card=document.getElementById('measurementSchedule');if(!card)return;const next=upcomingMeasurement();card.hidden=!next;if(!next)return;
+ const countdown=next.days===0?'Hoje é dia de medir':next.days===1?'Falta 1 dia':'Faltam '+next.days+' dias',date=MEASUREMENT_WEEKDAYS[next.weekday]+' · '+dateBR(next.date);
+ const label=document.getElementById('measurementCountdown'),detail=document.getElementById('measurementScheduleDate');if(label.textContent!==countdown)label.textContent=countdown;if(detail.textContent!==date)detail.textContent=date;
+}
 function dashboard(){
  const active=allMetricEntries();
  const title=!active.length?'Registre sua primeira medida':'Registre uma nova medida';
@@ -908,7 +928,8 @@ function dashboard(){
  const weight=latestMetric('weight'),last=active[0],total=active.length,favs=state.preferences.favoriteMetrics;
  return heading('Seu progresso','Últimas medidas, datas reais e acesso rápido aos registros.',total?button('Registrar medida','plus','go','data-view="measure"','btn-primary'):'')+
  (total?'':`<section class="ux-hero"><div class="ux-hero-copy"><span class="ux-step">PRÓXIMA AÇÃO</span><h2>${title}</h2><p>${explain}</p></div><div class="hero-action">${button('Registrar medida','plus','go',`data-view="${action}"`,'btn-primary')}</div></section>`)+
- `<div class="overview-heading"><div><h2>Minhas medidas</h2><p>Os indicadores mostram a última data registrada de cada região.</p></div><span class="subtle-chip">${total} registro(s)</span></div>`+
+  measurementScheduleCard()+
+  `<div class="overview-heading"><div><h2>Minhas medidas</h2><p>Os indicadores mostram a última data registrada de cada região.</p></div><span class="subtle-chip">${total} registro(s)</span></div>`+
  `<div class="metrics-custom-grid">${favs.length?favs.map(metricTile).join(''):'<p class="subtle-empty">Selecione pelo menos uma medida em Personalizar painel.</p>'}</div>`+
  favoriteSettings()+
  `<div class="dashboard-secondary ${total?'has-records':''}"><article class="card"><div class="card-head"><div><h2>Histórico recente</h2><p class="card-sub">Registros independentes, sem limite semanal.</p></div><button class="text-action" data-action="go" data-view="trends">Ver evolução →</button></div>${total?`<div class="recent-list">${active.slice(0,5).map(e=>`<button class="recent-week" data-action="editMetric" data-id="${esc(e.id)}"><span><strong>${esc(BODY_LABELS[e.metric])}</strong><small>${e.date?dateBR(e.date):'Data não informada'}</small></span><span>${fmtMetric(e.metric,e.value)} ${ico('chevron',15)}</span></button>`).join('')}</div>`:'<p class="subtle-empty">As medições que você salvar aparecerão aqui.</p>'}</article>${total?'</div><details class="card dashboard-help"><summary>Como acompanhar suas medidas</summary>':'<article class="card"><h2>Como funciona</h2>'}<div class="onboarding-min"><p><strong>1.</strong> Registre uma medida e a data.</p><p><strong>2.</strong> Compare seu histórico na aba Evolução.</p><p><strong>3.</strong> Defina metas apenas se desejar.</p></div><button class="text-action" data-action="go" data-view="help">Ver instruções →</button>${total?'</details>':'</article></div>'}`;
@@ -1034,9 +1055,9 @@ function nutrition(){const m=macroValues(),w=ui.nutWeek,r=state.nutritionLogs[St
  <details class="detail-panel" ${hasExtra?'open':''}><summary>${ico('plus',17)} Macronutrientes e anotações <span>opcional</span></summary><div class="form-grid measure-extras">${numberField('protein','Proteína média',r.protein,'g/dia',0,500)}${numberField('carbs','Carboidratos médios',r.carbs,'g/dia',0,900)}${numberField('fat','Gorduras médias',r.fat,'g/dia',0,400)}</div>${textField('notes','Observações',r.notes,'Como foi sua alimentação, disposição ou recuperação?')}</details><div class="form-actions measurement-actions"><div class="toolbar-flex">${button('Salvar semana','check','saveNutrition','','btn-primary')}</div><span class="small-muted">Pode deixar campos em branco. Os dados não preenchidos não serão estimados.</span></div></form></article>
  <aside class="measure-aside"><div class="card nutrition-reference"><div class="card-head"><div><h2>Metas de referência</h2><p class="card-sub">Configure aqui suas metas opcionais, separadas do consumo registrado.</p></div></div>${hasTargets?`<div class="nutrition-total"><strong>${nfmt(m.calculated,0)} kcal/dia</strong><small>Energia calculada a partir dos macronutrientes</small></div><div class="nutrition-targets"><div>Proteínas <strong>${nfmt(m.protein,0)} g</strong></div><div>Carboidratos <strong>${nfmt(m.carbs,0)} g</strong></div><div>Gorduras <strong>${nfmt(m.fat,0)} g</strong></div></div>`:`<p class="subtle-empty">Você ainda não configurou metas alimentares. Isso é opcional e não impede os registros.</p>`}<details class="inline-macro-form"><summary>${hasTargets?'Editar metas alimentares':'Adicionar metas alimentares'} (opcional)</summary><p class="help-mini">Estes valores são referências e não registram seu consumo.</p><form id="macroForm"><div class="form-grid">${macroTargetField('protein','Proteínas',m.protein,'g/dia',0,400)}${macroTargetField('carbs','Carboidratos',m.carbs,'g/dia',0,800)}${macroTargetField('fat','Gorduras',m.fat,'g/dia',0,300)}</div>${button('Salvar metas','check','saveMacroTargets','','btn-primary')}</form></details></div><div class="card measure-history"><div class="card-head"><h2>Semanas salvas</h2><span class="subtle-chip">${logs.length}</span></div>${logs.length?`<div class="recent-list">${logs.map(([week,item])=>`<button class="recent-week" data-action="editNutWeek" data-week="${week}"><span><strong>${nutritionWeekLabel(week)}</strong><small>${state.profile.startDate?nutritionWeekRange(week):'Datas ainda não definidas'}</small><small>${item.calories!=null?nfmt(item.calories,0)+' kcal/dia':'Sem calorias informadas'}</small></span><span>Editar ${ico('chevron',15)}</span></button>`).join('')}</div>`:'<p class="subtle-empty">Seu primeiro check-in aparecerá aqui depois de salvar.</p>'}</div></aside></div>`;
 }
-function settings(){const p=state.profile,hasDate=!!p.startDate;
+function settings(){const p=state.profile,hasDate=!!p.startDate,weekday=state.preferences.measurementWeekday;
  return heading('Configurações','Ajustes do projeto e preferências que não precisam aparecer durante o acompanhamento.')+
- `<div class="settings-stack"><section class="card settings-section"><div class="card-head"><div><h2>Data de início do projeto</h2><p>Opcional. Use apenas se quiser organizar o diário de Nutrição por semanas. As medições corporais têm datas independentes.</p></div></div>
+  `<div class="settings-stack"><section class="card settings-section"><div class="card-head"><div><h2>Dia das medições</h2><p id="measurementScheduleHelp">Escolha um dia da semana. A tela inicial mostrará quantos dias faltam até ele, seguindo o calendário deste aparelho.</p></div></div><form id="measurementScheduleForm"><div class="field"><label for="measurementWeekday">Dia da semana</label><select id="measurementWeekday" name="measurementWeekday" aria-describedby="measurementScheduleHelp"><option value="" ${weekday===null?'selected':''}>Não definido</option>${[1,2,3,4,5,6,0].map(day=>`<option value="${day}" ${weekday===day?'selected':''}>${MEASUREMENT_WEEKDAYS[day]}</option>`).join('')}</select></div><div class="settings-summary"><span class="small-muted">${isMeasurementWeekday(weekday)?'Dia atual: '+MEASUREMENT_WEEKDAYS[weekday]:'Nenhum dia definido.'}</span><button type="submit" class="btn btn-primary">${ico('check',16)} Salvar dia</button></div></form></section><section class="card settings-section"><div class="card-head"><div><h2>Data de início do projeto</h2><p>Opcional. Use apenas se quiser organizar o diário de Nutrição por semanas. As medições corporais têm datas independentes.</p></div></div>
  <form id="settingsForm">${dateField('startDate','Início do projeto',p.startDate)}<div class="settings-summary"><span class="small-muted">${hasDate?'Início atual: '+dateBR(p.startDate):'Nenhuma data definida. Você já pode registrar medidas.'}</span>${button('Salvar data','check','saveSettings','','btn-primary')}</div></form></section>
  <section class="card settings-section"><h2>Outras opções</h2><p>As preferências ficam junto das funções que você utiliza.</p><div class="settings-links">${button('Metas de nutrição','nutrition','go','data-view="nutrition"','btn-plain')}${button('Metas corporais','trends','go','data-view="trends"','btn-plain')}${button('Backups e ajuda','help','go','data-view="help"','btn-plain')}</div><details class="help-extra"><summary>Sobre os dados do perfil antigo</summary><p class="small-muted">Idade, altura, peso de referência e demais informações anteriores continuam preservados nos dados salvos e nos backups, mas não são exigidos para registrar medidas.</p></details></section>${installSection()}</div><footer class="app-version" aria-label="Versão do aplicativo">Silhueta · Versão <span data-app-version>${APP_VERSION}</span></footer>`;
 }
@@ -1150,7 +1171,7 @@ function restoreFormDrafts(snapshot){
  [...document.querySelectorAll('#main details')].forEach((el,i)=>{const saved=snapshot.details[i];if(saved&&el.className===saved.className)el.open=saved.open;});
  if(snapshot.focusId)document.getElementById(snapshot.focusId)?.focus({preventScroll:true});
 }
-function render(options={}){const drafts=options.preserveDrafts?captureFormDrafts(options.excludeForm):null;navRender();const views={dashboard,measure:measurement,trends,nutrition,settings,help};document.getElementById('main').innerHTML=(views[ui.view]||dashboard)();document.title=({dashboard:'Painel',measure:'Medições',trends:'Evolução',nutrition:'Nutrição',settings:'Configurações',help:'Como usar'})[ui.view]+' · Silhueta';document.getElementById('topPeriod').textContent=`${state.profile.months} meses de projeto`;restoreFormDrafts(drafts);updateQuickLastMeasurement();fitHistoryCharts();}
+function render(options={}){const drafts=options.preserveDrafts?captureFormDrafts(options.excludeForm):null;navRender();const views={dashboard,measure:measurement,trends,nutrition,settings,help};document.getElementById('main').innerHTML=(views[ui.view]||dashboard)();document.title=({dashboard:'Painel',measure:'Medições',trends:'Evolução',nutrition:'Nutrição',settings:'Configurações',help:'Como usar'})[ui.view]+' · Silhueta';document.getElementById('topPeriod').textContent=`${state.profile.months} meses de projeto`;restoreFormDrafts(drafts);updateQuickLastMeasurement();updateMeasurementCountdown();fitHistoryCharts();}
 
 function inputObj(form){return Object.fromEntries(new FormData(form).entries())}
 function saveMeasure(){const f=document.getElementById('quickForm');if(f)saveQuick(f)}
@@ -1166,6 +1187,7 @@ function saveNutrition(){
  try{for(const key of Object.keys(NUTRITION_RANGES)){const value=nutritionValue(key,d[key]);if(value!==null)obj[key]=value;}}catch(e){toast(e.message);return;}
  state.nutritionLogs[String(ui.nutWeek)]=obj;persist();toast(nutritionWeekLabel(ui.nutWeek)+' salva.');render({preserveDrafts:true,excludeForm:'nutritionForm'});
 }
+function saveMeasurementSchedule(){const form=document.getElementById('measurementScheduleForm');if(!form||!form.reportValidity())return;const raw=inputObj(form).measurementWeekday;if(raw!==''&&!/^[0-6]$/.test(raw)){toast('Escolha um dia da semana válido.');return;}state.preferences.measurementWeekday=raw===''?null:Number(raw);persist();toast(storageOK?(raw===''?'Dia das medições removido.':'Dia das medições salvo.'):'Não foi possível salvar neste aparelho. Exporte um backup JSON antes de fechar.');render({preserveDrafts:true,excludeForm:'measurementScheduleForm'});}
 function saveSettings(){const f=document.getElementById('settingsForm');if(!f||!f.reportValidity())return;const d=inputObj(f);if(d.startDate&&!isDate(d.startDate)){toast('Confira a data de início.');return}const old=state.profile.startDate;
  if(old!==d.startDate&&Object.keys(state.nutritionLogs).length>0&&!confirm('Mudar o início altera a correspondência das semanas do diário de nutrição. As datas das suas medições continuam iguais. Continuar?'))return;
  state.profile.startDate=d.startDate;persist();toast('Data do projeto salva.');render({preserveDrafts:true,excludeForm:'settingsForm'});}
@@ -1201,6 +1223,7 @@ function validateBackupData(data){
  for(const name of ['profile','macros','measurements'])requireImportRecord(copy[name],name);
  for(const name of ['metricEntries','nutritionLogs','preferences','meta'])if(copy[name]!==undefined)requireImportRecord(copy[name],name);
  if(copy.meta?.clock!==undefined)requireImportRecord(copy.meta.clock,'relógios de sincronização');
+  if(copy.preferences?.measurementWeekday!=null&&!isMeasurementWeekday(copy.preferences.measurementWeekday))throw Error('Dia das medições inválido no backup.');
  const profileRanges={age:[0,150],height:[0,300],baselineWeight:[20,300],hormoneMonths:[0,2000],workoutsPlanned:[0,14],months:[0,1200],goalWeight:[20,300],goalWaist:[10,300],goalHip:[10,300]};
  for(const [key,range]of Object.entries(profileRanges))importNumber(copy.profile,key,range,'perfil: '+key,key==='months');
  importDate(copy.profile,'startDate','início do projeto');
@@ -1328,7 +1351,10 @@ document.addEventListener('change',e=>{if(e.target.dataset.action==='favToggle')
  if(e.target.id==='historyFilter'){ui.historyFilter=e.target.value;ui.historyLimit=30;render({preserveDrafts:true});return}
  if(e.target.id==='chartMetric'){ui.chartMetric=e.target.value;render({preserveDrafts:true});return}
  if(e.target.id==='weekPicker'){if(!confirmDiscardEdits()){e.target.value=String(ui.week);return}ui.week=Number(e.target.value);render()}if(e.target.id==='nutWeekPicker'){if(!confirmDiscardEdits()){e.target.value=String(ui.nutWeek);return}ui.nutWeek=Number(e.target.value);render()}if(e.target.id==='extraChartSelect'){ui.extraChartKey=e.target.value;render({preserveDrafts:true})}if(e.target.id==='importFile'){importFile(e.target.files[0]);e.target.value=''}});
-document.addEventListener('submit',e=>{if(['quickForm','batchForm','measureForm','nutritionForm','settingsForm','macroForm','goalForm'].includes(e.target.id)){e.preventDefault();if(e.target.id==='quickForm')saveQuick(e.target);if(e.target.id==='batchForm')saveBatch(e.target);if(e.target.id==='nutritionForm')saveNutrition();if(e.target.id==='settingsForm')saveSettings();if(e.target.id==='macroForm')saveMacroTargets();if(e.target.id==='goalForm')saveGoals()}});
+document.addEventListener('submit',e=>{if(['quickForm','batchForm','measureForm','nutritionForm','settingsForm','measurementScheduleForm','macroForm','goalForm'].includes(e.target.id)){e.preventDefault();if(e.target.id==='quickForm')saveQuick(e.target);if(e.target.id==='batchForm')saveBatch(e.target);if(e.target.id==='nutritionForm')saveNutrition();if(e.target.id==='settingsForm')saveSettings();if(e.target.id==='measurementScheduleForm')saveMeasurementSchedule();if(e.target.id==='macroForm')saveMacroTargets();if(e.target.id==='goalForm')saveGoals()}});
+window.addEventListener('focus',updateMeasurementCountdown);
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)updateMeasurementCountdown();});
+setInterval(updateMeasurementCountdown,60000);
 setSidebarCollapsed(localRead(SIDEBAR_PREF_KEY)==='1');persist({preserveTimestamp:true,keepSync:true,suppressSync:true});ui.week=pickWeek();ui.nutWeek=currentWeek();render();updateLastSyncConfirmation();setSyncState(hasTokenSaved()?'Verificando nuvem…':'Não conectado',hasTokenSaved()?'ready':'');if(hasTokenSaved())setTimeout(()=>syncNow('startup'),500);
 })();
 </script>

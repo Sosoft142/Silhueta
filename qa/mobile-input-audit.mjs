@@ -15,11 +15,12 @@ const types={'.html':'text/html; charset=utf-8','.js':'application/javascript','
 const server=createServer(async(req,res)=>{try{const pathname=decodeURIComponent(new URL(req.url,'http://localhost').pathname);const file=path.resolve(root,'.'+(pathname==='/'?'/index.html':pathname));if(!file.startsWith(root+path.sep)){res.writeHead(403);res.end();return;}const bytes=await readFile(file);res.writeHead(200,{'Content-Type':types[path.extname(file)]||'application/octet-stream','Cache-Control':'no-store'});res.end(bytes);}catch{res.writeHead(404);res.end('Not found');}});
 await new Promise(resolve=>server.listen(4173,'127.0.0.1',resolve));
 const browser=await chromium.launch({headless:true,...(process.env.PWA_CHROME_CHANNEL?{channel:process.env.PWA_CHROME_CHANNEL}:{})});
-async function openPage(width=390,seed=emptyState(),acceptDialogs=false){
- const context=await browser.newContext({viewport:{width,height:844},deviceScaleFactor:1,isMobile:width<=850,hasTouch:width<=850,locale:'pt-BR',timezoneId:'America/Sao_Paulo'});
+async function openPage(width=390,seed=emptyState(),acceptDialogs=false,options={}){
+ const context=await browser.newContext({viewport:{width,height:844},deviceScaleFactor:1,isMobile:width<=850,hasTouch:width<=850,locale:'pt-BR',timezoneId:options.timezoneId||'America/Sao_Paulo'});
  await context.route('https://api.github.com/**',route=>route.abort());
  await context.addInitScript(data=>{if(!localStorage.getItem('silhueta.app.v1'))localStorage.setItem('silhueta.app.v1',JSON.stringify(data));},seed);
  const page=await context.newPage(),errors=[],dialogs=[];page.on('pageerror',e=>errors.push(e.message));page.on('console',msg=>{if(msg.type()==='error')errors.push(msg.text());});page.on('dialog',async d=>{dialogs.push(d.message());acceptDialogs?await d.accept():await d.dismiss();});
+ if(options.clockTime)await page.clock.install({time:new Date(options.clockTime)});
  await page.goto('http://127.0.0.1:4173/',{waitUntil:'networkidle'});return{context,page,errors,dialogs};
 }
 async function go(page,view){let link=page.locator('[data-action="go"][data-view="'+view+'"]:visible').first();if(!(await link.count())){await page.locator('[data-action="openDrawer"]:visible').first().click();link=page.locator('#mobileDrawer [data-view="'+view+'"]:visible').first();}await link.click();await page.waitForTimeout(200);}
@@ -96,7 +97,7 @@ async function offerInstall(page,rejectPrompt=false){return page.evaluate(reject
 },rejectPrompt);}
 async function snap(page,name){const file=path.join(output,name+'.jpg');const bytes=await page.screenshot({path:file,type:'jpeg',quality:45,fullPage:false,animations:'disabled'});shots.push({name,bytes});}
 async function run(name,fn,opts={}){
- let h;try{h=await openPage(opts.width||390,opts.seed||emptyState(),!!opts.acceptDialogs);const detail=await fn(h);results.push({name,status:'pass',...detail});}catch(e){results.push({name,status:'fail',error:e.message});}finally{if(h){if(h.errors.length)runtimeErrors.push({test:name,errors:h.errors});await h.context.close();}}
+ let h;try{h=await openPage(opts.width||390,opts.seed||emptyState(),!!opts.acceptDialogs,opts);const detail=await fn(h);results.push({name,status:'pass',...detail});}catch(e){results.push({name,status:'fail',error:e.message});}finally{if(h){if(h.errors.length)runtimeErrors.push({test:name,errors:h.errors});await h.context.close();}}
 }
 try{
  const local=await readFile(path.join(root,'index.html'));let live={};try{const r=await fetch('https://sosoft142.github.io/Silhueta/',{signal:AbortSignal.timeout(20000)}),bytes=Buffer.from(await r.arrayBuffer());live={httpStatus:r.status,sameAsRepository:local.equals(bytes),sha256:createHash('sha256').update(bytes).digest('hex')};}catch(e){live={error:e.message};}
@@ -113,12 +114,12 @@ try{
     if(width===320&&view==='trends')await snap(page,'320-trends');
    }
    assert(errors.length===0,'Browser errors: '+errors.join(' | '));return{checks};
-  },{width,seed:filledState()});
+  },{width,seed:(()=>{const s=filledState();s.preferences.measurementWeekday=5;return s;})()});
  }
  for(const width of layoutWidths)await run('Form spacing, alignment and expanded controls '+width+'px',async({page})=>{
   const before=await state(page),checks=[];
   await go(page,'settings');
-  checks.push(await formGeometry(page,'Settings', [['#startDate','.settings-summary']]));
+  checks.push(await formGeometry(page,'Settings', [['#startDate','#settingsForm .settings-summary'],['#measurementWeekday','#measurementScheduleForm .settings-summary']]));
   if(width===390||width===1440)await snap(page,width+'-settings-spacing');
   await go(page,'measure');await page.locator('#quickForm .help-extra summary').click();
   checks.push(await formGeometry(page,'Quick registration', [['#quickNote','.quick-actions']]));
@@ -143,6 +144,62 @@ try{
   assert(JSON.stringify(await state(page))===JSON.stringify(before),'Layout inspection modified existing records');
   return{checks};
  },{width,seed:filledState()});
+ for(const width of [320,390,1440])await run('Measurement day: configure, persist and remove the weekly countdown at '+width+'px',async({page})=>{
+  const before=await state(page);assert(await page.locator('#measurementSchedule').isHidden(),'An unconfigured day should not invent a schedule');
+  await go(page,'settings');await page.locator('#measurementWeekday').selectOption('5');await page.locator('#measurementScheduleForm button[type="submit"]').click();
+  const saved=await state(page);assert(saved.preferences.measurementWeekday===5&&saved.meta.clock['preferences.measurementWeekday']>0,'Weekday was not saved with a synchronization clock');
+  for(const key of ['profile','metricEntries','nutritionLogs'])assert(JSON.stringify(saved[key])===JSON.stringify(before[key]),'Saving a weekday changed '+key);
+  assert(JSON.stringify(saved.preferences.favoriteMetrics)===JSON.stringify(before.preferences.favoriteMetrics),'Saving a weekday changed dashboard favorites');
+  await snap(page,width+'-measurement-day-settings');await go(page,'dashboard');
+  assert((await page.locator('#measurementCountdown').innerText())==='Faltam 3 dias'&&(await page.locator('#measurementScheduleDate').innerText())==='Sexta-feira · 30/10/2026','Friday countdown or calendar date is wrong');
+  await snap(page,width+'-measurement-countdown');assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),'Countdown overflows the screen');
+  await page.reload({waitUntil:'networkidle'});assert((await page.locator('#measurementCountdown').innerText())==='Faltam 3 dias','Countdown did not survive reopening');
+  await page.locator('#measurementSchedule [data-view="settings"]').click();assert(await page.locator('#measurementWeekday').inputValue()==='5','Change-day shortcut lost the preference');
+  await page.locator('#measurementWeekday').selectOption('');await page.locator('#measurementScheduleForm button[type="submit"]').click();await go(page,'dashboard');
+  assert((await state(page)).preferences.measurementWeekday===null&&await page.locator('#measurementSchedule').isHidden(),'Removing the day left a countdown behind');
+ },{width,seed:filledState(),clockTime:'2026-10-27T12:00:00-03:00'});
+ await run('Measurement day: Sunday is valid and the next date crosses the month correctly',async({page})=>{
+  assert((await page.locator('#measurementCountdown').innerText())==='Falta 1 dia'&&(await page.locator('#measurementScheduleDate').innerText())==='Domingo · 01/11/2026','Sunday zero was lost or next-month date is wrong');
+  await page.clock.fastForward(24*60*60*1000);assert((await page.locator('#measurementCountdown').innerText())==='Hoje é dia de medir','Sunday does not become today');
+  await page.clock.fastForward(24*60*60*1000);assert((await page.locator('#measurementCountdown').innerText())==='Faltam 6 dias'&&(await page.locator('#measurementScheduleDate').innerText())==='Domingo · 08/11/2026','Passed Sunday did not roll to the following week');
+ },{seed:(()=>{const s=filledState();s.preferences.measurementWeekday=0;return s;})(),clockTime:'2026-10-31T12:00:00-03:00'});
+ await run('Measurement day: update across local midnight and keep today available for multiple measurements',async({page})=>{
+  assert((await page.locator('#measurementCountdown').innerText())==='Falta 1 dia','Expected one calendar day before Friday');
+  await page.clock.fastForward(120000);assert((await page.locator('#measurementCountdown').innerText())==='Hoje é dia de medir','An open dashboard did not refresh after midnight');
+  await snap(page,'390-measurement-day-today');await go(page,'measure');await page.locator('#quickValue').fill('75.2');await page.locator('#quickForm button[type="submit"]').click();await go(page,'dashboard');
+  assert((await page.locator('#measurementCountdown').innerText())==='Hoje é dia de medir','Saving one region incorrectly completed the whole measurement day');
+  await page.clock.fastForward(24*60*60*1000);assert((await page.locator('#measurementCountdown').innerText())==='Faltam 6 dias'&&(await page.locator('#measurementScheduleDate').innerText())==='Sexta-feira · 06/11/2026','The next weekly date did not refresh without reopening');
+ },{seed:(()=>{const s=filledState();s.preferences.measurementWeekday=5;return s;})(),clockTime:'2026-10-29T23:59:00-03:00'});
+ await run('Measurement day: saving either settings form preserves the other draft and its navigation guard',async({page,dialogs})=>{
+  await go(page,'settings');await page.locator('#measurementWeekday').selectOption('5');await page.locator('#startDate').fill('2026-10-01');await page.locator('[data-action="saveSettings"]').click();
+  assert(await page.locator('#measurementWeekday').inputValue()==='5'&&(await state(page)).preferences.measurementWeekday===null,'Saving the project date erased or prematurely saved the weekday draft');
+  await page.locator('#startDate').fill('2026-10-02');await page.locator('#measurementScheduleForm button[type="submit"]').click();assert(await page.locator('#startDate').inputValue()==='2026-10-02'&&(await state(page)).profile.startDate==='2026-10-01','Saving the weekday erased or prematurely saved the date draft');
+  await page.locator('#measurementScheduleForm').evaluate(form=>{window.scheduleDraftForm=form;});await page.clock.fastForward(24*60*60*1000);await page.evaluate(()=>window.dispatchEvent(new Event('focus')));
+  assert(await page.locator('#measurementScheduleForm').evaluate(form=>form===window.scheduleDraftForm)&&await page.locator('#startDate').inputValue()==='2026-10-02','Day rollover replaced settings or erased a draft');
+  await page.locator('#mobileNav [data-view="dashboard"]').click();assert(dialogs.length===1&&await page.locator('#startDate').inputValue()==='2026-10-02','Navigation discarded the other settings draft without consent');
+ },{clockTime:'2026-10-29T12:00:00-03:00'});
+ await run('Measurement day: JSON import/export preserves Sunday and accepts older backups without a schedule',async({page})=>{
+  const data=filledState();data.preferences.measurementWeekday=0;await page.setInputFiles('#importFile',{name:'schedule.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify({app:'Silhueta',data}))});
+  await page.waitForFunction(()=>JSON.parse(localStorage.getItem('silhueta.app.v1')).preferences.measurementWeekday===0);assert((await page.locator('#measurementCountdown').innerText())==='Hoje é dia de medir','Imported Sunday did not reach the dashboard');
+  await go(page,'help');const pending=page.waitForEvent('download');await page.locator('[data-action="exportJSON"]:visible').click();const download=await pending,exported=JSON.parse(await readFile(await download.path(),'utf8'));
+  assert(exported.data.preferences.measurementWeekday===0&&Object.keys(exported.data.metricEntries).length===6,'Export lost the weekday or history');
+  const legacy=filledState();await page.setInputFiles('#importFile',{name:'older.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify({app:'Silhueta',data:legacy}))});await page.waitForTimeout(100);await go(page,'dashboard');
+  assert((await state(page)).preferences.measurementWeekday===null&&await page.locator('#measurementSchedule').isHidden(),'An older backup created an invented schedule');
+ },{clockTime:'2026-11-01T12:00:00-03:00',acceptDialogs:true});
+ await run('Measurement day: invalid backup values are rejected without changing existing data',async({page})=>{
+  const before=JSON.stringify(await state(page));for(const value of [-1,7,1.5,'5',false,[]]){const data=filledState();data.preferences.measurementWeekday=value;await page.setInputFiles('#importFile',{name:'invalid-day.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify({data}))});await page.waitForTimeout(100);assert(JSON.stringify(await state(page))===before,'Invalid weekday modified saved data: '+JSON.stringify(value));}
+ },{seed:filledState(),acceptDialogs:true});
+ await run('Measurement day: use the device calendar across UTC and a year boundary',async({page})=>{
+  assert((await page.locator('#measurementCountdown').innerText())==='Falta 1 dia'&&(await page.locator('#measurementScheduleDate').innerText())==='Sexta-feira · 01/01/2027','The countdown followed UTC instead of the device calendar');
+ },{timezoneId:'America/Los_Angeles',clockTime:'2027-01-01T01:00:00Z',seed:(()=>{const s=filledState();s.preferences.measurementWeekday=5;return s;})()});
+ await run('Measurement day: synthetic sync preserves a chosen day against older data and receives later changes or removal',async({context,page})=>{
+  await go(page,'settings');await page.locator('#measurementWeekday').selectOption('5');await page.locator('#measurementScheduleForm button[type="submit"]').click();const before=await state(page),older=filledState();older.meta.updatedAt='2027-01-01T12:00:00.000Z';
+  const mock=await mockGist(context,older);await startMockSync(page);await waitSyncSuccess(page);let saved=await state(page),remote=await decryptedFixture(mock.envelope);
+  assert(saved.preferences.measurementWeekday===5&&remote.preferences.measurementWeekday===5,'An older client without the setting cleared the configured day');
+  for(const value of [1,null]){remote=await decryptedFixture(mock.envelope);remote.preferences.measurementWeekday=value;remote.meta.clock['preferences.measurementWeekday']=Date.now()+120000+(value===null?60000:0);mock.envelope=await encryptedFixture(remote);await page.locator('#syncMainButton').click();await page.waitForFunction(value=>JSON.parse(localStorage.getItem('silhueta.app.v1')).preferences.measurementWeekday===value,value);await waitSyncSuccess(page);}
+  saved=await state(page);assert(JSON.stringify(saved.metricEntries)===JSON.stringify(before.metricEntries)&&JSON.stringify(saved.preferences.favoriteMetrics)===JSON.stringify(before.preferences.favoriteMetrics),'Syncing the weekday changed history or favorites');
+  await page.locator('.sync-close').click();await go(page,'dashboard');assert(await page.locator('#measurementSchedule').isHidden(),'Remote removal did not hide the countdown');
+ },{seed:filledState()});
  await run('Empty mobile dashboard and mobile drawer',async({page})=>{await snap(page,'390-empty-home');await page.locator('[data-action="openDrawer"]:visible').first().click();assert(await page.locator('#mobileDrawer').isVisible(),'Drawer did not open');await snap(page,'390-menu');await page.keyboard.press('Escape');assert(await page.locator('#mobileDrawer').isHidden(),'Escape did not close drawer');});
  await run('Quick registration repeats, isolated edit, isolated delete, persistence',async({page})=>{
   await go(page,'measure');
