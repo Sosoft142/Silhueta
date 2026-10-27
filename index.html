@@ -598,7 +598,7 @@ form .btn,.settings-links .btn{max-width:100%;white-space:normal;text-align:cent
 <input type="file" id="importFile" accept=".json,.csv,text/csv,application/json" hidden />
 <script>
 (()=>{'use strict';
-const APP_VERSION='2.9.12';
+const APP_VERSION='2.9.13';
 const STORAGE_KEY='silhueta.app.v1', VERSION=7;
 const QUICK_METRIC_PREF_KEY='silhueta.ui.quickMetric';
 // Keep installation state in memory: neither a missing prompt nor an accepted
@@ -708,8 +708,6 @@ const BODY_LABELS={weight:'Peso',waist:'Cintura',hip:'Quadril',...Object.fromEnt
 function isDate(iso){if(typeof iso!=='string')return false;if(!/^\d{4}-\d{2}-\d{2}$/.test(iso||''))return false;const d=new Date(iso+'T00:00:00Z');return !Number.isNaN(d.getTime())&&d.toISOString().slice(0,10)===iso}
 function actualMetricDate(r,key){const perField=r?.['d_'+key];return isDate(perField)?perField:(isDate(r?.date)?r.date:'')}
 
-function metricDateControl(key,label,rec){const value=rec?.['d_'+key]|| (cleanNum(rec?.[key])!==null?rec?.date:'')||'';return dateField('d_'+key,'Data de '+label.toLowerCase(),value)}
-function extraMetricCard(key,label,hint,r){const value=cleanNum(r[key]);const date=r['d_'+key]||(value!==null?r.date:'')||'';return `<div class="extra-measure-card ${value!==null?'has-measure':''}"><label for="${key}">${esc(label)}</label><div class="value-unit"><input id="${key}" name="${key}" type="number" inputmode="decimal" step="0.1" min="10" max="300" placeholder="Não informado" value="${value===null?'':esc(value)}"/><span>cm</span></div><span class="extra-hint">${esc(hint)}</span><label class="extra-date-label" for="d_${key}">Data desta medida (opcional)</label><input id="d_${key}" name="d_${key}" type="date" value="${esc(date)}" /></div>`}
 
 // One history event per measurement. Tombstones prevent deleted events from returning via Gist.
 const METRIC_KEYS=[...ALL_BODY_KEYS,'bodyFat'];
@@ -719,8 +717,6 @@ const NUTRITION_INTEGERS=['calories','cardio','workouts'];
 function metricRange(metric){return metric==='weight'?[20,300]:metric==='bodyFat'?[0,100]:[10,300];}
 const METRIC_UNITS={...Object.fromEntries(ALL_BODY_KEYS.map(k=>[k,k==='weight'?'kg':'cm'])),bodyFat:'%'};
 BODY_LABELS.bodyFat='Gordura corporal';
-const METRIC_GUIDES={weight:'Pese-se em condições semelhantes, sempre que possível.',waist:'Passe a fita na cintura sem apertar; repita sempre no mesmo ponto.',hip:'Meça a circunferência mais larga dos glúteos.',bust:'Meça a maior circunferência do busto mantendo a fita horizontal.',underbust:'Meça logo abaixo dos seios, com a fita nivelada.',shoulders:'Passe a fita em volta dos ombros e da parte superior do tronco.',abdomen:'Meça a região abdominal no mesmo ponto a cada registro.',neck:'Passe a fita na base do pescoço, sem apertar.',arm:'Meça a circunferência do braço relaxado, sempre do mesmo lado.',biceps:'Meça o bíceps contraído no ponto de maior circunferência.',forearm:'Meça o antebraço no ponto mais largo.',thigh:'Meça a coxa no mesmo lado e na mesma altura.',calf:'Meça a panturrilha no ponto mais largo.',bodyFat:'Informe somente um resultado medido por avaliação corporal.'};
-const GUIDE_POINTS={bust:['Fita na linha do mamilo, paralela ao chão.','Mantenha os braços relaxados e a fita nivelada.'],underbust:['Logo abaixo do busto.','Expire normalmente antes de anotar.'],waist:['Cintura natural, na parte mais estreita do tronco.','Não encolha o abdômen.'],abdomen:['Passe a fita sobre o abdômen no mesmo ponto em toda medição.','Use postura ereta e relaxada.'],hip:['Contorne a parte mais larga dos glúteos.','Pés unidos ajudam a manter o ponto consistente.'],neck:['Base do pescoço, sem apertar.','Olhar à frente e ombros relaxados.'],arm:['Braço relaxado ao lado do corpo.','Registre sempre no mesmo lado.'],biceps:['Ponto de maior circunferência com o músculo contraído.','Cotovelos sem subir os ombros.'],thigh:['Coxa em ponto fixo, preferencialmente alguns centímetros abaixo da virilha.','Marque a altura usada para repetir depois.'],calf:['Ponto mais largo da panturrilha.','Distribua o peso de forma igual nos dois pés.']};
 
 function migrateMetricHistory(d){
  if(!d||typeof d!=='object')return d;
@@ -748,7 +744,6 @@ function cleanPreferences(pref){
 }
 function allMetricEntries(metric){return Object.entries(state.metricEntries||{}).filter(([id,r])=>r&&!r.deleted&&METRIC_KEYS.includes(r.metric)&&cleanNum(r.value)!==null&&(!metric||r.metric===metric)).map(([id,r])=>({...r,id,value:cleanNum(r.value),date:isDate(r.date)?r.date:''})).sort((a,b)=>(b.date||'').localeCompare(a.date||'')||String(b.updatedAt||'').localeCompare(String(a.updatedAt||''))||a.id.localeCompare(b.id));}
 function latestMetric(key){const item=allMetricEntries(key)[0];return item?{...item,actualDate:item.date}:null;}
-function populatedExtras(){return EXTRA_MEASURE_GROUPS.flatMap(g=>g.fields.map(([key,label])=>({key,label,last:latestMetric(key)}))).filter(x=>x.last).sort((a,b)=>(b.last.date||'').localeCompare(a.last.date||''));}
 function metricUnit(key){return METRIC_UNITS[key]||'cm'}
 function fmtMetric(metric,value){return nfmt(value,metric==='bodyFat'?1:1)+' '+metricUnit(metric)}
 function newEntryId(){return 'm_'+(crypto.randomUUID?crypto.randomUUID():Date.now().toString(36)+'_'+Math.random().toString(36).slice(2));}
@@ -813,7 +808,8 @@ function stripLegacyDemo(d){
 function cleanNum(x){if(x===null||x===undefined||x==='')return null;const n=typeof x==='string'?Number(x.replace(/\s/g,'').replace(',','.')):Number(x);return Number.isFinite(n)?n:null;}
 function safeNum(x,min,max){let v=cleanNum(x);return v!==null&&v>=min&&v<=max?v:null;}
 const esc=s=>String(s??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
-function nfmt(n,d=1){return Number.isFinite(n)?new Intl.NumberFormat('pt-BR',{minimumFractionDigits:d,maximumFractionDigits:d}).format(n):'—';}
+const NUMBER_FORMATTERS=new Map();
+function nfmt(n,d=1){if(!Number.isFinite(n))return '—';let formatter=NUMBER_FORMATTERS.get(d);if(!formatter){formatter=new Intl.NumberFormat('pt-BR',{minimumFractionDigits:d,maximumFractionDigits:d});NUMBER_FORMATTERS.set(d,formatter);}return formatter.format(n);}
 function dateAdd(iso,days){if(!isDate(iso))return '';const [y,m,d]=iso.split('-').map(Number);const t=new Date(Date.UTC(y,m-1,d+days));return t.toISOString().slice(0,10)}
 function dateBR(iso){if(!isDate(iso))return'—';const [y,m,d]=iso.split('-');return `${d}/${m}/${y}`}
 function dateDiff(a,b){if(!a||!b)return NaN;return Math.round((Date.parse(a+'T00:00:00Z')-Date.parse(b+'T00:00:00Z'))/86400000)}
@@ -829,17 +825,7 @@ function currentWeek(){if(!state.profile.startDate)return 0;return Math.max(0,Ma
 function record(w){return state.measurements[String(w)]||{}}
 function records(){return Array.from({length:53},(_,i)=>({week:i,date:dateAdd(state.profile.startDate,i*7),...record(i)}))}
 function realData(r){return [...ALL_BODY_KEYS,'bodyFat','workouts'].some(k=>cleanNum(r[k])!==null)||!!r.notes}
-function lastWith(k){return records().filter(r=>cleanNum(r[k])!==null).at(-1)||null}
-function firstWith(k){return records().find(r=>cleanNum(r[k])!==null)||null}
-function bmi(weight){let h=cleanNum(state.profile.height);return Number.isFinite(weight)&&h>0?weight/((h/100)**2):null}
-function tmb(weight,method){let p=state.profile;return Number.isFinite(weight)&&cleanNum(p.height)>0&&cleanNum(p.age)!==null?10*weight+6.25*p.height-5*p.age+(method==='f'?-161:5):null}
-function rcq(r){return r&&r.waist>0&&r.hip>0?r.waist/r.hip:null}
-function fatKg(r){return r&&Number.isFinite(r.weight)&&Number.isFinite(r.bodyFat)?r.weight*r.bodyFat/100:null}
-function ffmKg(r){let f=fatKg(r);return Number.isFinite(f)?r.weight-f:null}
-function delta(key){let a=firstWith(key),z=lastWith(key);if(!a||!z||a.week===z.week)return null;return z[key]-a[key]}
-function signed(n,units=''){return Number.isFinite(n)?`${n>0?'+':''}${nfmt(n,1)}${units}`:'Aguardando comparativo'}
 function pickWeek(){const baseline=record(0);if(!Number.isFinite(baseline.waist)||!Number.isFinite(baseline.hip))return 0;const done=records().filter(r=>realData(r)).map(r=>r.week);let current=currentWeek();if(!done.length)return current;let last=Math.max(...done);return last<current?current:Math.min(52,last+1)}
-function metricStatus(r){if(!realData(r))return 'Pendente';return Number.isFinite(r.weight)&&Number.isFinite(r.waist)&&Number.isFinite(r.hip)?'Completo':'Parcial'}
 let pendingDeletion=null,deletionUndoTimer=0;
 function clearDeletionUndo(){pendingDeletion=null;clearTimeout(deletionUndoTimer);const el=document.getElementById('toast');el.querySelector('.toast-action')?.remove();el.querySelector('.toast-undo-context')?.remove();}
 function toast(msg,duration=3200){
@@ -883,26 +869,8 @@ function navRender(){
 }
 function heading(title,desc,action=''){return `<div class="page-head"><div class="left"><h1 class="page-title">${title}</h1><p class="page-desc">${desc}</p></div>${action?`<div class="toolbar-flex">${action}</div>`:''}</div>`}
 function button(text,ic,act,more='',kind='btn-primary'){return `<button type="button" class="btn ${kind}" data-action="${act}" ${more}>${ico(ic,16)}${text}</button>`}
-function cardKpi(label,value,unit,tint,ic,footer){return `<article class="card kpi-card ${tint}"><div class="kpi-header"><span class="kpi-label">${label}</span><span class="kpi-icon" style="background:${tint==='tint-rose'?'#fae7ef':tint==='tint-green'?'#e7f4eb':tint==='tint-lavender'?'#f0ebfa':'#e9f4fb'};color:${tint==='tint-rose'?'#bd7091':tint==='tint-green'?'#608e78':tint==='tint-lavender'?'#9082ba':'#739ebc'}">${ico(ic,18)}</span></div><div class="kpi-value">${value} <small>${unit}</small></div><span class="kpi-footer">${footer}</span></article>`}
-function infoRow(label,value){return `<div class="stat-pair"><span>${label}</span><strong>${value}</strong></div>`}
-function chart({series,unit='',digits=1,height=290}){
- const rs=records(),taken=[];series.forEach(s=>rs.forEach(r=>{let v=s.get(r);if(Number.isFinite(v))taken.push({x:r.week,y:v})}));
- if(!taken.length)return `<div class="empty-state">${ico('chart',30)}<strong>Aguardando medições</strong><span>Adicione seus dados semanais para visualizar a evolução neste gráfico.</span></div>`;
- const W=740,H=height,L=58,R=18,T=24,B=39;
- let min=Math.min(...taken.map(p=>p.y)),max=Math.max(...taken.map(p=>p.y));let pad=Math.max((max-min)*.18,unit==='RCQ'?.025:unit==='kg'?1.3:1.5);min-=pad;max+=pad;
- let maxX=Math.max(6,Math.max(...taken.map(p=>p.x))+1);let sx=x=>L+(W-L-R)*x/maxX,sy=y=>T+(H-T-B)*(max-y)/(max-min);
- let out=`<svg class="chart-svg" viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Gráfico de evolução de ${series.map(s=>s.label).join(' e ')}">`;
- for(let i=0;i<5;i++){let y=T+(H-T-B)*i/4, v=max-(max-min)*i/4;out+=`<line x1="${L}" x2="${W-R}" y1="${y}" y2="${y}" stroke="#eee7ee" stroke-width="1"/><text x="${L-11}" y="${y+4}" font-family="Arial" text-anchor="end" font-size="11" fill="#928592">${nfmt(v,digits)}</text>`}
- for(let i=0;i<5;i++){let w=Math.round(maxX*i/4),x=sx(w);out+=`<text x="${x}" y="${H-8}" text-anchor="middle" font-family="Arial" font-size="11" fill="#968b97">S${w}</text>`}
- series.forEach(s=>{let data=rs.map(r=>({x:r.week,y:s.get(r)})).filter(d=>Number.isFinite(d.y));if(data.length>1){out+=`<path d="${data.map((p,i)=>(i===0?'M':'L')+sx(p.x).toFixed(1)+' '+sy(p.y).toFixed(1)).join(' ')}" fill="none" stroke="${s.color}" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>`};data.forEach(p=>out+=`<circle cx="${sx(p.x).toFixed(1)}" cy="${sy(p.y).toFixed(1)}" r="4.5" fill="#fff" stroke="${s.color}" stroke-width="2.8"><title>${esc(s.label)} • semana ${p.x}: ${nfmt(p.y,digits)} ${esc(unit)}</title></circle>`)});
- out+='</svg>';
- out+=`<div class="chart-legend">${series.map(s=>`<div class="legend-item"><span class="legend-dot" style="background:${s.color}"></span>${esc(s.label)}</div>`).join('')}</div>`;
- return `<div class="chart-wrap">${out}</div>`;
-}
-function activePhase(){if(!state.profile.startDate)return -1;const elapsed=Math.max(0,dateDiff(nowISO(),state.profile.startDate));return elapsed<31?0:elapsed<153?1:2}
 function metricTile(metric){
- const m=latestMetric(metric),unit=metricUnit(metric),label=BODY_LABELS[metric];
- const all=allMetricEntries(metric),prev=all[1],diff=m&&prev?m.value-prev.value:null;
+ const all=allMetricEntries(metric),m=all[0],unit=metricUnit(metric),label=BODY_LABELS[metric],prev=all[1],diff=m&&prev?m.value-prev.value:null;
  return `<button type="button" class="metric-tile" data-action="quickMetric" data-metric="${metric}" aria-label="Registrar ${esc(label)}"><span class="metric-title">${esc(label)} ${ico('chevron',14)}</span><strong>${m?nfmt(m.value,1):'—'} <small>${m?unit:''}</small></strong><span class="metric-date">${m?(m.date?'Em '+dateBR(m.date):'Data não informada'):'Sem medição'}</span>${diff!==null?`<span class="metric-difference">${diff>0?'+':''}${nfmt(diff,1)} ${unit} em relação à anterior</span>`:''}</button>`;
 }
 function favoriteSettings(){
@@ -925,7 +893,7 @@ function dashboard(){
  const title=!active.length?'Registre sua primeira medida':'Registre uma nova medida';
  const explain='Escolha uma região, informe o valor e a data para começar.';
  const action='measure';
- const weight=latestMetric('weight'),last=active[0],total=active.length,favs=state.preferences.favoriteMetrics;
+ const total=active.length,favs=state.preferences.favoriteMetrics;
  return heading('Seu progresso','Últimas medidas, datas reais e acesso rápido aos registros.',total?button('Registrar medida','plus','go','data-view="measure"','btn-primary'):'')+
  (total?'':`<section class="ux-hero"><div class="ux-hero-copy"><span class="ux-step">PRÓXIMA AÇÃO</span><h2>${title}</h2><p>${explain}</p></div><div class="hero-action">${button('Registrar medida','plus','go',`data-view="${action}"`,'btn-primary')}</div></section>`)+
   measurementScheduleCard()+
@@ -1078,7 +1046,6 @@ function recordLastSyncConfirmation(gistId,at){lastSyncConfirmation={gistId,at};
 function clearLastSyncConfirmation(){lastSyncConfirmation=null;localRemove(SYNC_CONFIRM_KEY);updateLastSyncConfirmation();}
 function savedGistId(){return localRead(GIST_ID_KEY)}
 function rememberGistId(id){localWrite(GIST_ID_KEY,id);updateLastSyncConfirmation();}
-function setGistInput(id){rememberGistId(id)}
 function updateSyncTrigger(kind='',text=''){
  const el=document.querySelector('.sync-trigger');if(!el)return;
  const labels={ok:'Sincronizado',dirty:'Envio pendente',progress:'Sincronizando',error:'Nuvem não confirmada',ready:'Verificando nuvem'};
@@ -1092,7 +1059,6 @@ function setSyncState(text,kind=''){syncStateKind=kind;const el=document.getElem
 function gistStatus(message,error=false){const el=document.getElementById('gistStatus');if(el){el.textContent=message;el.classList.toggle('sync-error',error)}if(error)toast('Confira o status da sincronização.')}
 function normalizeStateData(data){data=migrateMetricHistory(stripLegacyDemo(data));return {...DEFAULT(),...data,meta:{...DEFAULT().meta,...(data.meta||{})},profile:{...DEFAULT().profile,...data.profile},macros:{...DEFAULT().macros,...data.macros},preferences:cleanPreferences(data.preferences||DEFAULT().preferences),measurements:data.measurements||{},metricEntries:data.metricEntries||{},nutritionLogs:data.nutritionLogs||{}}}
 function flattenSyncFields(data){const o={};for(const section of ['profile','macros','measurements','nutritionLogs','preferences','metricEntries']){for(const [key,value] of Object.entries(data[section]||{})){if(section==='profile'||section==='macros'||section==='preferences'||section==='metricEntries')o[section+'.'+key]=value;else if(value&&typeof value==='object')for(const [field,item] of Object.entries(value))o[section+'.'+key+'.'+field]=item;}}return o}
-const absentSyncMarker='__SILHUETA_ABSENT__';
 function bootstrapClocks(d){d.meta={...DEFAULT().meta,...(d.meta||{})};d.meta.clock=d.meta.clock&&typeof d.meta.clock==='object'?d.meta.clock:{};const base=flattenSyncFields(DEFAULT()),fields=flattenSyncFields(d);const t=Date.parse(d.meta.updatedAt)||1;for(const [key,value] of Object.entries(fields)){if(!d.meta.clock[key]&&JSON.stringify(value)!==JSON.stringify(base[key]))d.meta.clock[key]=t;}return d}
 function syncClockDiff(before,after,clockFloor={}){bootstrapClocks(after);const a=flattenSyncFields(before),b=flattenSyncFields(after),now=Date.now();for(const key of new Set([...Object.keys(a),...Object.keys(b)])){if(JSON.stringify(a[key])!==JSON.stringify(b[key]))after.meta.clock[key]=Math.max(now,Number(clockFloor[key])||0)}}
 function makeSyncSnapshot(){return normalizeStateData(JSON.parse(JSON.stringify(state)))}

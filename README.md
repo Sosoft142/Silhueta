@@ -1,6 +1,10 @@
-# Silhueta · versão 2.9.12 — clareza e agilidade no acompanhamento
+# Silhueta · versão 2.9.13 — clareza e agilidade no acompanhamento
 
 Aplicativo web instalável (PWA) para acompanhar medidas corporais, composição corporal, nutrição e evolução.
+
+A versão 2.9.13 aplica a primeira limpeza da auditoria: remove 18 funções e três constantes sem uso ativo, reutiliza os formatadores numéricos por precisão e reduz as consultas ao histórico do painel de oito para quatro com três indicadores (de dezoito para nove com oito indicadores). O cache offline mantém uma única cópia do HTML: a raiz, `index.html` e suas consultas usam a mesma entrada, inclusive em requisições diretas ao documento. O teste PWA cobre a abertura offline pelos dois endereços e a preservação do histórico.
+
+A comparação local de renderização usa dados sintéticos para conferir a equivalência do HTML e da formatação. A limpeza conserva as migrações de dados, os marcadores de exclusão, as 12 imagens aprovadas e a identidade da instalação. A revisão de CSS e do fluxo de sincronização fica para etapas próprias.
 
 A versão 2.9.12 permite escolher o **Dia das medições** no início de **Configurações**. Depois de salvar, a tela **Início** mostra a contagem até o próximo dia escolhido, com o dia da semana e a data. No próprio dia, aparece **Hoje é dia de medir**; a contagem avança para a próxima semana quando o calendário muda, inclusive se alguma medida já foi registrada naquele dia. Escolher **Não definido** remove essa rotina. A contagem acompanha a data local do aparelho e é atualizada enquanto o painel está aberto e ao retomar o app.
 

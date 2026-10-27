@@ -100,8 +100,16 @@ try{
  await check('Legacy versioned manifest URLs receive current metadata',async()=>{
   const aliases=['2','21','29','291','292','2.9.3'];for(const alias of aliases){const data=await page.evaluate(async version=>fetch('./manifest.webmanifest?v='+version).then(r=>r.json()),alias);assert.equal(data.id,manifest.id);assert.equal(data.description,manifestRevision);}return{aliases};
  });
- await check('Offline navigation and manifest fallback preserve the saved history',async()=>{
-  try{await context.setOffline(true);const data=await page.evaluate(async()=>fetch('./manifest.webmanifest?v=2.9.3').then(r=>r.json()));assert.equal(data.id,manifest.id);assert.equal(data.description,manifestRevision);await page.reload({waitUntil:'domcontentloaded'});await page.locator('#main h1').waitFor();const saved=await page.evaluate(()=>JSON.parse(localStorage.getItem('silhueta.app.v1')).metricEntries.m_pwa_test);assert.equal(saved.value,75);assert.equal(saved.note,seed.metricEntries.m_pwa_test.note);return{value:saved.value,date:saved.date};}finally{await context.setOffline(false);}
+ await check('One cached HTML serves root and index entry URLs offline and preserves history',async()=>{
+  const aliases=await page.evaluate(async()=>{const result=[];for(const path of ['./','./index.html','./index.html?audit=canonical']){const r=await fetch(path);result.push({path,status:r.status,isApp:(await r.text()).includes("const APP_VERSION='")});}return result;});
+  assert(aliases.every(r=>r.status===200&&r.isApp),'A document alias did not return the app');
+  const htmlEntries=await page.evaluate(async name=>{const cache=await caches.open(name);return(await cache.keys()).map(r=>r.url).filter(url=>{const path=new URL(url).pathname;return path==='/Silhueta/'||path==='/Silhueta/index.html';});},cacheName);
+  assert.deepEqual(htmlEntries,[base+'index.html'],'Document aliases created duplicate HTML cache entries');
+  try{
+   await context.setOffline(true);const data=await page.evaluate(async()=>fetch('./manifest.webmanifest?v=2.9.3').then(r=>r.json()));assert.equal(data.id,manifest.id);assert.equal(data.description,manifestRevision);
+   const navigations=[];for(const entry of ['','index.html']){await page.goto(base+entry,{waitUntil:'domcontentloaded'});await readyApp(page);const saved=await page.evaluate(()=>JSON.parse(localStorage.getItem('silhueta.app.v1')).metricEntries.m_pwa_test);assert.equal(saved.value,75);assert.equal(saved.note,seed.metricEntries.m_pwa_test.note);assert.equal(saved.date,seed.metricEntries.m_pwa_test.date);navigations.push({entry:entry||'/',value:saved.value,date:saved.date});}
+   return{htmlEntries,aliases,navigations};
+  }finally{await context.setOffline(false);}
  });
  await check('Root and index entry URLs resolve to the same application identity',async()=>{await page.goto(base+'index.html',{waitUntil:'domcontentloaded'});await readyApp(page);const data=await manifestSnapshot(page);assert.equal(data.identity.appId,legacy?.identity.appId);return data.identity;});
  await check('Release updates never change installation identity or manifest location',async()=>{
