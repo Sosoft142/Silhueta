@@ -1,6 +1,8 @@
-# Silhueta · versão 2.9.13 — clareza e agilidade no acompanhamento
+# Silhueta · versão 2.9.14 — clareza e agilidade no acompanhamento
 
 Aplicativo web instalável (PWA) para acompanhar medidas corporais, composição corporal, nutrição e evolução.
+
+A versão 2.9.14 acrescenta transições de 120 a 160 ms na navegação, no menu mobile, na troca entre registro rápido e várias medidas e na seleção do guia anatômico. Os painéis expansíveis usam a transição nativa de altura quando disponível. A barra lateral do computador também passa a 160 ms. As ações e os formulários ficam disponíveis imediatamente; renderizações de dados não repetem a entrada de página. A preferência do sistema por reduzir movimentos desativa os efeitos, inclusive quando muda com o app aberto. A auditoria cobre reversões rápidas do menu, foco, duração, abertura e fechamento dos painéis e preservação de rascunhos.
 
 A versão 2.9.13 aplica a primeira limpeza da auditoria: remove 18 funções e três constantes sem uso ativo, reutiliza os formatadores numéricos por precisão e reduz as consultas ao histórico do painel de oito para quatro com três indicadores (de dezoito para nove com oito indicadores). O cache offline mantém uma única cópia do HTML: a raiz, `index.html` e suas consultas usam a mesma entrada, inclusive em requisições diretas ao documento. O teste PWA cobre a abertura offline pelos dois endereços e a preservação do histórico.
 
