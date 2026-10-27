@@ -1,4 +1,4 @@
-const VERSION='silhueta-app-v2.9.9';
+const VERSION='silhueta-app-v2.9.10';
 const CACHE_PREFIX='silhueta-app-v';
 const CORE=['./','./index.html','./manifest.webmanifest','./icons/brand-mark.svg','./icons/icon.svg','./icons/apple-touch-icon-v21.png','./icons/icon-192-v21.png','./icons/icon-512-v21.png','./icons/icon-maskable-512-v21.png'];
 const APP_SCOPE=new URL(self.registration.scope);
