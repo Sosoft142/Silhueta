@@ -1,6 +1,8 @@
-# Silhueta · versão 2.9.8 — clareza e agilidade no acompanhamento
+# Silhueta · versão 2.9.9 — clareza e agilidade no acompanhamento
 
 Aplicativo web instalável (PWA) para acompanhar medidas corporais, composição corporal, nutrição e evolução.
+
+A versão 2.9.9 substitui o roxo das cores de sistema por `#FCFAFD`, o mesmo fundo claro da página. O HTML e o manifest passam a informar a mesma cor de tema, com esquema claro explícito, e o fundo de abertura também fica alinhado à interface. As barras do Android mantêm os controles do sistema. A atualização dessas cores na instalação existente é aplicada pelo Chrome; a identidade, os ícones e os dados permanecem preservados.
 
 A versão 2.9.8 mostra a última medição da região no **Registro rápido**, com valor, unidade e data real. A referência muda ao selecionar uma região e acompanha alterações, exclusões e restaurações do histórico, sem preencher o novo valor nem modificar a data ou as observações em edição. Regiões sem histórico são identificadas, sem tratar o peso do perfil como pesagem. A confirmação após salvar ou editar uma medição informa a região, o valor e a data por cinco segundos; uma falha no armazenamento local exibe uma mensagem de recuperação em vez de confirmar o salvamento.
 
