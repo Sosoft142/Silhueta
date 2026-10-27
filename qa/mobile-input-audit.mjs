@@ -31,7 +31,7 @@ async function state(page){return page.evaluate(()=>JSON.parse(localStorage.getI
 async function calendarTemplate(context,page){
  // Read the outbound template without contacting Google or saving real events.
  await context.route('https://calendar.google.com/**',route=>route.fulfill({status:200,contentType:'text/html',body:'<!doctype html><title>Synthetic calendar template</title>'}));
- const pending=context.waitForEvent('page');await page.locator('#measurementCalendarForm button[type="submit"]').click();const popup=await pending;await popup.waitForLoadState('domcontentloaded');const url=new URL(popup.url());await popup.close();return url;
+ const pending=context.waitForEvent('page');await page.locator('#measurementCalendarForm button[type="submit"]').click();const popup=await pending;await popup.waitForURL(/^https:\/\/calendar\.google\.com\/calendar\/render\?/,{waitUntil:'domcontentloaded'});const url=new URL(popup.url());await popup.close();return url;
 }
 const TEST_GIST_ID='0123456789abcdef0123456789abcdef',TEST_GIST_TOKEN='silhueta-synthetic-token-not-a-credential';
 const SYNC_CONFIRM_KEY='silhueta.ui.lastSyncConfirmation',QUICK_METRIC_KEY='silhueta.ui.quickMetric';
