@@ -9,3 +9,4 @@
 - Preserve os registros existentes, a compatibilidade dos backups e as 12 ilustrações anatômicas aprovadas.
 - `silhueta.ui.quickMetric` guarda apenas a última região, por aparelho. `silhueta.ui.lastSyncConfirmation` só pode ser atualizado depois da verificação bem-sucedida do Gist; não use datas importadas/sincronizadas para afirmar que este aparelho confirmou a nuvem.
 - Desfazer uma exclusão conserva o ID e os dados da medição, com relógio de sincronização posterior ao marcador excluído. Recuse a restauração se o registro tiver sido alterado novamente; não substitua uma versão mais recente.
+- A referência no registro rápido usa a última medição real pela data, excluindo registros removidos, e não preenche o novo valor. A confirmação detalhada só pode afirmar salvamento local quando `storageOK` for verdadeiro.
