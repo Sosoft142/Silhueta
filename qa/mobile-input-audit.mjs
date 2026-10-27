@@ -23,9 +23,9 @@ async function openPage(width=390,seed=emptyState(),acceptDialogs=false,options=
  if(options.clockTime)await page.clock.install({time:new Date(options.clockTime)});
  await page.goto('http://127.0.0.1:4173/',{waitUntil:'networkidle'});return{context,page,errors,dialogs};
 }
-// Native details transitions may be absent from getAnimations(). Include their
-// computed CSS budget before measuring geometry; this wait belongs only to QA.
-async function settleMotion(page){const budget=await page.evaluate(()=>Math.max(0,...[...document.querySelectorAll('#main details')].flatMap(el=>getComputedStyle(el,'::details-content').transitionDuration.split(',').map(value=>parseFloat(value)*(value.trim().endsWith('ms')?1:1000)))));if(budget)await page.waitForTimeout(budget+34);await page.evaluate(async()=>{const animations=document.getAnimations().filter(a=>a.playState==='running'&&a.effect?.getTiming().iterations!==Infinity);await Promise.allSettled(animations.map(a=>a.finished));});}
+// Native details transitions are not consistently exposed by getAnimations().
+// Allow their 160 ms budget plus two frames; this wait belongs only to QA.
+async function settleMotion(page){await page.waitForTimeout(200);}
 async function go(page,view){let link=page.locator('[data-action="go"][data-view="'+view+'"]:visible').first();if(!(await link.count())){await page.locator('[data-action="openDrawer"]:visible').first().click();link=page.locator('#mobileDrawer [data-view="'+view+'"]:visible').first();}await link.click();await settleMotion(page);}
 async function state(page){return page.evaluate(()=>JSON.parse(localStorage.getItem('silhueta.app.v1')));}
 const TEST_GIST_ID='0123456789abcdef0123456789abcdef',TEST_GIST_TOKEN='silhueta-synthetic-token-not-a-credential';
@@ -101,7 +101,7 @@ async function offerInstall(page,rejectPrompt=false){return page.evaluate(reject
 },rejectPrompt);}
 async function snap(page,name){const file=path.join(output,name+'.jpg');const bytes=await page.screenshot({path:file,type:'jpeg',quality:45,fullPage:false,animations:'disabled'});shots.push({name,bytes});}
 async function run(name,fn,opts={}){
- let h;try{h=await openPage(opts.width||390,opts.seed||emptyState(),!!opts.acceptDialogs,opts);const detail=await fn(h);results.push({name,status:'pass',...detail});}catch(e){results.push({name,status:'fail',error:e.message});}finally{if(h){if(h.errors.length)runtimeErrors.push({test:name,errors:h.errors});await h.context.close();}}
+ let h;try{h=await openPage(opts.width||390,opts.seed||emptyState(),!!opts.acceptDialogs,opts);const detail=await fn(h);results.push({name,status:'pass',...detail});}catch(e){results.push({name,status:'fail',error:e.message});}finally{console.log('SILHUETA_TEST_RESULT '+JSON.stringify({name,status:results.at(-1)?.status,error:results.at(-1)?.error}));if(h){if(h.errors.length)runtimeErrors.push({test:name,errors:h.errors});await h.context.close();}}
 }
 try{
  const local=await readFile(path.join(root,'index.html'));let live={};try{const r=await fetch('https://sosoft142.github.io/Silhueta/',{signal:AbortSignal.timeout(20000)}),bytes=Buffer.from(await r.arrayBuffer());live={httpStatus:r.status,sameAsRepository:local.equals(bytes),sha256:createHash('sha256').update(bytes).digest('hex')};}catch(e){live={error:e.message};}
