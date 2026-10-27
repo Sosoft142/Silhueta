@@ -7,7 +7,7 @@ import { chromium } from 'playwright';
 
 const root=process.cwd(),output=path.join(root,'qa/mobile-audit-output');
 await mkdir(output,{recursive:true});
-const results=[],shots=[],runtimeErrors=[],clockedPages=new WeakSet();
+const results=[],shots=[],runtimeErrors=[];
 const assert=(condition,message)=>{if(!condition)throw new Error(message);};
 const emptyState=()=>({version:7,meta:{updatedAt:'2026-10-20T12:00:00.000Z',lastSyncAt:'',syncState:'local-only',historyMigratedV23:true},profile:{age:null,height:null,baselineWeight:null,startDate:'',months:12,hormoneMonths:null,workoutsPlanned:null,goalWeight:null,goalWaist:null,goalHip:null},macros:{protein:null,carbs:null,fat:null,calorieReference:null},measurements:{},metricEntries:{},preferences:{favoriteMetrics:['weight','waist','hip'],quickMetrics:['weight','waist','hip']},nutritionLogs:{}});
 function filledState(){const s=emptyState();s.profile.startDate='2026-10-01';s.macros={protein:120,carbs:220,fat:60,calorieReference:1900};for(const [id,metric,value,date]of [['m_test_weight_old','weight',75,'2026-10-01'],['m_test_weight_new','weight',74.5,'2026-10-20'],['m_test_waist_old','waist',85,'2026-10-01'],['m_test_waist_new','waist',84.5,'2026-10-20'],['m_test_hip_old','hip',102,'2026-10-01'],['m_test_hip_new','hip',102.5,'2026-10-20']])s.metricEntries[id]={metric,value,date,note:'Registro fictício de teste',updatedAt:date+'T12:00:00.000Z'};s.nutritionLogs={'0':{calories:1900,workouts:3,cardio:90,sleep:7.5,notes:'Registro fictício de teste'}};return s;}
@@ -20,12 +20,12 @@ async function openPage(width=390,seed=emptyState(),acceptDialogs=false,options=
  await context.route('https://api.github.com/**',route=>route.abort());
  await context.addInitScript(data=>{if(!localStorage.getItem('silhueta.app.v1'))localStorage.setItem('silhueta.app.v1',JSON.stringify(data));},seed);
  const page=await context.newPage(),errors=[],dialogs=[];page.on('pageerror',e=>errors.push(e.message));page.on('console',msg=>{if(msg.type()==='error')errors.push(msg.text());});page.on('dialog',async d=>{dialogs.push(d.message());acceptDialogs?await d.accept():await d.dismiss();});
- if(options.clockTime){await page.clock.install({time:new Date(options.clockTime)});clockedPages.add(page);}
+ if(options.clockTime)await page.clock.install({time:new Date(options.clockTime)});
  await page.goto('http://127.0.0.1:4173/',{waitUntil:'networkidle'});return{context,page,errors,dialogs};
 }
-// Native details queue their style change until the next frame. Include that
-// change before measuring geometry, including in the isolated clock fixtures.
-async function settleMotion(page){if(clockedPages.has(page))await page.clock.runFor(34);else await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));await page.evaluate(async()=>{const animations=document.getAnimations().filter(a=>a.playState==='running'&&a.effect?.getTiming().iterations!==Infinity);await Promise.allSettled(animations.map(a=>a.finished));});}
+// Native details transitions may be absent from getAnimations(). Include their
+// computed CSS budget before measuring geometry; this wait belongs only to QA.
+async function settleMotion(page){const budget=await page.evaluate(()=>Math.max(0,...[...document.querySelectorAll('#main details')].flatMap(el=>getComputedStyle(el,'::details-content').transitionDuration.split(',').map(value=>parseFloat(value)*(value.trim().endsWith('ms')?1:1000)))));if(budget)await page.waitForTimeout(budget+34);await page.evaluate(async()=>{const animations=document.getAnimations().filter(a=>a.playState==='running'&&a.effect?.getTiming().iterations!==Infinity);await Promise.allSettled(animations.map(a=>a.finished));});}
 async function go(page,view){let link=page.locator('[data-action="go"][data-view="'+view+'"]:visible').first();if(!(await link.count())){await page.locator('[data-action="openDrawer"]:visible').first().click();link=page.locator('#mobileDrawer [data-view="'+view+'"]:visible').first();}await link.click();await settleMotion(page);}
 async function state(page){return page.evaluate(()=>JSON.parse(localStorage.getItem('silhueta.app.v1')));}
 const TEST_GIST_ID='0123456789abcdef0123456789abcdef',TEST_GIST_TOKEN='silhueta-synthetic-token-not-a-credential';
@@ -220,10 +220,11 @@ try{
  },{width,seed:filledState()});
  for(const width of [390,1440])await run('Fast motion: native details expand and collapse without losing input '+width+'px',async({page})=>{
   await go(page,'measure');const details=page.locator('#quickForm .help-extra');
-  const opening=await details.evaluate(async el=>{el.querySelector('summary').click();await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));return{open:el.open,supported:CSS.supports('interpolate-size','allow-keywords')&&CSS.supports('selector(details::details-content)'),durations:el.getAnimations({subtree:true}).map(a=>a.effect.getTiming().duration),height:getComputedStyle(el,'::details-content').height};});
-  assert(opening.open&&(!opening.supported||opening.durations.some(ms=>ms>0&&ms<=160)),'Details did not open with a short native transition: '+JSON.stringify(opening));await settleMotion(page);await page.locator('#quickNote').fill('Synthetic draft retained through expansion');const expanded=await details.evaluate(el=>el.getBoundingClientRect().height);
-  const closing=await details.evaluate(async el=>{el.querySelector('summary').click();await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));return{open:el.open,durations:el.getAnimations({subtree:true}).map(a=>a.effect.getTiming().duration),height:getComputedStyle(el,'::details-content').height};});
-  assert(!closing.open&&(!opening.supported||closing.durations.some(ms=>ms>0&&ms<=160)),'Details closed without the requested transition: '+JSON.stringify(closing));await settleMotion(page);const collapsed=await details.evaluate(el=>el.getBoundingClientRect().height);assert(collapsed<expanded&&await page.locator('#quickNote').isHidden(),'Collapsed details retained an open layout');
+  const opening=await details.evaluate(async el=>{el.querySelector('summary').click();await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));const style=getComputedStyle(el,'::details-content');return{open:el.open,supported:CSS.supports('interpolate-size','allow-keywords')&&CSS.supports('selector(details::details-content)'),durations:style.transitionDuration.split(',').map(value=>parseFloat(value)*(value.trim().endsWith('ms')?1:1000)),height:parseFloat(style.height)};});
+  assert(opening.open&&(!opening.supported||(opening.durations.some(ms=>ms>0)&&opening.durations.every(ms=>ms<=160))),'Details did not open with a short native transition: '+JSON.stringify(opening));await settleMotion(page);await page.locator('#quickNote').fill('Synthetic draft retained through expansion');const expanded=await details.evaluate(el=>({boxHeight:el.getBoundingClientRect().height,contentHeight:parseFloat(getComputedStyle(el,'::details-content').height)}));
+  assert(!opening.supported||(opening.height>0&&opening.height<expanded.contentHeight),'Opening skipped intermediate height: '+JSON.stringify({opening,expanded}));
+  const closing=await details.evaluate(async el=>{el.querySelector('summary').click();await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));return{open:el.open,height:parseFloat(getComputedStyle(el,'::details-content').height)};});
+  assert(!closing.open&&(!opening.supported||(closing.height>0&&closing.height<expanded.contentHeight)),'Closing skipped its height transition: '+JSON.stringify({closing,expanded}));await settleMotion(page);const collapsed=await details.evaluate(el=>el.getBoundingClientRect().height);assert(collapsed<expanded.boxHeight&&await page.locator('#quickNote').isHidden(),'Collapsed details retained an open layout');
   await details.locator('summary').click();await settleMotion(page);assert(await page.locator('#quickNote').inputValue()==='Synthetic draft retained through expansion','Closing and reopening erased the draft');await formGeometry(page,'Settled animated details');return{opening,closing,expanded,collapsed};
  },{width});
  await run('Fast motion: rapid drawer reversal keeps focus, clicks and visibility consistent',async({page})=>{
