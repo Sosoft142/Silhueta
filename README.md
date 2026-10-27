@@ -1,6 +1,10 @@
-# Silhueta · versão 2.9.14 — clareza e agilidade no acompanhamento
+# Silhueta · versão 2.9.15 — clareza e agilidade no acompanhamento
 
 Aplicativo web instalável (PWA) para acompanhar medidas corporais, composição corporal, nutrição e evolução.
+
+A versão 2.9.15 acrescenta **Configurações → Lembrete no Google Agenda**. Depois de salvar o dia das medições, escolha o horário e use **Adicionar ao Google Agenda**. O botão abre um evento semanal de 15 minutos, com a próxima ocorrência futura, o fuso do aparelho e um link de volta ao Silhueta. No Google Agenda, confira a repetição e a notificação e salve o evento. Alterações e exclusões de eventos já criados são feitas na própria agenda; mudar o dia no Silhueta não altera automaticamente um evento externo.
+
+O horário escolhido fica guardado somente neste aparelho em `silhueta.ui.measurementReminderTime`. A integração abre um modelo de evento, sem afirmar que ele foi salvo ou que as notificações estão ativadas. O link contém título genérico, datas, fuso, recorrência e endereço do app. A auditoria intercepta o destino externo com dados sintéticos e cobre horários passados, domingo, virada do ano, horário de verão, rascunhos e layout mobile e desktop.
 
 A versão 2.9.14 acrescenta transições de 120 a 160 ms na navegação, no menu mobile, na troca entre registro rápido e várias medidas e na seleção do guia anatômico. Os painéis expansíveis usam a transição nativa de altura quando disponível. A barra lateral do computador também passa a 160 ms. As ações e os formulários ficam disponíveis imediatamente; renderizações de dados não repetem a entrada de página. A preferência do sistema por reduzir movimentos desativa os efeitos, inclusive quando muda com o app aberto. A auditoria cobre reversões rápidas do menu, foco, duração, abertura e fechamento dos painéis e preservação de rascunhos.
 
