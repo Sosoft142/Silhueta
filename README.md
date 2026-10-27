@@ -1,6 +1,8 @@
-# Silhueta · versão 2.9.10 — clareza e agilidade no acompanhamento
+# Silhueta · versão 2.9.11 — clareza e agilidade no acompanhamento
 
 Aplicativo web instalável (PWA) para acompanhar medidas corporais, composição corporal, nutrição e evolução.
+
+A versão 2.9.11 troca o ícone de **Nutrição** por uma cenoura em traços, usada na navegação inferior, no menu mobile, na barra lateral do computador e nos atalhos de Nutrição. O desenho vetorial Carrot do Lucide Icons é incorporado ao HTML, com a licença ISC incluída no código, e usa a mesma espessura de traço e as cores dos demais ícones.
 
 A versão 2.9.10 corrige a engrenagem de **Configurações** no menu mobile e na barra lateral do computador. O contorno assimétrico, que encostava no limite do SVG, foi substituído pelo ícone Settings do Feather Icons, mantido dentro do HTML e com a licença MIT incluída no código. Os demais ícones e o comportamento da navegação permanecem preservados.
 
