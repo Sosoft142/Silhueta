@@ -1429,7 +1429,7 @@ setSidebarCollapsed(localRead(SIDEBAR_PREF_KEY)==='1');persist({preserveTimestam
 })();
 </script>
 <script>document.addEventListener('keydown',e=>{
- const measureTab=e.target.closest('.measurement-tabs [role="tab"]');if(measureTab&&['ArrowLeft','ArrowRight','Home','End'].includes(e.key)){e.preventDefault();const section=e.key==='Home'?'register':e.key==='End'?'history':measureTab.dataset.section==='register'?'history':'register';selectMeasureSection(section);document.getElementById(section==='history'?'measureHistoryTab':'measureRegisterTab')?.focus();return;}
+ const measureTab=e.target.closest('.measurement-tabs [role="tab"]');if(measureTab&&['ArrowLeft','ArrowRight','Home','End'].includes(e.key)){e.preventDefault();const section=e.key==='Home'?'register':e.key==='End'?'history':measureTab.dataset.section==='register'?'history':'register';const nextTab=document.getElementById(section==='history'?'measureHistoryTab':'measureRegisterTab');nextTab?.click();nextTab?.focus();return;}
  if(e.key==='Escape'){if(!document.getElementById('syncModal').hidden)document.querySelector('[data-action=closeSync]').click();else if(!document.getElementById('mobileDrawer').hidden)document.querySelector('#mobileDrawer [data-action=closeDrawer]')?.click();return;}
  const drawer=document.getElementById('mobileDrawer');if(e.key==='Tab'&&drawer&&!drawer.hidden&&!drawer.inert){const items=[...drawer.querySelectorAll('.mobile-drawer-panel button:not([disabled])')];if(!items.length)return;const first=items[0],last=items.at(-1);if(e.shiftKey&&document.activeElement===first){e.preventDefault();last.focus()}else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first.focus()}}
 });</script>
