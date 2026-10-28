@@ -1,6 +1,12 @@
-# Silhueta · versão 2.9.16 — clareza e agilidade no acompanhamento
+# Silhueta · versão 2.9.17 — clareza e agilidade no acompanhamento
 
 Aplicativo web instalável (PWA) para acompanhar medidas corporais, composição corporal, nutrição e evolução.
+
+A versão 2.9.17 separa **Medidas → Registrar** e **Medidas → Histórico**. Alternar entre essas áreas mantém os formulários e seus rascunhos. O histórico mostra dez registros por página, em ordem de data, com as medições do mesmo dia agrupadas e as observações recolhidas. O filtro por região retorna à primeira página; excluir o último registro de uma página ajusta a navegação. Editar abre a medição original no formulário, preservando seu identificador. A mesma organização aparece na lista de Evolução.
+
+O cabeçalho passa a usar somente a nuvem de sincronização: cinza para dados locais ou envio pendente, verde fixo depois da verificação, vermelho em caso de falha e verde pulsante durante a sincronização. O botão conserva uma área de toque de 44 px e descrição acessível; ao abri-lo, os detalhes e o horário da última confirmação permanecem disponíveis. A pulsação respeita a preferência de reduzir movimentos. Abrir o diálogo conserva os estados de erro, espera e sincronização em andamento.
+
+A auditoria usa 137 registros fictícios para percorrer todas as páginas, verifica os rascunhos em quatro larguras, observações longas e escapadas, registros antigos sem data, exclusão, desfazer e edição com mudança de data. As cores e a pulsação são verificadas com Gists sintéticos interceptados, incluindo falha, modo offline e movimentos reduzidos.
 
 A versão 2.9.16 reúne o dia das medições e o Google Agenda em **Configurações → Rotina de medições**, com a agenda em uma seção opcional recolhível. No celular, o último cartão do painel ocupa a linha inteira quando há uma quantidade ímpar de indicadores. Datas, legendas e textos auxiliares ganham tamanho e contraste mais uniformes. O cabeçalho do computador mantém a sincronização, com a frase decorativa e o selo de duração removidos. As introduções de Início e Medidas ficam mais curtas; a explicação detalhada sobre datas passa a uma seção expansível.
 
@@ -50,7 +56,7 @@ Referências: [identidade de PWAs no Chrome](https://developer.chrome.com/docs/c
 Hospedado no GitHub Pages: https://sosoft142.github.io/Silhueta/
 
 ## Como começar
-1. Em **Medidas**, escolha a região e informe o valor e a data. O histórico fica logo após o formulário, e o guia anatômico pode ser aberto quando necessário.
+1. Em **Medidas**, escolha a região e informe o valor e a data. O histórico fica na área **Histórico**, separado do formulário; o guia anatômico pode ser aberto quando necessário.
 2. Consulte o painel em **Início** e toque nos pontos dos gráficos em **Evolução** para ver valores e datas completos.
 3. Use **Nutrição** para os registros semanais opcionais. Defina a data inicial em **Configurações** para associar as semanas ao calendário.
 4. O cabeçalho informa se os dados estão salvos neste aparelho ou sincronizados com a nuvem.

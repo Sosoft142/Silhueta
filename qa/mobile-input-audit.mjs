@@ -12,6 +12,7 @@ const assert=(condition,message)=>{if(!condition)throw new Error(message);};
 const emptyState=()=>({version:7,meta:{updatedAt:'2026-10-20T12:00:00.000Z',lastSyncAt:'',syncState:'local-only',historyMigratedV23:true},profile:{age:null,height:null,baselineWeight:null,startDate:'',months:12,hormoneMonths:null,workoutsPlanned:null,goalWeight:null,goalWaist:null,goalHip:null},macros:{protein:null,carbs:null,fat:null,calorieReference:null},measurements:{},metricEntries:{},preferences:{favoriteMetrics:['weight','waist','hip'],quickMetrics:['weight','waist','hip']},nutritionLogs:{}});
 function filledState(){const s=emptyState();s.profile.startDate='2026-10-01';s.macros={protein:120,carbs:220,fat:60,calorieReference:1900};for(const [id,metric,value,date]of [['m_test_weight_old','weight',75,'2026-10-01'],['m_test_weight_new','weight',74.5,'2026-10-20'],['m_test_waist_old','waist',85,'2026-10-01'],['m_test_waist_new','waist',84.5,'2026-10-20'],['m_test_hip_old','hip',102,'2026-10-01'],['m_test_hip_new','hip',102.5,'2026-10-20']])s.metricEntries[id]={metric,value,date,note:'Registro fictício de teste',updatedAt:date+'T12:00:00.000Z'};s.nutritionLogs={'0':{calories:1900,workouts:3,cardio:90,sleep:7.5,notes:'Registro fictício de teste'}};return s;}
 const types={'.html':'text/html; charset=utf-8','.js':'application/javascript','.json':'application/json','.webmanifest':'application/manifest+json','.png':'image/png','.svg':'image/svg+xml'};
+function longHistoryState(count=137){const s=emptyState(),metrics=['weight','waist','hip','bust'];for(let i=0;i<count;i++){const date=new Date(Date.UTC(2026,9,28-Math.floor(i/4)*3)).toISOString().slice(0,10);s.metricEntries['m_history_'+String(i).padStart(3,'0')]={metric:metrics[i%4],value:75+i%8,date,note:i===0?'<img src=x onerror=alert(1)> '+ 'x'.repeat(450):'Observação fictícia '+i,updatedAt:date+'T12:'+String(59-i%4).padStart(2,'0')+':00.000Z'};}return s;}
 const server=createServer(async(req,res)=>{try{const pathname=decodeURIComponent(new URL(req.url,'http://localhost').pathname);const file=path.resolve(root,'.'+(pathname==='/'?'/index.html':pathname));if(!file.startsWith(root+path.sep)){res.writeHead(403);res.end();return;}const bytes=await readFile(file);res.writeHead(200,{'Content-Type':types[path.extname(file)]||'application/octet-stream','Cache-Control':'no-store'});res.end(bytes);}catch{res.writeHead(404);res.end('Not found');}});
 await new Promise(resolve=>server.listen(4173,'127.0.0.1',resolve));
 const browser=await chromium.launch({headless:true,...(process.env.PWA_CHROME_CHANNEL?{channel:process.env.PWA_CHROME_CHANNEL}:{})});
@@ -27,6 +28,9 @@ async function openPage(width=390,seed=emptyState(),acceptDialogs=false,options=
 // Allow their 160 ms budget plus two frames; this wait belongs only to QA.
 async function settleMotion(page){await page.waitForTimeout(200);}
 async function go(page,view){let link=page.locator('[data-action="go"][data-view="'+view+'"]:visible').first();if(!(await link.count())){await page.locator('[data-action="openDrawer"]:visible').first().click();link=page.locator('#mobileDrawer [data-view="'+view+'"]:visible').first();}await link.click();await settleMotion(page);}
+async function showHistory(page){const tab=page.locator('#measureHistoryTab');if(await tab.count()&&await tab.getAttribute('aria-selected')!=='true'){await tab.click();await settleMotion(page);}}
+async function showRegistration(page){const tab=page.locator('#measureRegisterTab');if(await tab.count()&&await tab.getAttribute('aria-selected')!=='true'){await tab.click();await settleMotion(page);}}
+async function filterHistoryAndReturn(page,metric){await showHistory(page);await page.locator('#historyFilter').selectOption(metric);await showRegistration(page);}
 async function state(page){return page.evaluate(()=>JSON.parse(localStorage.getItem('silhueta.app.v1')));}
 async function openCalendar(page){const section=page.locator('#measurementCalendarSection');if(!(await section.evaluate(el=>el.open))){await section.locator('summary').click();await settleMotion(page);}}
 async function calendarTemplate(context,page){
@@ -48,6 +52,7 @@ async function mockGist(context,data){
   if(req.method()==='OPTIONS'&&url.pathname==='/gists/'+TEST_GIST_ID){await route.fulfill({status:204,headers});return;}
   if(url.pathname!=='/gists/'+TEST_GIST_ID||!['GET','PATCH'].includes(req.method())){await route.abort();return;}
   if(req.method()==='PATCH'){mock.patches++;mock.envelope=JSON.parse(req.postDataJSON().files['silhueta.enc.json'].content);}
+  if(mock.gate)await mock.gate;
   const envelope=mock.mode==='valid'?mock.envelope:{format:'invalid-synthetic-backup'};
   await route.fulfill({status:200,headers,contentType:'application/json',body:JSON.stringify({id:TEST_GIST_ID,files:{'silhueta.enc.json':{content:JSON.stringify(envelope),truncated:false}}})});
  });return mock;
@@ -272,7 +277,7 @@ try{
   await page.locator('#quickValue').fill('75.5');await page.locator('.anatomy-guide>summary').click();await settleMotion(page);
   const guide=await page.evaluate(()=>{document.querySelector('[data-action="guideMetric"][data-metric="hip"]').click();return{draft:document.getElementById('quickValue').value,durations:document.querySelector('.guide-tip').getAnimations().map(a=>a.effect.getTiming().duration)};});
   assert(guide.draft==='75.5'&&guide.durations.length===1&&guide.durations.every(ms=>ms<=160),'Guide transition delayed selection or erased a draft');timings.push(guide);await settleMotion(page);
-  await page.locator('#historyFilter').selectOption('waist');const settled=await page.evaluate(()=>({draft:document.getElementById('quickValue').value,animations:document.getElementById('main').getAnimations().length,opacity:getComputedStyle(document.getElementById('main')).opacity,transform:getComputedStyle(document.getElementById('main')).transform}));
+  await filterHistoryAndReturn(page,'waist');const settled=await page.evaluate(()=>({draft:document.getElementById('quickValue').value,animations:document.getElementById('main').getAnimations().length,opacity:getComputedStyle(document.getElementById('main')).opacity,transform:getComputedStyle(document.getElementById('main')).transform}));
   assert(settled.draft==='75.5'&&settled.animations===0&&settled.opacity==='1'&&settled.transform==='none','A background render replayed navigation or left an unfinished effect');
   if(width>850){const sidebar=await page.evaluate(()=>{document.querySelector('[data-action="toggleSidebar"]').click();return document.querySelector('.app').getAnimations().map(a=>a.effect.getTiming().duration);});assert(sidebar.length>0&&sidebar.every(ms=>ms<=160),'Desktop sidebar uses a long transition');await settleMotion(page);assert(await page.locator('#quickValue').inputValue()==='75.5','Collapsing the sidebar lost the draft');timings.push({sidebar});}
   assert(JSON.stringify(await state(page))===JSON.stringify(before),'Animations changed saved records');return{timings,settled};
@@ -306,8 +311,8 @@ try{
   await go(page,'measure');
   for(const v of ['75.5','75.6']){await page.locator('#quickValue').fill(v);await page.locator('#quickDate').fill('2026-10-20');await page.locator('#quickForm button[type="submit"]').click();}
   let s=await state(page),ids=Object.keys(s.metricEntries);assert(ids.length===2,'Expected 2 separate entries');
-  await page.locator('[data-action="editMetric"][data-id="'+ids[0]+'"]').click();await page.locator('#quickValue').fill('76');await page.locator('#quickForm button[type="submit"]').click();s=await state(page);assert(s.metricEntries[ids[0]].value===76&&s.metricEntries[ids[1]].value===75.6,'Editing affected another record');
-  page.removeAllListeners('dialog');page.on('dialog',d=>d.accept());await page.locator('[data-action="deleteMetric"][data-id="'+ids[0]+'"]').click();s=await state(page);assert(s.metricEntries[ids[0]].deleted===true,'Delete did not create tombstone');
+  await showHistory(page);await page.locator('[data-action="editMetric"][data-id="'+ids[0]+'"]').click();await page.locator('#quickValue').fill('76');await page.locator('#quickForm button[type="submit"]').click();s=await state(page);assert(s.metricEntries[ids[0]].value===76&&s.metricEntries[ids[1]].value===75.6,'Editing affected another record');
+  page.removeAllListeners('dialog');page.on('dialog',d=>d.accept());await showHistory(page);await page.locator('[data-action="deleteMetric"][data-id="'+ids[0]+'"]').click();await showRegistration(page);s=await state(page);assert(s.metricEntries[ids[0]].deleted===true,'Delete did not create tombstone');
   await page.reload({waitUntil:'networkidle'});s=await state(page);assert(s.metricEntries[ids[1]].value===75.6,'Persisted value lost');return{remainingRecords:1};
  });
  for(const width of [320,390,1440])await run('Quick reference: latest real date, region changes and drafts at '+width+'px',async({page})=>{
@@ -317,7 +322,7 @@ try{
   await page.locator('#quickMetric').selectOption('waist');const reference=await page.locator('#quickLastMeasurement').innerText();
   assert(reference.includes('cintura: 84,5 cm em 20/10/2026'),'Reference used edit time, a deleted record or another region: '+reference);
   assert(await page.locator('#quickValue').inputValue()===''&&await page.locator('#quickDate').inputValue()==='2026-10-18'&&await page.locator('#quickNote').inputValue()==='Synthetic note to preserve','Changing the reference filled a value or erased date/notes');
-  await page.locator('#quickValue').fill('83.7');await page.locator('#historyFilter').selectOption('waist');
+  await page.locator('#quickValue').fill('83.7');await filterHistoryAndReturn(page,'waist');
   assert(await page.locator('#quickValue').inputValue()==='83.7'&&(await page.locator('#quickLastMeasurement').innerText())===reference,'A history render changed the draft or reference');
   assert(await page.locator('#quickValue').getAttribute('aria-describedby')==='quickLastMeasurement','Value input is not associated with its reference');
   const geometry=await page.locator('#quickLastMeasurement').evaluate(el=>{const r=el.getBoundingClientRect(),fields=document.querySelector('.quick-fields').getBoundingClientRect(),next=el.nextElementSibling.getBoundingClientRect();return{left:r.left,right:r.right,width:innerWidth,gapBefore:r.top-fields.bottom,gapAfter:next.top-r.bottom};});
@@ -334,7 +339,7 @@ try{
   assert((await page.locator('#toast .toast-message').innerText())==='Medição salva neste aparelho: Cintura · 84,2 cm · 02/10/2026.','Saving did not confirm the exact stored measurement');
   assert((await page.locator('#quickLastMeasurement').innerText()).includes('84,5 cm em 20/10/2026')&&await page.locator('#quickValue').inputValue()==='','Backdated saving replaced the latest reference or refilled the input');
   const saved=await state(page),id=Object.keys(saved.metricEntries).find(key=>!before.metricEntries[key]);assert(id,'No independent measurement was created');
-  await page.locator('[data-action="editMetric"][data-id="'+id+'"]').click();await page.locator('#quickValue').fill('83.1');await page.locator('#quickDate').fill('2026-10-23');await page.locator('#quickForm button[type="submit"]').click();
+  await showHistory(page);await page.locator('[data-action="editMetric"][data-id="'+id+'"]').click();await page.locator('#quickValue').fill('83.1');await page.locator('#quickDate').fill('2026-10-23');await page.locator('#quickForm button[type="submit"]').click();
   const edited=await state(page);assert(edited.metricEntries[id].value===83.1&&Object.keys(edited.metricEntries).length===Object.keys(saved.metricEntries).length,'Editing duplicated the record');
   assert((await page.locator('#toast .toast-message').innerText())==='Registro atualizado neste aparelho: Cintura · 83,1 cm · 23/10/2026.'&&(await page.locator('#quickLastMeasurement').innerText()).includes('83,1 cm em 23/10/2026'),'Editing did not update both confirmation and latest reference');
   for(const [metric,value,label,unit]of [['weight','74.2','Peso','kg'],['bodyFat','22.3','Gordura corporal','%']]){
@@ -346,7 +351,7 @@ try{
  },{width,seed:filledState()});
  await run('Quick reference: delete and undo refresh the reference without losing the draft',async({page})=>{
   await go(page,'measure');await page.locator('#quickMetric').selectOption('waist');await page.locator('#quickValue').fill('83.7');
-  await page.locator('[data-action="deleteMetric"][data-id="m_test_waist_new"]').click();assert((await page.locator('#quickLastMeasurement').innerText()).includes('85,0 cm em 01/10/2026'),'Deletion left the removed value in the reference');
+  await showHistory(page);await page.locator('[data-action="deleteMetric"][data-id="m_test_waist_new"]').click();await showRegistration(page);assert((await page.locator('#quickLastMeasurement').innerText()).includes('85,0 cm em 01/10/2026'),'Deletion left the removed value in the reference');
   await page.locator('#toast [data-action="undoDelete"]').click();assert((await page.locator('#quickLastMeasurement').innerText()).includes('84,5 cm em 20/10/2026')&&await page.locator('#quickValue').inputValue()==='83.7','Undo did not restore the reference safely');
  },{seed:filledState(),acceptDialogs:true});
  await run('Save confirmation: a local storage failure never claims a successful save',async({page})=>{
@@ -361,17 +366,17 @@ try{
  await run('Batch rejection is atomic',async({page})=>{await go(page,'measure');await page.locator('[data-action="measureMode"][data-mode="batch"]').click();await page.locator('#batch_weight').fill('75');await page.locator('#batch_waist').fill('85');await page.locator('#batch_bodyFat').fill('150');await page.locator('#batchForm button[type="submit"]').click();assert(Object.keys((await state(page)).metricEntries).length===0,'Batch partially saved');});
  await run('Guide changes preserve unsaved input and all images decode',async({page})=>{await go(page,'measure');await page.locator('#quickValue').fill('75.5');await page.locator('[data-action="openGuide"]').click();for(const m of ['bust','underbust','shoulders','neck','waist','abdomen','hip','arm','biceps','forearm','thigh','calf']){await page.locator('[data-action="guideMetric"][data-metric="'+m+'"]').click();await page.locator('.anatomy-photo img').evaluate(img=>img.decode());assert(await page.locator('#quickValue').inputValue()==='75.5','Guide erased draft at '+m);}await page.locator('.anatomy-card').evaluate(el=>el.scrollIntoView({block:'start'}));await snap(page,'390-anatomy-guide');return{regions:12};});
  await run('Navigation guard preserves draft when discard is refused',async({page,dialogs})=>{await go(page,'measure');await page.locator('#quickValue').fill('75.5');await page.locator('#mobileNav [data-view="dashboard"]').click();assert(dialogs.length===1&&await page.locator('#quickValue').inputValue()==='75.5','Navigation lost draft');});
- await run('Regression: measurement history filter must preserve draft',async({page})=>{await go(page,'measure');await page.locator('#quickValue').fill('75.5');await page.locator('#historyFilter').selectOption('weight');assert(await page.locator('#quickValue').inputValue()==='75.5','Draft 75.5 disappeared after changing history filter');});
+ await run('Regression: measurement history filter must preserve draft',async({page})=>{await go(page,'measure');await page.locator('#quickValue').fill('75.5');await filterHistoryAndReturn(page,'weight');assert(await page.locator('#quickValue').inputValue()==='75.5','Draft 75.5 disappeared after changing history filter');});
  await run('Regression: nutrition week arrow must preserve draft',async({page})=>{await go(page,'nutrition');await page.locator('#calories').fill('1850');await page.locator('[data-action="nextNutWeek"]').click();assert(await page.locator('#calories').inputValue()==='1850','Unsaved 1850 calories disappeared after changing week');});
  await run('Regression: saving macro targets must preserve consumption draft',async({page})=>{await go(page,'nutrition');await page.locator('#calories').fill('1850');await page.locator('.inline-macro-form summary').click();for(const [id,v]of [['target_protein','120'],['target_carbs','200'],['target_fat','60']])await page.locator('#'+id).fill(v);await page.locator('[data-action="saveMacroTargets"]').click();assert(await page.locator('#calories').inputValue()==='1850','Saving targets erased unsaved consumption');});
  await run('Regression: saving consumption must preserve macro target draft',async({page})=>{await go(page,'nutrition');await page.locator('#calories').fill('1850');await page.locator('.inline-macro-form summary').click();await page.locator('#target_protein').fill('120');await page.locator('[data-action="saveNutrition"]').click();assert(await page.locator('#target_protein').inputValue()==='120','Saving consumption erased unsaved target');});
- await run('Regression: editing another history entry must preserve draft',async({page})=>{await go(page,'measure');await page.locator('#quickValue').fill('76');await page.locator('[data-action="editMetric"]').first().click();assert(await page.locator('#quickValue').inputValue()==='76','Opening old entry replaced draft without confirmation');},{seed:filledState()});
+ await run('Regression: editing another history entry must preserve draft',async({page})=>{await go(page,'measure');await page.locator('#quickValue').fill('76');await showHistory(page);await page.locator('[data-action="editMetric"]').first().click();assert(await page.locator('#quickValue').inputValue()==='76','Opening old entry replaced draft without confirmation');},{seed:filledState()});
  await run('Regression: chart selector must preserve body goal draft',async({page})=>{await go(page,'trends');await page.locator('.inline-goal-form summary').click();await page.locator('#goalWeight').fill('72');await page.locator('#chartMetric').selectOption('waist');assert(await page.locator('#goalWeight').inputValue()==='72','Chart selector erased unsaved body goal');},{seed:filledState()});
  await run('Regression: legacy CSV reimport must not duplicate',async({page})=>{const csv='Data,Região,Medida,Unidade,ID\n2026-10-20,Peso,75,kg,legacy_0_weight';for(let i=0;i<2;i++){await page.setInputFiles('#importFile',{name:'historico.csv',mimeType:'text/csv',buffer:Buffer.from(csv)});await page.waitForTimeout(100);}const entries=Object.values((await state(page)).metricEntries).filter(e=>!e.deleted);assert(entries.length===1,'Legacy CSV grew from 1 entry to '+entries.length);},{seed:(()=>{const s=emptyState();s.metricEntries={legacy_0_weight:{metric:'weight',value:75,date:'2026-10-20',updatedAt:'2026-10-20T12:00:00.000Z',origin:'legacy'}};return s;})(),acceptDialogs:true});
  await run('Regression: nutrition CSV must reject out of range values',async({page})=>{const csv='Semana,Calorias médias,Treinos (nº),Sono (h)\n0,-500,99,50';await page.setInputFiles('#importFile',{name:'nutricao.csv',mimeType:'text/csv',buffer:Buffer.from(csv)});await page.waitForTimeout(100);const r=(await state(page)).nutritionLogs['0'];assert(!r||!(r.calories<0||r.workouts>14||r.sleep>24),'Invalid CSV values persisted: '+JSON.stringify(r));},{acceptDialogs:true});
  await run('Regression: malformed JSON import must leave previous valid state usable',async({page})=>{const s=emptyState();s.metricEntries={m_invalid:{metric:'weight',value:75,date:123,updatedAt:'2026-10-20T12:00:00.000Z'}};await page.setInputFiles('#importFile',{name:'backup.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify({data:s}))});await page.waitForTimeout(100);const persisted=(await state(page)).metricEntries.m_invalid?.date;await page.reload({waitUntil:'networkidle'});const content=(await page.locator('#main').innerText()).trim();assert(persisted!==123&&content.length>0,'Malformed date persisted='+persisted+'; main content after reload='+content.length+' characters');},{acceptDialogs:true});
  await run('Regression: batch native bounds must match accepted metric limits',async({page})=>{await go(page,'measure');await page.locator('[data-action="measureMode"][data-mode="batch"]').click();await page.locator('#batch_weight').fill('15');await page.locator('#batch_bodyFat').fill('150');const w=await page.locator('#batch_weight').evaluate(el=>el.validity.valid),f=await page.locator('#batch_bodyFat').evaluate(el=>el.validity.valid);assert(!w&&!f,'Browser marks weight 15 kg and body fat 150% as valid in batch');});
- await run('Regression: long saved notes must not create horizontal overflow on 320px',async({page})=>{await go(page,'measure');await page.locator('.history-full-width').evaluate(el=>el.scrollIntoView({block:'start'}));const d=await page.evaluate(()=>({viewport:innerWidth,page:document.documentElement.scrollWidth,clientWidth:document.documentElement.clientWidth,scale:visualViewport.scale}));await snap(page,'320-long-note');assert(d.page<=321,'Saved 500-character note: '+JSON.stringify(d)+'; expected document width 320px');},{width:320,seed:(()=>{const s=filledState();s.metricEntries.m_test_weight_new.note='x'.repeat(500);return s;})()});
+ await run('Regression: long saved notes must not create horizontal overflow on 320px',async({page})=>{await go(page,'measure');await showHistory(page);await page.locator('#historyNote-m_test_weight_new>summary').click();await settleMotion(page);await page.locator('.history-full-width').evaluate(el=>el.scrollIntoView({block:'start'}));const d=await page.evaluate(()=>({viewport:innerWidth,page:document.documentElement.scrollWidth,clientWidth:document.documentElement.clientWidth,scale:visualViewport.scale}));await snap(page,'320-long-note');assert(d.page<=321,'Saved 500-character note: '+JSON.stringify(d)+'; expected document width 320px');},{width:320,seed:(()=>{const s=filledState();s.metricEntries.m_test_weight_new.note='x'.repeat(500);return s;})()});
 
  for(const width of [320,390])await run('Regression: chart axis labels must remain legible at '+width+'px',async({page})=>{await go(page,'trends');const sizes=await page.locator('.chart-svg text').evaluateAll(els=>els.map(el=>{const m=el.getScreenCTM();return parseFloat(getComputedStyle(el).fontSize)*Math.hypot(m.a,m.b);}));const min=Math.min(...sizes),max=Math.max(...sizes);assert(min>=10,'Chart axis rendered font size '+min.toFixed(2)+' to '+max.toFixed(2)+' CSS px at '+width+'px viewport; expected at least 10px');return{min,max};},{width,seed:filledState()});
 
@@ -407,12 +412,12 @@ try{
   assert(await page.locator('.dashboard-help').evaluate(el=>!el.open),'Instructions should start collapsed');
   await page.locator('.page-head [data-view="measure"]').click();assert(await page.locator('#quickForm').isVisible(),'Registration shortcut did not open the form');
  },{seed:filledState()});
- await run('Usability: history precedes optional guide and opening it preserves the draft',async({page})=>{
+ await run('Usability: history has its own panel and the optional guide preserves the draft',async({page})=>{
   await go(page,'measure');assert(await page.locator('.anatomy-guide').evaluate(el=>!el.open),'Guide should start collapsed');
-  const order=await page.evaluate(()=>document.querySelector('.history-full-width').getBoundingClientRect().top<document.querySelector('.anatomy-full-width').getBoundingClientRect().top);assert(order,'History is below guide');
+  assert(await page.locator('#measureHistoryPanel').isHidden()&&await page.locator('#measureRegisterPanel').isVisible(),'Registration and history were not separated');
   await page.locator('#quickValue').fill('75.5');const dateHelp=page.locator('#measurementDateHelp');assert(await dateHelp.evaluate(el=>!el.open),'Date explanation should start collapsed');await dateHelp.locator('summary').click();await settleMotion(page);assert(await dateHelp.locator('.disclosure-content').isVisible(),'Date explanation is unavailable');await dateHelp.locator('summary').click();await settleMotion(page);assert(await page.locator('#quickValue').inputValue()==='75.5','Date help changed a measurement draft');await page.locator('[data-action="openGuide"]').click();assert(await page.locator('.anatomy-guide').evaluate(el=>el.open),'Guide shortcut did not open details');
   await page.locator('.anatomy-guide>summary').click();assert(await page.locator('#quickValue').inputValue()==='75.5','Opening or closing guide erased draft');
-  await page.locator('#historyFilter').selectOption('weight');assert(await page.locator('#quickValue').inputValue()==='75.5','Reordered history erased draft');
+  await filterHistoryAndReturn(page,'weight');assert(await page.locator('#quickValue').inputValue()==='75.5','Reordered history erased draft');
  },{seed:filledState()});
  await run('Usability: first week has calendar range and keeps the original saved log',async({page})=>{
   await go(page,'nutrition');await page.locator('#nutWeekPicker').selectOption('0');
@@ -441,13 +446,13 @@ try{
   const pair=page.locator('[data-history-chart]').nth(1);await pair.locator('[data-id="m_test_hip_old"]').tap();assert((await pair.locator('.chart-readout').innerText()).includes('Quadril · 102,0 cm · 01/10/2026'),'Combined chart showed wrong series');
   await snap(page,'320-chart-inspection');
  },{seed:filledState()});
- await run('Usability: local save status remains visible after saving',async({page})=>{
-  const label=page.locator('.sync-trigger-label');assert(await label.isVisible()&&(await label.innerText())==='Salvo neste aparelho','Local save status is not visible');
-  await go(page,'measure');await page.locator('#quickValue').fill('75.5');await page.locator('#quickForm button[type="submit"]').click();assert((await label.innerText())==='Salvo neste aparelho','Local save is presented as cloud synchronization');
+ await run('Usability: local save remains accessible through the neutral sync icon',async({page})=>{
+  const icon=page.locator('.sync-trigger');assert((await icon.getAttribute('aria-label')).includes('Salvo neste aparelho')&&await icon.innerText()==='','Local status is inaccessible or the icon still has visible text');
+  await go(page,'measure');await page.locator('#quickValue').fill('75.5');await page.locator('#quickForm button[type="submit"]').click();assert((await icon.getAttribute('aria-label')).includes('Salvo neste aparelho')&&!(await icon.getAttribute('class')).includes('sync-ok'),'Local save is presented as cloud synchronization');
  });
  await run('Usability: failed storage is never presented as successfully saved',async({page})=>{
   await page.addInitScript(()=>{const original=Storage.prototype.setItem;Storage.prototype.setItem=function(key,value){if(key==='silhueta.app.v1')throw new DOMException('Synthetic quota failure','QuotaExceededError');return original.call(this,key,value);};});
-  await page.reload({waitUntil:'networkidle'});assert((await page.locator('.sync-trigger-label').innerText())==='Falha ao salvar','Failed storage still claims success');assert((await page.locator('#storageNotice').innerText()).includes('não permitiu salvar'),'Storage failure has no recovery message');
+  await page.reload({waitUntil:'networkidle'});assert((await page.locator('.sync-trigger').getAttribute('aria-label')).includes('Não foi possível salvar')&&await page.locator('.sync-trigger.sync-error').count()===1,'Failed storage still claims success');assert((await page.locator('#storageNotice').innerText()).includes('não permitiu salvar'),'Storage failure has no recovery message');
  });
 
  await run('Installation: late browser offer preserves unsaved settings and existing records',async({page})=>{
@@ -538,7 +543,7 @@ try{
  });
  await run('Undo: restore the same measurement and preserve another unsaved draft',async({page})=>{
   await go(page,'measure');const before=await state(page),id='m_test_waist_new';await page.locator('#quickValue').fill('76.1');
-  await page.locator('[data-action="deleteMetric"][data-id="'+id+'"]').click();const removed=await state(page);assert(removed.metricEntries[id].deleted===true,'Delete did not retain its deletion marker');
+  await showHistory(page);await page.locator('[data-action="deleteMetric"][data-id="'+id+'"]').click();await showRegistration(page);const removed=await state(page);assert(removed.metricEntries[id].deleted===true,'Delete did not retain its deletion marker');
   assert(await page.locator('#toast [data-action="undoDelete"]').isVisible(),'Deletion has no undo action');
   await snap(page,'320-undo-deletion');
   const bounds=await page.locator('#toast').boundingBox();assert(bounds.x>=0&&bounds.x+bounds.width<=321,'Undo message overflows mobile viewport');
@@ -549,13 +554,13 @@ try{
   assert(JSON.stringify(restored.metricEntries.m_test_weight_new)===JSON.stringify(before.metricEntries.m_test_weight_new),'Undo changed an unrelated measurement');
  },{width:320,seed:filledState(),acceptDialogs:true});
  await run('Undo: another save retains the exclusion action without undoing the new record',async({page})=>{
-  await go(page,'measure');const id='m_test_hip_new';await page.locator('[data-action="deleteMetric"][data-id="'+id+'"]').click();await page.locator('#quickValue').fill('75.9');await page.locator('#quickForm button[type="submit"]').click();
+  await go(page,'measure');const id='m_test_hip_new';await showHistory(page);await page.locator('[data-action="deleteMetric"][data-id="'+id+'"]').click();await showRegistration(page);await page.locator('#quickValue').fill('75.9');await page.locator('#quickForm button[type="submit"]').click();
   assert(await page.locator('#toast [data-action="undoDelete"]').isVisible()&&(await page.locator('#toast').innerText()).includes('Exclusão de Quadril'),'Another notification hid or mislabelled the undo action');
   await page.locator('#toast [data-action="undoDelete"]').click();const s=await state(page);
   assert(s.metricEntries[id].deleted===false&&Object.values(s.metricEntries).some(e=>!e.deleted&&e.metric==='weight'&&e.value===75.9),'Undo reverted the wrong action or lost the new record');
  },{seed:filledState(),acceptDialogs:true});
  await run('Undo: the action expires after ten seconds and preserves the deletion',async({page})=>{
-  await go(page,'measure');const id='m_test_waist_new';await page.locator('[data-action="deleteMetric"][data-id="'+id+'"]').click();await page.waitForTimeout(10200);
+  await go(page,'measure');const id='m_test_waist_new';await showHistory(page);await page.locator('[data-action="deleteMetric"][data-id="'+id+'"]').click();await showRegistration(page);await page.waitForTimeout(10200);
   assert(await page.locator('#toast [data-action="undoDelete"]').count()===0&&(await state(page)).metricEntries[id].deleted===true,'Expired undo is still available or silently restored a record');
  },{seed:filledState(),acceptDialogs:true});
  await run('Sync time: only verified synthetic synchronization creates a device-local timestamp',async({context,page})=>{
@@ -582,12 +587,12 @@ try{
   }
  });
  await run('Undo and sync: restoring a record supersedes a previously synchronized deletion',async({context,page})=>{
-  await go(page,'measure');const id='m_test_waist_new';await page.locator('[data-action="deleteMetric"][data-id="'+id+'"]').click();const tombstoneState=await state(page),mock=await mockGist(context,tombstoneState);await page.locator('#toast [data-action="undoDelete"]').click();
+  await go(page,'measure');const id='m_test_waist_new';await showHistory(page);await page.locator('[data-action="deleteMetric"][data-id="'+id+'"]').click();await showRegistration(page);const tombstoneState=await state(page),mock=await mockGist(context,tombstoneState);await page.locator('#toast [data-action="undoDelete"]').click();
   await startMockSync(page);await waitSyncSuccess(page);const remote=await decryptedFixture(mock.envelope);
   assert(mock.patches>0&&remote.metricEntries[id].deleted===false&&(await state(page)).metricEntries[id].deleted===false,'Old remote deletion suppressed the restored measurement');
  },{seed:filledState(),acceptDialogs:true});
  await run('Undo and sync: a newer remote change is preserved instead of restoring a stale snapshot',async({context,page})=>{
-  await go(page,'measure');const id='m_test_waist_new';await page.locator('[data-action="deleteMetric"][data-id="'+id+'"]').click();const remote=await state(page),clock=Date.now()+60000;remote.metricEntries[id]={...remote.metricEntries[id],value:86.5,note:'Newer synthetic remote change',updatedAt:new Date(clock).toISOString()};remote.meta.clock['metricEntries.'+id]=clock;await mockGist(context,remote);
+  await go(page,'measure');const id='m_test_waist_new';await showHistory(page);await page.locator('[data-action="deleteMetric"][data-id="'+id+'"]').click();await showRegistration(page);const remote=await state(page),clock=Date.now()+60000;remote.metricEntries[id]={...remote.metricEntries[id],value:86.5,note:'Newer synthetic remote change',updatedAt:new Date(clock).toISOString()};remote.meta.clock['metricEntries.'+id]=clock;await mockGist(context,remote);
   await startMockSync(page);await waitSyncSuccess(page);await page.locator('.sync-close').click();await page.locator('#toast [data-action="undoDelete"]').click();const latest=(await state(page)).metricEntries[id];
   assert(latest.deleted===true&&latest.value===86.5&&latest.note==='Newer synthetic remote change','Undo overwrote a newer remote version');
  },{seed:filledState(),acceptDialogs:true});
@@ -596,6 +601,71 @@ try{
   await page.evaluate(()=>window.dispatchEvent(new Event('appinstalled')));
   assert(await page.locator('#quickValue').inputValue()==='75.5','Install status update erased a measurement draft');
  });
+
+ await run('History: 137 records remain reachable in bounded chronological pages without mutating data',async({page})=>{
+  const before=await state(page),expected=Object.entries(before.metricEntries).sort((a,b)=>b[1].date.localeCompare(a[1].date)||b[1].updatedAt.localeCompare(a[1].updatedAt)||a[0].localeCompare(b[0])).map(([id])=>id),seen=[];
+  await go(page,'measure');await page.locator('#quickValue').fill('76.1');await showHistory(page);
+  for(let pageNumber=0;pageNumber<14;pageNumber++){
+   const ids=await page.locator('.history-item [data-action="editMetric"]').evaluateAll(els=>els.map(el=>el.dataset.id));seen.push(...ids);
+   assert(ids.length===Math.min(10,137-pageNumber*10),'Page grew beyond ten rows or omitted its last records');
+   assert((await page.locator('#historySummary').innerText())===`${pageNumber*10+1}–${pageNumber*10+ids.length} de 137 registros`,'Visible range is incorrect');
+   assert(await page.locator('.history-date-group').count()<=10,'Date groups include records outside the current page');
+   if(pageNumber<13)await page.locator('[data-action="historyPage"][data-direction="1"]').click();
+  }
+  assert(JSON.stringify(seen)===JSON.stringify(expected),'Paging duplicated, reordered or hid a saved record');
+  assert(await page.locator('[data-action="historyPage"][data-direction="1"]').isDisabled(),'Last page allows moving beyond its bounds');
+  await page.locator('#historyFilter').selectOption('waist');assert((await page.locator('#historySummary').innerText()).startsWith('1–10 de 34'),'Changing region did not return to page one');
+  await page.locator('#historyFilter').selectOption('bodyFat');assert(await page.locator('.history-item').count()===0&&await page.locator('.history-pagination').count()===0,'Empty filter retained rows or pagination');
+  await page.locator('#historyFilter').selectOption('all');await showRegistration(page);assert(await page.locator('#quickValue').inputValue()==='76.1','Paging or filtering erased an unsaved measurement');
+  assert(JSON.stringify(await state(page))===JSON.stringify(before),'Browsing history changed saved data');
+ },{seed:longHistoryState()});
+ for(const width of [320,390,768,1440])await run('History tabs: keyboard, drafts and responsive layout '+width+'px',async({page,dialogs})=>{
+  await go(page,'measure');const batch=width===390||width===768;
+  if(batch){await page.locator('[data-action="measureMode"][data-mode="batch"]').click();await page.locator('#batch_weight').fill('75.5');await page.locator('#batch_waist').fill('85.2');await page.locator('#batchDate').fill('2026-09-01');}
+  else{await page.locator('#quickValue').fill('75.5');await page.locator('#quickDate').fill('2026-09-01');await page.locator('#quickForm .help-extra>summary').click();await page.locator('#quickNote').fill('Rascunho preservado');}
+  await page.locator('#measureRegisterTab').focus();await page.locator('#measureRegisterTab').press('ArrowRight');await settleMotion(page);
+  assert(await page.locator('#measureRegisterPanel').isHidden()&&await page.locator('#measureHistoryPanel').isVisible(),'Switching tabs did not hide the registration panel');
+  assert(await page.locator('#measureHistoryTab').getAttribute('aria-selected')==='true'&&await page.locator('#measureRegisterTab').getAttribute('tabindex')==='-1','Tabs have incorrect selection or tab order');
+  assert(await page.locator('.history-item').count()===10,'A large history is unbounded');
+  await formGeometry(page,'History '+width);await page.evaluate(()=>window.scrollTo(0,0));if(width!==768)await snap(page,width+'-organized-history');
+  await page.locator('[data-action="historyPage"][data-direction="1"]').click();await page.locator('#measureHistoryTab').focus();await page.locator('#measureHistoryTab').press('Home');await settleMotion(page);
+  if(batch)assert(await page.locator('#batch_weight').inputValue()==='75.5'&&await page.locator('#batch_waist').inputValue()==='85.2'&&await page.locator('#batchDate').inputValue()==='2026-09-01','History destroyed a batch draft');
+  else assert(await page.locator('#quickValue').inputValue()==='75.5'&&await page.locator('#quickDate').inputValue()==='2026-09-01'&&await page.locator('#quickNote').inputValue()==='Rascunho preservado'&&await page.locator('#quickForm .help-extra').evaluate(el=>el.open),'History destroyed a quick draft or collapsed its notes');
+  assert(dialogs.length===0,'Switching local panels unnecessarily asked to discard the draft');
+  if(width===390||width===1440){await page.evaluate(()=>window.scrollTo(0,0));await snap(page,width+'-registration-panel');}
+ },{width,seed:longHistoryState(25)});
+ await run('History: notes stay attached to their IDs, escape markup and do not expand unrelated records',async({page})=>{
+  await go(page,'measure');await showHistory(page);const note=page.locator('#historyNote-m_history_000');assert(await note.evaluate(el=>!el.open),'Notes should begin collapsed');await note.locator('summary').click();await settleMotion(page);
+  assert((await note.locator('p').innerText()).startsWith('<img src=x onerror=alert(1)>')&&await page.locator('.history-note img').count()===0,'A saved note became executable markup');
+  await page.locator('#historyFilter').selectOption('weight');assert(await note.evaluate(el=>el.open),'A history refresh lost the same record’s open note');
+  assert(await page.locator('.history-note[open]').count()===1,'An open note moved to a different record');
+  await page.locator('[data-action="historyPage"][data-direction="1"]').click();assert(await page.locator('.history-note[open]').count()===0,'Paging opened an unrelated note');
+ },{seed:longHistoryState(45)});
+ await run('History: deleting the final row clamps the page; undo and backdated editing preserve identity',async({page})=>{
+  await go(page,'measure');await showHistory(page);await page.locator('[data-action="historyPage"][data-direction="1"]').click();const id=await page.locator('[data-action="deleteMetric"]').getAttribute('data-id');
+  await page.locator('[data-action="deleteMetric"]').click();assert(await page.locator('.history-item').count()===10&&await page.locator('.history-pagination').count()===0,'Deleting the last page left an empty or invalid page');
+  await page.locator('#toast [data-action="undoDelete"]').click();assert((await state(page)).metricEntries[id].deleted===false&&(await page.locator('#historySummary').innerText())==='1–10 de 11 registros','Undo lost the measurement or its count');
+  await page.locator('[data-action="editMetric"][data-id="m_history_000"]').click();assert(await page.locator('#quickForm').isVisible()&&await page.locator('#quickValue').inputValue()==='75','Editing from history did not open the exact saved record');
+  await page.locator('#quickValue').fill('77.2');await page.locator('#quickDate').fill('2020-01-02');await page.locator('#quickForm button[type="submit"]').click();await showHistory(page);await page.locator('[data-action="historyPage"][data-direction="1"]').click();
+  assert(await page.locator('[data-action="editMetric"][data-id="m_history_000"]').count()===1&&Object.keys((await state(page)).metricEntries).length===11,'Changing a date duplicated or hid the original ID');
+ },{seed:longHistoryState(11),acceptDialogs:true});
+ await run('History: undated legacy records remain reachable and deleted records stay excluded',async({page})=>{
+  await go(page,'measure');await showHistory(page);await page.locator('[data-action="historyPage"][data-direction="1"]').click();assert((await page.locator('.history-date-heading').last().innerText())==='Data não informada','Undated legacy records disappeared');
+  assert(await page.locator('[data-action="editMetric"][data-id="m_undated"]').count()===1&&await page.locator('[data-action="editMetric"][data-id="m_deleted"]').count()===0,'Legacy or deletion handling changed');
+ },{seed:(()=>{const s=longHistoryState(10);s.metricEntries.m_undated={metric:'waist',value:85,date:'',note:'Nota antiga',origin:'legacy',updatedAt:'2026-01-01T12:00:00.000Z'};s.metricEntries.m_deleted={metric:'weight',value:76,date:'2026-10-28',deleted:true,updatedAt:'2026-10-28T12:00:00.000Z'};return s;})()});
+ for(const [width,reducedMotion]of [[320,'no-preference'],[1440,'no-preference'],[390,'reduce']])await run('Sync icon: neutral, green pulse, verified green and retained errors '+width+'px '+reducedMotion,async({context,page})=>{
+  const icon=page.locator('.sync-trigger'),read=()=>icon.evaluate(el=>({color:getComputedStyle(el).color,animation:getComputedStyle(el.querySelector('svg')).animationName,duration:getComputedStyle(el.querySelector('svg')).animationDuration,text:el.innerText,width:el.getBoundingClientRect().width,height:el.getBoundingClientRect().height,label:el.getAttribute('aria-label')}));
+  const waitColor=async expected=>{try{await page.waitForFunction(expected=>getComputedStyle(document.querySelector('.sync-trigger')).color===expected,expected,{timeout:2000});}catch{throw Error('Sync icon did not settle to '+expected+': '+JSON.stringify(await read()));}};
+  const local=await read();assert(local.text===''&&local.color==='rgb(122, 116, 125)'&&local.width>=44&&local.height>=44&&local.label.includes('Salvo neste aparelho'),'Neutral icon has text, insufficient target size or claims cloud verification');
+  const mock=await mockGist(context,await state(page));mock.gate=new Promise(resolve=>{mock.release=resolve;});
+  try{await startMockSync(page);await page.waitForSelector('.sync-trigger.sync-progress');await page.locator('.sync-close').click();await waitColor('rgb(52, 120, 76)');const busy=await read();assert(busy.color==='rgb(52, 120, 76)'&&busy.animation===(reducedMotion==='reduce'?'none':'sync-pulse'),'Progress does not pulse green or ignores reduced motion');
+   if(reducedMotion!=='reduce')assert(busy.duration==='1s','Sync pulse is too fast');await icon.click();assert(await page.locator('.sync-trigger.sync-progress').count()===1,'Opening the dialog cleared an active synchronization');await page.locator('.sync-close').click();await snap(page,width+'-sync-icon-progress');
+  }finally{mock.release();mock.gate=null;}
+  await waitSyncSuccess(page);await waitColor('rgb(52, 120, 76)');const synced=await read();assert(synced.color==='rgb(52, 120, 76)'&&synced.animation==='none','Verified sync did not settle into steady green');
+  await icon.click();mock.mode='invalid';await page.locator('#syncMainButton').click();await page.waitForSelector('.sync-trigger.sync-error');await waitColor('rgb(176, 72, 82)');assert((await read()).color==='rgb(176, 72, 82)','A failed synchronization is not red');await page.locator('.sync-close').click();await icon.click();assert(await page.locator('.sync-trigger.sync-error').count()===1,'Reopening the dialog hid a sync error');
+  mock.mode='valid';await context.setOffline(true);await page.locator('#syncMainButton').click();await waitColor('rgb(122, 116, 125)');assert((await read()).color==='rgb(122, 116, 125)'&&(await read()).animation==='none','Offline pending changes are not neutral');await page.locator('.sync-close').click();await icon.click();assert(await page.locator('.sync-trigger.sync-dirty').count()===1,'Reopening the dialog claims verification while offline');
+  await context.setOffline(false);await page.locator('#syncMainButton').click();await waitSyncSuccess(page);await page.locator('.sync-close').click();await snap(page,width+'-sync-icon-verified');
+ },{width,reducedMotion,seed:filledState()});
 
  results.push({name:'No browser runtime errors across all scenarios',status:runtimeErrors.length?'fail':'pass',errors:runtimeErrors});
  const report={testedSource:process.env.GITHUB_SHA||'local',browser:browser.version(),testMode:'Chromium mobile emulation; isolated synthetic localStorage; no personal Gist',summary:{total:results.length,passed:results.filter(r=>r.status==='pass').length,failed:results.filter(r=>r.status==='fail').length},results,runtimeErrors,screenshots:shots.map(s=>s.name)};
