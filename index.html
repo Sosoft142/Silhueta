@@ -599,6 +599,34 @@ form .btn,.settings-links .btn{max-width:100%;white-space:normal;text-align:cent
 .measurement-date-help{padding:16px 18px}
 @media(max-width:850px){.topbar{justify-content:space-between}}
 @media(max-width:650px){.metrics-custom-grid>.metric-tile:last-child:nth-child(odd){grid-column:1/-1}}
+/* Home: compact introduction, secondary customization and grouped recent records. */
+.dashboard-home.has-records>.page-head{margin-bottom:14px}
+.dashboard-home.has-records>.page-head .page-desc{display:none}
+.dashboard-home.has-records>.page-head .page-title{margin-bottom:0}
+.dashboard-home.has-records .measurement-schedule{padding:10px 14px;gap:8px 12px;margin-bottom:18px}
+.dashboard-home.has-records .measurement-schedule-copy{display:flex;flex-wrap:wrap;align-items:center;gap:2px 12px;flex:1 1 150px}
+.dashboard-home.has-records .measurement-schedule-label{flex-basis:100%}
+.dashboard-home.has-records .measurement-schedule strong{font-size:18px;line-height:1.35;margin:0}
+.dashboard-home .overview-heading{align-items:center;gap:12px}
+.dashboard-home .overview-heading>div{min-width:0}
+.dashboard-customize{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:44px;flex:none;font-size:13px}
+.dashboard-customize svg{flex:none}
+.dashboard-customize:focus-visible{outline:3px solid #8453a7;outline-offset:2px;border-radius:8px}
+.dashboard-customization{margin:12px 0 0;padding:16px 18px}
+.dashboard-customization[hidden]{display:none}
+.dashboard-customization>.help-mini{margin:0 0 12px}
+.dashboard-customization .fav-order-item button{min-width:44px;min-height:44px}
+.dashboard-home .recent-total{font-size:13px;font-weight:500;line-height:1.55;color:var(--sub);white-space:nowrap}
+.dashboard-home .dashboard-recent>.card-head{align-items:baseline;flex-wrap:wrap;gap:6px 12px;margin-bottom:16px}
+.dashboard-home .recent-groups{display:grid;gap:16px}
+.dashboard-home .recent-day h3{font-size:13px;font-weight:650;line-height:1.55;color:var(--sub);margin:0 0 4px}
+.dashboard-home .recent-week{min-height:44px;padding:9px 0}
+.dashboard-home .recent-week strong{font-size:14px}
+.dashboard-home .recent-week>span:last-child{font-size:13px;font-variant-numeric:tabular-nums}
+.dashboard-home .recent-footer{display:flex;justify-content:flex-end;border-top:1px solid var(--border);padding-top:8px;margin-top:10px}
+.dashboard-home .recent-footer .text-action{min-height:44px}
+@media(max-width:590px){.dashboard-home.has-records>.page-head .toolbar-flex{margin-top:12px}}
+@media(max-width:350px){.dashboard-home .overview-heading{flex-wrap:wrap;gap:4px 12px}}
 @supports (interpolate-size:allow-keywords) and selector(details::details-content){
  #main details{interpolate-size:allow-keywords}
  #main details>summary{transition:margin-bottom 160ms ease}
@@ -647,7 +675,7 @@ form .btn,.settings-links .btn{max-width:100%;white-space:normal;text-align:cent
 <input type="file" id="importFile" accept=".json,.csv,text/csv,application/json" hidden />
 <script>
 (()=>{'use strict';
-const APP_VERSION='2.9.17';
+const APP_VERSION='2.9.18';
 const STORAGE_KEY='silhueta.app.v1', VERSION=7;
 const QUICK_METRIC_PREF_KEY='silhueta.ui.quickMetric';
 const MEASUREMENT_REMINDER_TIME_KEY='silhueta.ui.measurementReminderTime';
@@ -871,7 +899,7 @@ function persist(opts={}){const keepSync=!!opts.keepSync,preserveTimestamp=!!opt
 const rememberedQuickMetric=localRead(QUICK_METRIC_PREF_KEY);
 const HISTORY_PAGE_SIZE=10;
 const HISTORY_DATE_FORMAT=new Intl.DateTimeFormat('pt-BR',{day:'numeric',month:'long',year:'numeric',timeZone:'UTC'});
-let ui={view:'dashboard',week:0,nutWeek:0,measureTab:'primary',extraChartKey:'bust',measureSection:'register',measureMode:'quick',quickMetric:METRIC_KEYS.includes(rememberedQuickMetric)?rememberedQuickMetric:'weight',editEntryId:null,historyFilter:'all',historyPage:0,chartMetric:'weight',guideMetric:'waist'};
+let ui={view:'dashboard',favoritesOpen:false,week:0,nutWeek:0,measureTab:'primary',extraChartKey:'bust',measureSection:'register',measureMode:'quick',quickMetric:METRIC_KEYS.includes(rememberedQuickMetric)?rememberedQuickMetric:'weight',editEntryId:null,historyFilter:'all',historyPage:0,chartMetric:'weight',guideMetric:'waist'};
 function rememberQuickMetric(metric){if(!METRIC_KEYS.includes(metric))return;ui.quickMetric=metric;localWrite(QUICK_METRIC_PREF_KEY,metric);}
 function currentWeek(){if(!state.profile.startDate)return 0;return Math.max(0,Math.min(52,Math.floor(dateDiff(nowISO(),state.profile.startDate)/7)||0))}
 function record(w){return state.measurements[String(w)]||{}}
@@ -946,7 +974,7 @@ function metricTile(metric){
 }
 function favoriteSettings(){
  const fav=state.preferences.favoriteMetrics;
- return `<details class="favorite-settings"><summary>${ico('edit',16)} Personalizar painel <span class="small-muted">Escolher indicadores e ordem</span></summary><p class="help-mini">Selecione até oito medidas. As alterações aparecem nos seus outros aparelhos após a sincronização.</p><div class="fav-options">${METRIC_KEYS.map(metric=>`<label class="fav-choice"><input type="checkbox" data-action="favToggle" data-metric="${metric}" ${fav.includes(metric)?'checked':''}/>${esc(BODY_LABELS[metric])}</label>`).join('')}</div><p class="help-mini">Ordem de exibição</p><div class="fav-order">${fav.map((metric,i)=>`<div class="fav-order-item"><span>${esc(BODY_LABELS[metric])}</span><div><button type="button" data-action="favMove" data-metric="${metric}" data-direction="-1" ${i===0?'disabled':''} aria-label="Subir ${esc(BODY_LABELS[metric])}">↑</button><button type="button" data-action="favMove" data-metric="${metric}" data-direction="1" ${i===fav.length-1?'disabled':''} aria-label="Descer ${esc(BODY_LABELS[metric])}">↓</button></div></div>`).join('')}</div></details>`;
+ return `<div id="dashboardCustomization" class="favorite-settings dashboard-customization" role="region" aria-labelledby="customizeDashboardButton" ${ui.favoritesOpen?'':'hidden'}><p class="help-mini">Selecione até oito medidas. As alterações aparecem nos seus outros aparelhos após a sincronização.</p><div class="fav-options">${METRIC_KEYS.map(metric=>`<label class="fav-choice"><input id="favorite-${metric}" type="checkbox" data-action="favToggle" data-metric="${metric}" ${fav.includes(metric)?'checked':''}/>${esc(BODY_LABELS[metric])}</label>`).join('')}</div><p class="help-mini">Ordem de exibição</p><div class="fav-order">${fav.map((metric,i)=>`<div class="fav-order-item"><span>${esc(BODY_LABELS[metric])}</span><div><button type="button" data-action="favMove" data-metric="${metric}" data-direction="-1" ${i===0?'disabled':''} aria-label="Subir ${esc(BODY_LABELS[metric])}">↑</button><button type="button" data-action="favMove" data-metric="${metric}" data-direction="1" ${i===fav.length-1?'disabled':''} aria-label="Descer ${esc(BODY_LABELS[metric])}">↓</button></div></div>`).join('')}</div></div>`;
 }
 function upcomingMeasurement(today=nowISO()){
  const weekday=state.preferences.measurementWeekday;if(!isMeasurementWeekday(weekday)||!isDate(today))return null;
@@ -978,19 +1006,20 @@ function updateMeasurementCountdown(){
  const countdown=next.days===0?'Hoje é dia de medir':next.days===1?'Falta 1 dia':'Faltam '+next.days+' dias',date=MEASUREMENT_WEEKDAYS[next.weekday]+' · '+dateBR(next.date);
  const label=document.getElementById('measurementCountdown'),detail=document.getElementById('measurementScheduleDate');if(label.textContent!==countdown)label.textContent=countdown;if(detail.textContent!==date)detail.textContent=date;
 }
+function recentMeasurements(entries){
+ const groups=new Map();for(const entry of entries.slice(0,5)){if(!groups.has(entry.date))groups.set(entry.date,[]);groups.get(entry.date).push(entry);}
+ const count=entries.length+' '+(entries.length===1?'medição':'medições');
+ return `<article class="card dashboard-recent"><div class="card-head"><h2>Histórico recente</h2><span class="recent-total">${count}</span></div>${entries.length?`<div class="recent-groups">${[...groups].map(([date,rows])=>`<section class="recent-day" aria-labelledby="recentDate-${date||'unknown'}"><h3 id="recentDate-${date||'unknown'}">${date?HISTORY_DATE_FORMAT.format(new Date(date+'T12:00:00Z')):'Data não informada'}</h3><div class="recent-list">${rows.map(e=>`<button type="button" class="recent-week" data-action="editMetric" data-id="${esc(e.id)}" aria-label="Editar ${esc(BODY_LABELS[e.metric])}, ${fmtMetric(e.metric,e.value)}, ${e.date?dateBR(e.date):'data não informada'}"><span><strong>${esc(BODY_LABELS[e.metric])}</strong></span><span>${fmtMetric(e.metric,e.value)} ${ico('chevron',15)}</span></button>`).join('')}</div></section>`).join('')}</div>`:'<p class="subtle-empty">As medições que você salvar aparecerão aqui.</p>'}<div class="recent-footer"><button type="button" class="text-action" data-action="go" data-view="trends">Ver evolução →</button></div></article>`;
+}
 function dashboard(){
- const active=allMetricEntries();
- const title=!active.length?'Registre sua primeira medida':'Registre uma nova medida';
- const explain='Escolha uma região, informe o valor e a data para começar.';
- const action='measure';
- const total=active.length,favs=state.preferences.favoriteMetrics;
-  return heading('Seu progresso','Acompanhe suas medidas ao longo do tempo.',total?button('Registrar medida','plus','go','data-view="measure"','btn-primary'):'')+
- (total?'':`<section class="ux-hero"><div class="ux-hero-copy"><span class="ux-step">PRÓXIMA AÇÃO</span><h2>${title}</h2><p>${explain}</p></div><div class="hero-action">${button('Registrar medida','plus','go',`data-view="${action}"`,'btn-primary')}</div></section>`)+
-  measurementScheduleCard()+
-   `<div class="overview-heading"><div><h2>Minhas medidas</h2><p>Último registro de cada região.</p></div><span class="subtle-chip">${total} registro(s)</span></div>`+
- `<div class="metrics-custom-grid">${favs.length?favs.map(metricTile).join(''):'<p class="subtle-empty">Selecione pelo menos uma medida em Personalizar painel.</p>'}</div>`+
+ const active=allMetricEntries(),total=active.length,favs=state.preferences.favoriteMetrics;
+ return `<div class="dashboard-home${total?' has-records':''}">`+heading('Seu progresso','Acompanhe suas medidas ao longo do tempo.',total?button('Registrar medida','plus','go','data-view="measure"','btn-primary'):'')+
+ (total?'':`<section class="ux-hero"><div class="ux-hero-copy"><span class="ux-step">PRÓXIMA AÇÃO</span><h2>Registre sua primeira medida</h2><p>Escolha uma região, informe o valor e a data para começar.</p></div><div class="hero-action">${button('Registrar medida','plus','go','data-view="measure"','btn-primary')}</div></section>`)+
+ measurementScheduleCard()+
+ `<div class="overview-heading"><div><h2>Minhas medidas</h2><p>Último registro de cada região.</p></div><button type="button" class="text-action dashboard-customize" id="customizeDashboardButton" data-action="toggleDashboardCustomization" aria-controls="dashboardCustomization" aria-expanded="${ui.favoritesOpen}">${ico('edit',16)} Personalizar</button></div>`+
  favoriteSettings()+
- `<div class="dashboard-secondary ${total?'has-records':''}"><article class="card"><div class="card-head"><div><h2>Histórico recente</h2><p class="card-sub">Registros independentes, sem limite semanal.</p></div><button class="text-action" data-action="go" data-view="trends">Ver evolução →</button></div>${total?`<div class="recent-list">${active.slice(0,5).map(e=>`<button class="recent-week" data-action="editMetric" data-id="${esc(e.id)}"><span><strong>${esc(BODY_LABELS[e.metric])}</strong><small>${e.date?dateBR(e.date):'Data não informada'}</small></span><span>${fmtMetric(e.metric,e.value)} ${ico('chevron',15)}</span></button>`).join('')}</div>`:'<p class="subtle-empty">As medições que você salvar aparecerão aqui.</p>'}</article>${total?'</div><details class="card dashboard-help"><summary>Como acompanhar suas medidas</summary>':'<article class="card"><h2>Como funciona</h2>'}<div class="onboarding-min"><p><strong>1.</strong> Registre uma medida e a data.</p><p><strong>2.</strong> Compare seu histórico na aba Evolução.</p><p><strong>3.</strong> Defina metas apenas se desejar.</p></div><button class="text-action" data-action="go" data-view="help">Ver instruções →</button>${total?'</details>':'</article></div>'}`;
+ `<div class="metrics-custom-grid">${favs.length?favs.map(metricTile).join(''):'<p class="subtle-empty">Selecione pelo menos uma medida em Personalizar.</p>'}</div>`+
+ `<div class="dashboard-secondary ${total?'has-records':''}">${recentMeasurements(active)}${total?'</div><details class="card dashboard-help"><summary>Como acompanhar suas medidas</summary>':'<article class="card"><h2>Como funciona</h2>'}<div class="onboarding-min"><p><strong>1.</strong> Registre uma medida e a data.</p><p><strong>2.</strong> Compare seu histórico na aba Evolução.</p><p><strong>3.</strong> Defina metas apenas se desejar.</p></div><button class="text-action" data-action="go" data-view="help">Ver instruções →</button>${total?'</details>':'</article></div>'}</div>`;
 }
 
 function numberField(name,label,val,unit='',min=0,max=999,step='.1',help=''){return `<div class="field"><label for="${name}">${label}${unit?` <span class="small-muted">(${unit})</span>`:''}</label><input class="input-highlight" id="${name}" name="${name}" type="number" min="${min}" max="${max}" step="${step}" value="${val!==null&&val!==undefined?esc(val):''}" placeholder="Não informado" ${help?`aria-describedby="hint-${name}"`:``} />${help?`<small id="hint-${name}">${help}</small>`:''}</div>`}
@@ -1391,12 +1420,13 @@ function reset(){
  // Do not propagate an empty state to the Gist. Reconnecting later restores the cloud copy.
  clearTimeout(syncDebounce);syncPending=false;
  localRemove(TOKEN_KEY);gistSessionToken='';syncVerifiedAt=0;clearLastSyncConfirmation();clearDeletionUndo();localRemove(QUICK_METRIC_PREF_KEY);localRemove(MEASUREMENT_REMINDER_TIME_KEY);
- state=DEFAULT();ui.quickMetric='weight';ui.editEntryId=null;ui.measureSection='register';ui.historyFilter='all';ui.historyPage=0;ui.week=0;ui.nutWeek=0;
+ state=DEFAULT();ui.favoritesOpen=false;ui.quickMetric='weight';ui.editEntryId=null;ui.measureSection='register';ui.historyFilter='all';ui.historyPage=0;ui.week=0;ui.nutWeek=0;
  persist({keepSync:true,suppressSync:true});
  setSyncState('Não conectado');toast('Aparelho reiniciado. O backup na nuvem não foi apagado.');setView('dashboard');
 }
 document.addEventListener('click',e=>{const el=e.target.closest('[data-action]');if(!el)return;const act=el.dataset.action;
  switch(act){
+ case'toggleDashboardCustomization':{ui.favoritesOpen=!ui.favoritesOpen;const panel=document.getElementById('dashboardCustomization');if(panel){panel.hidden=!ui.favoritesOpen;el.setAttribute('aria-expanded',String(ui.favoritesOpen));if(ui.favoritesOpen)enterContent(panel);}break;}
  case'undoDelete':undoLastDeletion();break;
  case'installApp':installApp();break;
  case'inspectChartPoint':inspectHistoryPoint(el);break;
@@ -1416,7 +1446,7 @@ document.addEventListener('change',e=>{if(e.target.dataset.action==='favToggle')
    const key=e.target.dataset.metric,f=state.preferences.favoriteMetrics;
    if(e.target.checked&&!f.includes(key)){if(f.length>=8){toast('Selecione até oito indicadores.');e.target.checked=false;return}f.push(key)}
    else if(!e.target.checked){if(f.length===1){toast('Mantenha pelo menos um indicador.');e.target.checked=true;return}state.preferences.favoriteMetrics=f.filter(k=>k!==key)}
-   persist();render();return;
+   persist();render({preserveDrafts:true});return;
  }if(e.target.id==='quickMetric'){if(!METRIC_KEYS.includes(e.target.value))return;rememberQuickMetric(e.target.value);const label=document.querySelector('label[for="quickValue"]'),field=document.getElementById('quickValue');if(label)label.textContent='Valor ('+metricUnit(e.target.value)+')';if(field){field.min=e.target.value==='weight'?'20':e.target.value==='bodyFat'?'0':'10';field.max=e.target.value==='bodyFat'?'100':'300';field.placeholder=metricUnit(e.target.value);field.value='';}updateQuickLastMeasurement();return}
  if(e.target.id==='historyFilter'){ui.historyFilter=e.target.value;ui.historyPage=0;render({preserveDrafts:true});return}
  if(e.target.id==='chartMetric'){ui.chartMetric=e.target.value;render({preserveDrafts:true});return}

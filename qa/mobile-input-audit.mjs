@@ -28,6 +28,7 @@ async function openPage(width=390,seed=emptyState(),acceptDialogs=false,options=
 // Allow their 160 ms budget plus two frames; this wait belongs only to QA.
 async function settleMotion(page){await page.waitForTimeout(200);}
 async function go(page,view){let link=page.locator('[data-action="go"][data-view="'+view+'"]:visible').first();if(!(await link.count())){await page.locator('[data-action="openDrawer"]:visible').first().click();link=page.locator('#mobileDrawer [data-view="'+view+'"]:visible').first();}await link.click();await settleMotion(page);}
+async function openDashboardCustomization(page){if(await page.locator('#customizeDashboardButton').getAttribute('aria-expanded')!=='true'){await page.locator('#customizeDashboardButton').click();await settleMotion(page);}}
 async function showHistory(page){const tab=page.locator('#measureHistoryTab');if(await tab.count()&&await tab.getAttribute('aria-selected')!=='true'){await tab.click();await settleMotion(page);}}
 async function showRegistration(page){const tab=page.locator('#measureRegisterTab');if(await tab.count()&&await tab.getAttribute('aria-selected')!=='true'){await tab.click();await settleMotion(page);}}
 async function filterHistoryAndReturn(page,metric){await showHistory(page);await page.locator('#historyFilter').selectOption(metric);await showRegistration(page);}
@@ -175,7 +176,7 @@ try{
  await run('UI polish: odd mobile card rows fill available width and keep chosen order',async({page})=>{
   const before=await state(page),checks=[];
   for(const add of [null,'bust','bodyFat']){
-   if(add){await page.setViewportSize({width:390,height:844});await page.locator('.favorite-settings>summary').click();await page.locator('[data-action="favToggle"][data-metric="'+add+'"]').setChecked(true);await settleMotion(page);}
+   if(add){await page.setViewportSize({width:390,height:844});await openDashboardCustomization(page);await page.locator('[data-action="favToggle"][data-metric="'+add+'"]').setChecked(true);await settleMotion(page);}
    for(const width of [320,390,650,768,1440]){await page.setViewportSize({width,height:844});await settleMotion(page);const data=await page.evaluate(()=>{const grid=document.querySelector('.metrics-custom-grid'),r=grid.getBoundingClientRect(),tiles=[...grid.querySelectorAll('.metric-tile')];return{width:innerWidth,page:document.documentElement.scrollWidth,columns:getComputedStyle(grid).gridTemplateColumns.split(' ').length,grid:{left:r.left,right:r.right,width:r.width},tiles:tiles.map(el=>{const box=el.getBoundingClientRect();return{metric:el.dataset.metric,left:box.left,right:box.right,width:box.width};})};});
     const selected=(await state(page)).preferences.favoriteMetrics,last=data.tiles.at(-1),first=data.tiles[0];assert(JSON.stringify(data.tiles.map(t=>t.metric))===JSON.stringify(selected),'Responsive layout changed the chosen metric order');assert(data.page<=width+1,'Card row creates horizontal overflow');
     if(width<=340||(width<=650&&data.tiles.length%2===1))assert(Math.abs(last.left-data.grid.left)<1&&Math.abs(last.right-data.grid.right)<1,'The final card leaves an empty mobile half-row: '+JSON.stringify(data));else assert(Math.abs(last.width-first.width)<1,'Even rows or desktop cards have uneven widths');
@@ -666,6 +667,37 @@ try{
   mock.mode='valid';await context.setOffline(true);await page.locator('#syncMainButton').click();await waitColor('rgb(122, 116, 125)');assert((await read()).color==='rgb(122, 116, 125)'&&(await read()).animation==='none','Offline pending changes are not neutral');await page.locator('.sync-close').click();await icon.click();assert(await page.locator('.sync-trigger.sync-dirty').count()===1,'Reopening the dialog claims verification while offline');
   await context.setOffline(false);await page.locator('#syncMainButton').click();await waitSyncSuccess(page);await page.locator('.sync-close').click();await snap(page,width+'-sync-icon-verified');
  },{width,reducedMotion,seed:filledState()});
+
+ for(const width of [320,390,768,1440])await run('Home: compact summary, secondary customization and dated recent list '+width+'px',async({page})=>{
+  const before=await state(page),toggle=page.locator('#customizeDashboardButton'),panel=page.locator('#dashboardCustomization');
+  assert(await panel.isHidden()&&await toggle.getAttribute('aria-expanded')==='false','Customization should begin collapsed');
+  assert(await page.locator('.dashboard-home>.page-head .page-desc').isHidden(),'Returning-user introduction still occupies space');
+  assert(await page.locator('.overview-heading .subtle-chip').count()===0&&(await page.locator('.dashboard-recent .recent-total').innerText())==='6 medições','Total count is missing or still competes with indicators');
+  const geometry=await page.evaluate(()=>{const rect=sel=>{const r=document.querySelector(sel).getBoundingClientRect();return{left:r.left,right:r.right,top:r.top,bottom:r.bottom,width:r.width,height:r.height};};return{width:innerWidth,page:document.documentElement.scrollWidth,first:rect('.metric-tile'),toggle:rect('#customizeDashboardButton'),list:rect('.recent-groups'),footer:rect('.recent-footer'),link:rect('.recent-footer button')};});
+  assert(geometry.page<=width+1&&geometry.toggle.width>=44&&geometry.toggle.height>=44&&geometry.link.height>=44,'Home overflows or has undersized actions: '+JSON.stringify(geometry));
+  assert(geometry.footer.top>=geometry.list.bottom-1,'Evolution link overlaps the recent records');if(width===390)assert(geometry.first.top<420,'The first metrics remain too far down: '+geometry.first.top);
+  await page.evaluate(()=>window.scrollTo(0,0));if(width!==768)await snap(page,width+'-home-compact');
+  await toggle.focus();await toggle.press('Enter');await settleMotion(page);assert(await panel.isVisible()&&await toggle.getAttribute('aria-expanded')==='true','Keyboard did not expand customization');
+  await page.locator('#favorite-bust').setChecked(true);assert(await panel.isVisible()&&await toggle.getAttribute('aria-expanded')==='true','Choosing a card unexpectedly closed customization');
+  assert(await page.locator('#favorite-bust').evaluate(el=>el===document.activeElement),'Choosing a card lost keyboard focus');
+  await page.locator('[data-action="favMove"][data-metric="bust"][data-direction="-1"]').click();const selected=(await state(page)).preferences.favoriteMetrics,tiles=await page.locator('.metric-tile').evaluateAll(els=>els.map(el=>el.dataset.metric));assert(JSON.stringify(selected)===JSON.stringify(tiles)&&selected.indexOf('bust')===2,'Reordering and visible card order diverged');
+  if(width===390||width===1440){await page.locator('.overview-heading').evaluate(el=>el.scrollIntoView({block:'start'}));await snap(page,width+'-home-customization');}
+  await toggle.focus();await toggle.press('Space');assert(await panel.isHidden()&&await toggle.getAttribute('aria-expanded')==='false','Keyboard did not collapse customization');
+  const after=await state(page);assert(JSON.stringify(after.metricEntries)===JSON.stringify(before.metricEntries)&&JSON.stringify(after.nutritionLogs)===JSON.stringify(before.nutritionLogs),'Home customization changed saved records');
+  await page.locator('.dashboard-recent').evaluate(el=>el.scrollIntoView({block:'start'}));if(width===390||width===1440)await snap(page,width+'-home-recent-groups');
+ },{width,seed:(()=>{const s=filledState();s.preferences.measurementWeekday=5;return s;})()});
+ await run('Home recent: five latest real records remain grouped, ordered and editable without mutation',async({page})=>{
+  const before=await state(page),expected=Object.entries(before.metricEntries).filter(([,e])=>!e.deleted).sort((a,b)=>b[1].date.localeCompare(a[1].date)||b[1].updatedAt.localeCompare(a[1].updatedAt)||a[0].localeCompare(b[0])).slice(0,5).map(([id])=>id),ids=await page.locator('.dashboard-recent .recent-week').evaluateAll(els=>els.map(el=>el.dataset.id));
+  assert(JSON.stringify(ids)===JSON.stringify(expected),'Recent list changed the five-record limit, chronology or deletion handling');
+  assert(await page.locator('.recent-day').count()===2&&await page.locator('.recent-day h3').count()===2,'A date repeats once per region');
+  const id=ids[0],entry=before.metricEntries[id];await page.locator('.recent-week[data-id="'+id+'"]').click();assert(await page.locator('#quickForm').isVisible()&&await page.locator('#quickMetric').inputValue()===entry.metric&&Number(await page.locator('#quickValue').inputValue())===entry.value&&await page.locator('#quickDate').inputValue()===entry.date,'Recent row did not open its original measurement');
+  assert(JSON.stringify(await state(page))===JSON.stringify(before),'Opening a recent measurement changed stored data');
+ },{seed:(()=>{const s=filledState();s.metricEntries.m_deleted={metric:'weight',value:80,date:'2026-10-28',updatedAt:'2026-10-28T20:00:00.000Z',deleted:true};return s;})()});
+ await run('Home recent: singular count and undated legacy measurements retain a clear label',async({page})=>{
+  assert((await page.locator('.recent-total').innerText())==='1 medição'&&(await page.locator('.recent-day h3').innerText())==='Data não informada','Singular count or undated label is incorrect');
+  assert(await page.locator('.recent-week').count()===1&&(await page.locator('.recent-week').innerText()).includes('85,0 cm'),'Undated entry lost its value or unit');
+  await page.locator('.recent-footer [data-view="trends"]').click();assert((await page.locator('.page-title').innerText())==='Evolução','Footer no longer opens Evolution');
+ },{seed:(()=>{const s=emptyState();s.metricEntries.m_undated={metric:'waist',value:85,date:'',note:'Nota antiga',origin:'legacy',updatedAt:'2026-01-01T12:00:00.000Z'};return s;})()});
 
  results.push({name:'No browser runtime errors across all scenarios',status:runtimeErrors.length?'fail':'pass',errors:runtimeErrors});
  const report={testedSource:process.env.GITHUB_SHA||'local',browser:browser.version(),testMode:'Chromium mobile emulation; isolated synthetic localStorage; no personal Gist',summary:{total:results.length,passed:results.filter(r=>r.status==='pass').length,failed:results.filter(r=>r.status==='fail').length},results,runtimeErrors,screenshots:shots.map(s=>s.name)};

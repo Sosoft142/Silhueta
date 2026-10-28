@@ -1,6 +1,10 @@
-# Silhueta · versão 2.9.17 — clareza e agilidade no acompanhamento
+# Silhueta · versão 2.9.18 — clareza e agilidade no acompanhamento
 
 Aplicativo web instalável (PWA) para acompanhar medidas corporais, composição corporal, nutrição e evolução.
+
+A versão 2.9.18 ajusta somente a apresentação de **Início**. Quando há medições, o cabeçalho e o lembrete ficam mais compactos para aproximar os indicadores do começo da página. **Personalizar** passa a uma ação junto de **Minhas medidas**, com o painel recolhido até ser aberto; escolher ou ordenar indicadores mantém esse painel aberto. A edição por teclado conserva o foco da seleção. O contador passa ao histórico, escrito como “1 medição” ou “6 medições”.
+
+O **Histórico recente** conserva as cinco últimas medições reais e as agrupa pela data, exibida uma vez por grupo. As linhas ficam mais compactas e **Ver evolução** passa ao rodapé. Registros antigos sem data mantêm uma identificação explícita; cada linha continua abrindo o registro original para edição. A auditoria cobre os controles, foco, ordem dos indicadores e capturas em quatro larguras, além da contagem, agrupamento, limite, exclusões e navegação do histórico recente. Os cartões de medidas, as demais abas, os dados salvos e a identidade da instalação são preservados.
 
 A versão 2.9.17 separa **Medidas → Registrar** e **Medidas → Histórico**. Alternar entre essas áreas mantém os formulários e seus rascunhos. O histórico mostra dez registros por página, em ordem de data, com as medições do mesmo dia agrupadas e as observações recolhidas. O filtro por região retorna à primeira página; excluir o último registro de uma página ajusta a navegação. Editar abre a medição original no formulário, preservando seu identificador. A mesma organização aparece na lista de Evolução.
 
