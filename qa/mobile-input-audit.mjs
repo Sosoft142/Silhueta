@@ -28,6 +28,7 @@ async function openPage(width=390,seed=emptyState(),acceptDialogs=false,options=
 async function settleMotion(page){await page.waitForTimeout(200);}
 async function go(page,view){let link=page.locator('[data-action="go"][data-view="'+view+'"]:visible').first();if(!(await link.count())){await page.locator('[data-action="openDrawer"]:visible').first().click();link=page.locator('#mobileDrawer [data-view="'+view+'"]:visible').first();}await link.click();await settleMotion(page);}
 async function state(page){return page.evaluate(()=>JSON.parse(localStorage.getItem('silhueta.app.v1')));}
+async function openCalendar(page){const section=page.locator('#measurementCalendarSection');if(!(await section.evaluate(el=>el.open))){await section.locator('summary').click();await settleMotion(page);}}
 async function calendarTemplate(context,page){
  // Read the outbound template without contacting Google or saving real events.
  await context.route('https://calendar.google.com/**',route=>route.fulfill({status:200,contentType:'text/html',body:'<!doctype html><title>Synthetic calendar template</title>'}));
@@ -104,7 +105,8 @@ async function offerInstall(page,rejectPrompt=false){return page.evaluate(reject
  event.userChoice=new Promise(resolve=>{fixture.resolve=resolve;});
  window.dispatchEvent(event);return event.defaultPrevented;
 },rejectPrompt);}
-async function snap(page,name){const file=path.join(output,name+'.jpg');const bytes=await page.screenshot({path:file,type:'jpeg',quality:45,fullPage:false,animations:'disabled'});shots.push({name,bytes});}
+// Let native details finish naturally so captures match the painted interface.
+async function snap(page,name){await settleMotion(page);const file=path.join(output,name+'.jpg');const bytes=await page.screenshot({path:file,type:'jpeg',quality:45,fullPage:false});shots.push({name,bytes});}
 async function run(name,fn,opts={}){
  let h;try{h=await openPage(opts.width||390,opts.seed||emptyState(),!!opts.acceptDialogs,opts);const detail=await fn(h);results.push({name,status:'pass',...detail});}catch(e){results.push({name,status:'fail',error:e.message});}finally{console.log('SILHUETA_TEST_RESULT '+JSON.stringify({name,status:results.at(-1)?.status,error:results.at(-1)?.error}));if(h){if(h.errors.length)runtimeErrors.push({test:name,errors:h.errors});await h.context.close();}}
 }
@@ -128,6 +130,7 @@ try{
  for(const width of layoutWidths)await run('Form spacing, alignment and expanded controls '+width+'px',async({page})=>{
   const before=await state(page),checks=[];
   await go(page,'settings');
+  await openCalendar(page);
   checks.push(await formGeometry(page,'Settings', [['#startDate','#settingsForm .settings-summary'],['#measurementWeekday','#measurementScheduleForm .settings-summary'],['#measurementReminderTime','#measurementCalendarForm .settings-summary']]));
   if(width===390||width===1440)await snap(page,width+'-settings-spacing');
   await go(page,'measure');await page.locator('#quickForm .help-extra summary').click();
@@ -153,8 +156,31 @@ try{
   assert(JSON.stringify(await state(page))===JSON.stringify(before),'Layout inspection modified existing records');
   return{checks};
  },{width,seed:filledState()});
+ for(const width of [390,1440])await run('UI polish: grouped routine preserves drafts through disclosure and saves '+width+'px',async({page})=>{
+  const before=await state(page);await go(page,'settings');const details=page.locator('#measurementCalendarSection');
+  assert(await page.locator('.routine-settings #measurementScheduleForm').count()===1&&await page.locator('.routine-settings #measurementCalendarForm').count()===1,'Weekday and calendar forms are not grouped in one routine');
+  assert(await details.evaluate(el=>!el.open)&&await page.locator('#measurementCalendarForm').isHidden(),'The optional calendar should start collapsed');await page.locator('.routine-settings').evaluate(el=>el.scrollIntoView({block:'start',behavior:'instant'}));await snap(page,width+'-routine-compact');
+  await details.locator('summary').focus();await page.keyboard.press('Enter');await settleMotion(page);assert(await page.locator('#measurementReminderTime').isVisible(),'The optional calendar cannot be opened with the keyboard');
+  await page.locator('#measurementReminderTime').fill('09:35');await page.locator('#startDate').fill('2026-10-02');await page.locator('#measurementWeekday').selectOption('1');await page.locator('#measurementScheduleForm button').click();
+  assert(await details.evaluate(el=>el.open)&&await page.locator('#measurementReminderTime').inputValue()==='09:35'&&await page.locator('#startDate').inputValue()==='2026-10-02','Saving the day closed the disclosure or erased another draft');await page.locator('[data-action="saveSettings"]').click();
+  assert(await details.evaluate(el=>el.open)&&await page.locator('#measurementReminderTime').inputValue()==='09:35','Saving the start date erased the optional calendar draft');await formGeometry(page,'Grouped routine', [['#measurementWeekday','#measurementScheduleForm .settings-summary'],['#measurementReminderTime','#measurementCalendarForm .settings-summary']]);
+  await page.locator('.routine-settings').evaluate(el=>el.scrollIntoView({block:'start',behavior:'instant'}));await snap(page,width+'-routine-expanded');await details.locator('summary').click();await settleMotion(page);assert(await page.locator('#measurementCalendarForm').isHidden(),'Optional fields remain visible after closing');await openCalendar(page);assert(await page.locator('#measurementReminderTime').inputValue()==='09:35','Closing and reopening erased the time');
+  const after=await state(page);assert(JSON.stringify(after.metricEntries)===JSON.stringify(before.metricEntries)&&JSON.stringify(after.nutritionLogs)===JSON.stringify(before.nutritionLogs),'Routine layout changes altered records');
+ },{width,seed:(()=>{const s=filledState();s.preferences.measurementWeekday=5;return s;})(),acceptDialogs:true});
+ await run('UI polish: odd mobile card rows fill available width and keep chosen order',async({page})=>{
+  const before=await state(page),checks=[];
+  for(const add of [null,'bust','bodyFat']){
+   if(add){await page.setViewportSize({width:390,height:844});await page.locator('.favorite-settings>summary').click();await page.locator('[data-action="favToggle"][data-metric="'+add+'"]').setChecked(true);await settleMotion(page);}
+   for(const width of [320,390,650,768,1440]){await page.setViewportSize({width,height:844});await settleMotion(page);const data=await page.evaluate(()=>{const grid=document.querySelector('.metrics-custom-grid'),r=grid.getBoundingClientRect(),tiles=[...grid.querySelectorAll('.metric-tile')];return{width:innerWidth,page:document.documentElement.scrollWidth,columns:getComputedStyle(grid).gridTemplateColumns.split(' ').length,grid:{left:r.left,right:r.right,width:r.width},tiles:tiles.map(el=>{const box=el.getBoundingClientRect();return{metric:el.dataset.metric,left:box.left,right:box.right,width:box.width};})};});
+    const selected=(await state(page)).preferences.favoriteMetrics,last=data.tiles.at(-1),first=data.tiles[0];assert(JSON.stringify(data.tiles.map(t=>t.metric))===JSON.stringify(selected),'Responsive layout changed the chosen metric order');assert(data.page<=width+1,'Card row creates horizontal overflow');
+    if(width<=340||(width<=650&&data.tiles.length%2===1))assert(Math.abs(last.left-data.grid.left)<1&&Math.abs(last.right-data.grid.right)<1,'The final card leaves an empty mobile half-row: '+JSON.stringify(data));else assert(Math.abs(last.width-first.width)<1,'Even rows or desktop cards have uneven widths');
+    checks.push({viewport:width,count:data.tiles.length,columns:data.columns,lastWidth:last.width,gridWidth:data.grid.width});if(add===null&&(width===390||width===1440)){await page.evaluate(()=>window.scrollTo({top:0,behavior:'instant'}));await snap(page,width===390?'390-balanced-cards':'1440-clean-header');}
+   }
+  }
+  assert(JSON.stringify((await state(page)).metricEntries)===JSON.stringify(before.metricEntries),'Resizing or choosing cards changed saved measurements');return{checks};
+ },{seed:filledState()});
  for(const width of [320,390,1440])await run('Google Calendar: weekly template, private data and draft preservation '+width+'px',async({context,page,dialogs})=>{
-  const before=await state(page);await page.goto('http://127.0.0.1:4173/?private-note=synthetic-calendar-secret#synthetic',{waitUntil:'networkidle'});await go(page,'settings');await page.locator('#startDate').fill('2026-10-02');await page.locator('#measurementReminderTime').fill('09:30');await page.locator('#settingsForm').evaluate(form=>{window.calendarDateForm=form;});
+  const before=await state(page);await page.goto('http://127.0.0.1:4173/?private-note=synthetic-calendar-secret#synthetic',{waitUntil:'networkidle'});await go(page,'settings');await openCalendar(page);await page.locator('#startDate').fill('2026-10-02');await page.locator('#measurementReminderTime').fill('09:30');await page.locator('#settingsForm').evaluate(form=>{window.calendarDateForm=form;});
   const url=await calendarTemplate(context,page),params=Object.fromEntries(url.searchParams);
   assert(url.origin==='https://calendar.google.com'&&url.pathname==='/calendar/render'&&params.action==='TEMPLATE','Calendar template opened an unexpected destination');
   assert(params.recur==='RRULE:FREQ=WEEKLY;BYDAY=FR'&&params.ctz==='America/Sao_Paulo'&&params.dates==='20261030T123000Z/20261030T124500Z','Calendar day, duration, recurrence or local time is wrong: '+JSON.stringify(params));
@@ -171,15 +197,15 @@ try{
   {name:'end time crosses midnight and a year boundary',day:4,clock:'2026-12-31T23:50:00-03:00',time:'23:55',dates:'20270101T025500Z/20270101T031000Z',byday:'TH'},
   {name:'next week follows local daylight saving time',day:0,clock:'2027-03-07T13:00:00-05:00',time:'09:00',dates:'20270314T130000Z/20270314T131500Z',byday:'SU',zone:'America/New_York'}
  ];
- for(const item of calendarDates)await run('Google Calendar: '+item.name,async({context,page})=>{await go(page,'settings');await page.locator('#measurementReminderTime').fill(item.time);const url=await calendarTemplate(context,page);assert(url.searchParams.get('dates')===item.dates&&url.searchParams.get('ctz')===(item.zone||'America/Sao_Paulo')&&url.searchParams.get('recur')==='RRULE:FREQ=WEEKLY;BYDAY='+item.byday,'First future occurrence or recurrence zone is wrong: '+url.href);return{dates:url.searchParams.get('dates'),zone:url.searchParams.get('ctz')};},{clockTime:item.clock,timezoneId:item.zone,seed:(()=>{const s=filledState();s.preferences.measurementWeekday=item.day;return s;})()});
+ for(const item of calendarDates)await run('Google Calendar: '+item.name,async({context,page})=>{await go(page,'settings');await openCalendar(page);await page.locator('#measurementReminderTime').fill(item.time);const url=await calendarTemplate(context,page);assert(url.searchParams.get('dates')===item.dates&&url.searchParams.get('ctz')===(item.zone||'America/Sao_Paulo')&&url.searchParams.get('recur')==='RRULE:FREQ=WEEKLY;BYDAY='+item.byday,'First future occurrence or recurrence zone is wrong: '+url.href);return{dates:url.searchParams.get('dates'),zone:url.searchParams.get('ctz')};},{clockTime:item.clock,timezoneId:item.zone,seed:(()=>{const s=filledState();s.preferences.measurementWeekday=item.day;return s;})()});
  await run('Google Calendar: missing day, invalid time and changed-day guard',async({page})=>{
-  let popups=0;page.context().on('page',popup=>{popups++;popup.close();});await go(page,'settings');assert(await page.locator('#measurementCalendarForm button').isDisabled()&&await page.locator('#measurementReminderTime').isDisabled(),'An unconfigured day enables calendar creation');
+  let popups=0;page.context().on('page',popup=>{popups++;popup.close();});await go(page,'settings');await openCalendar(page);assert(await page.locator('#measurementCalendarForm button').isDisabled()&&await page.locator('#measurementReminderTime').isDisabled(),'An unconfigured day enables calendar creation');
   await page.locator('#measurementWeekday').selectOption('5');await page.locator('#measurementScheduleForm button').click();await page.locator('#measurementReminderTime').fill('');await page.locator('#measurementCalendarForm button').click();assert(await page.locator('#measurementReminderTime').evaluate(el=>!el.validity.valid),'An empty time was accepted');
   await page.locator('#measurementReminderTime').fill('09:00');await page.locator('#measurementWeekday').selectOption('1');await page.locator('#measurementCalendarForm button').click();assert((await page.locator('#toast').innerText()).includes('Salve o dia das medições')&&popups===0,'Unsaved day change opened an event for the wrong weekday');
   await page.locator('#measurementScheduleForm button').click();await page.context().setOffline(true);await page.locator('#measurementCalendarForm button').click();assert(popups===0&&(await page.locator('#toast').innerText()).includes('Conecte-se à internet'),'Offline calendar creation opened a broken external page');await page.context().setOffline(false);await page.locator('#measurementWeekday').selectOption('');await page.locator('#measurementScheduleForm button').click();assert(await page.locator('#measurementCalendarForm button').isDisabled(),'Removing the chosen day left calendar creation enabled');
  });
  await run('Google Calendar: a nonexistent daylight saving time is not silently changed',async({page})=>{
-  let popups=0;page.context().on('page',popup=>{popups++;popup.close();});await go(page,'settings');await page.locator('#measurementReminderTime').fill('02:30');await page.locator('#measurementCalendarForm button').click();assert(popups===0&&(await page.locator('#toast').innerText()).includes('horário não está disponível'),'An unavailable local time was silently rescheduled');
+  let popups=0;page.context().on('page',popup=>{popups++;popup.close();});await go(page,'settings');await openCalendar(page);await page.locator('#measurementReminderTime').fill('02:30');await page.locator('#measurementCalendarForm button').click();assert(popups===0&&(await page.locator('#toast').innerText()).includes('horário não está disponível'),'An unavailable local time was silently rescheduled');
  },{clockTime:'2027-03-13T12:00:00-05:00',timezoneId:'America/New_York',seed:(()=>{const s=filledState();s.preferences.measurementWeekday=0;return s;})()});
  for(const width of [320,390,1440])await run('Measurement day: configure, persist and remove the weekly countdown at '+width+'px',async({page})=>{
   const before=await state(page);assert(await page.locator('#measurementSchedule').isHidden(),'An unconfigured day should not invent a schedule');
@@ -384,7 +410,7 @@ try{
  await run('Usability: history precedes optional guide and opening it preserves the draft',async({page})=>{
   await go(page,'measure');assert(await page.locator('.anatomy-guide').evaluate(el=>!el.open),'Guide should start collapsed');
   const order=await page.evaluate(()=>document.querySelector('.history-full-width').getBoundingClientRect().top<document.querySelector('.anatomy-full-width').getBoundingClientRect().top);assert(order,'History is below guide');
-  await page.locator('#quickValue').fill('75.5');await page.locator('[data-action="openGuide"]').click();assert(await page.locator('.anatomy-guide').evaluate(el=>el.open),'Guide shortcut did not open details');
+  await page.locator('#quickValue').fill('75.5');const dateHelp=page.locator('#measurementDateHelp');assert(await dateHelp.evaluate(el=>!el.open),'Date explanation should start collapsed');await dateHelp.locator('summary').click();await settleMotion(page);assert(await dateHelp.locator('.disclosure-content').isVisible(),'Date explanation is unavailable');await dateHelp.locator('summary').click();await settleMotion(page);assert(await page.locator('#quickValue').inputValue()==='75.5','Date help changed a measurement draft');await page.locator('[data-action="openGuide"]').click();assert(await page.locator('.anatomy-guide').evaluate(el=>el.open),'Guide shortcut did not open details');
   await page.locator('.anatomy-guide>summary').click();assert(await page.locator('#quickValue').inputValue()==='75.5','Opening or closing guide erased draft');
   await page.locator('#historyFilter').selectOption('weight');assert(await page.locator('#quickValue').inputValue()==='75.5','Reordered history erased draft');
  },{seed:filledState()});
