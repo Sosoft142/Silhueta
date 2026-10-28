@@ -105,7 +105,8 @@ async function offerInstall(page,rejectPrompt=false){return page.evaluate(reject
  event.userChoice=new Promise(resolve=>{fixture.resolve=resolve;});
  window.dispatchEvent(event);return event.defaultPrevented;
 },rejectPrompt);}
-async function snap(page,name){const file=path.join(output,name+'.jpg');const bytes=await page.screenshot({path:file,type:'jpeg',quality:45,fullPage:false,animations:'disabled'});shots.push({name,bytes});}
+// Let native details finish naturally so captures match the painted interface.
+async function snap(page,name){await settleMotion(page);const file=path.join(output,name+'.jpg');const bytes=await page.screenshot({path:file,type:'jpeg',quality:45,fullPage:false});shots.push({name,bytes});}
 async function run(name,fn,opts={}){
  let h;try{h=await openPage(opts.width||390,opts.seed||emptyState(),!!opts.acceptDialogs,opts);const detail=await fn(h);results.push({name,status:'pass',...detail});}catch(e){results.push({name,status:'fail',error:e.message});}finally{console.log('SILHUETA_TEST_RESULT '+JSON.stringify({name,status:results.at(-1)?.status,error:results.at(-1)?.error}));if(h){if(h.errors.length)runtimeErrors.push({test:name,errors:h.errors});await h.context.close();}}
 }
