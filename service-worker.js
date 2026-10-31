@@ -1,6 +1,6 @@
-const VERSION='silhueta-app-v2.9.18';
+const VERSION='silhueta-app-v2.9.19';
 const CACHE_PREFIX='silhueta-app-v';
-const CORE=['./index.html','./manifest.webmanifest','./icons/brand-mark.svg','./icons/icon.svg','./icons/apple-touch-icon-v21.png','./icons/icon-192-v21.png','./icons/icon-512-v21.png','./icons/icon-maskable-512-v21.png'];
+const CORE=['./index.html','./navigation.js','./manifest.webmanifest','./icons/brand-mark.svg','./icons/icon.svg','./icons/apple-touch-icon-v21.png','./icons/icon-192-v21.png','./icons/icon-512-v21.png','./icons/icon-maskable-512-v21.png'];
 const APP_SCOPE=new URL(self.registration.scope);
 const MANIFEST_URL=new URL('./manifest.webmanifest',APP_SCOPE).href;
 const INDEX_URL=new URL('./index.html',APP_SCOPE);

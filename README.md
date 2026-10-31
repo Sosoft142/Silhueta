@@ -1,6 +1,12 @@
-# Silhueta · versão 2.9.18 — clareza e agilidade no acompanhamento
+# Silhueta · versão 2.9.19 — clareza e agilidade no acompanhamento
 
 Aplicativo web instalável (PWA) para acompanhar medidas corporais, composição corporal, nutrição e evolução.
+
+A versão 2.9.19 integra telas, Registrar/Histórico, menu, sincronização e edição ao histórico do navegador. Voltar fecha primeiro a camada aberta, pede confirmação antes de descartar alterações e restaura filtros, página, observações abertas e rolagem. Salvar ou cancelar uma edição consome sua etapa; fechar e reabrir rapidamente uma janela não deixa um fechamento antigo atingir a nova. O histórico contém apenas opções de navegação e IDs; valores de formulários e credenciais permanecem fora dele. Na página inicial limpa não existe uma entrada artificial para prender a saída. O mesmo fluxo atende a navegação do navegador e do PWA; a validação automatizada não substitui o teste físico do gesto no Galaxy S24.
+
+O menu e os controles de fechar passam a SVGs com traços uniformes. Cabeçalhos, botões, campos e ações acomodam texto maior e linhas adicionais em telas estreitas. A sincronização usa uma coluna completa no celular, removendo o grid antigo de três botões. A paleta, a nuvem aprovada, os efeitos rápidos e a preferência por movimento reduzido são preservados.
+
+A limpeza de CSS remove 53 regras sem uso e 80 declarações substituídas, sem reordenar a cascata nem as condições responsivas. A auditoria própria compara todos os estilos calculados e as caixas dos elementos visíveis, antes/depois da limpeza isolada, em seis telas e três larguras. Os novos testes cobrem voltar/avançar, descarte aceito/recusado, rascunhos, edição, recarga, saída da página inicial, janelas consecutivas e layout em 320, 360, 390 e 1440 px com texto ampliado. O service worker inclui o módulo de navegação no cache offline; a identidade da instalação, o formato dos dados e as ilustrações permanecem preservados.
 
 A versão 2.9.18 ajusta somente a apresentação de **Início**. Quando há medições, o cabeçalho e o lembrete ficam mais compactos para aproximar os indicadores do começo da página. **Personalizar** passa a uma ação junto de **Minhas medidas**, com o painel recolhido até ser aberto; escolher ou ordenar indicadores mantém esse painel aberto. A edição por teclado conserva o foco da seleção. O contador passa ao histórico, escrito como “1 medição” ou “6 medições”.
 

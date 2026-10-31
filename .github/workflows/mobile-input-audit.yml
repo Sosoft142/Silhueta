@@ -4,12 +4,14 @@ on:
     branches: [main, fix/mobile-inputs-2-9-1]
     paths:
       - index.html
+      - navigation.js
       - service-worker.js
       - qa/mobile-input-audit.mjs
       - .github/workflows/mobile-input-audit.yml
   pull_request:
     paths:
       - index.html
+      - navigation.js
       - service-worker.js
       - qa/mobile-input-audit.mjs
       - .github/workflows/mobile-input-audit.yml
