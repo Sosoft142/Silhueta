@@ -63,6 +63,9 @@ window.createSilhuetaNavigation=function({captureScreen,normalizeScreen,applyRou
   history.replaceState(current,'');window.addEventListener('popstate',pop);
   window.addEventListener('scroll',()=>{clearTimeout(scrollTimer);scrollTimer=setTimeout(remember,80);},{passive:true});
   display(current,{initial:true});
+  // Reload restores the screen, not a half-completed connection/menu. Consume
+  // that transient step instead of leaving an identical screen in Back.
+  if(['sync','drawer'].includes(current.layer))close({skipGuard:true});
  }
  return {start,remember,navigate,open:(layer,screen=captureScreen())=>navigate(screen,{layer}),close,get layer(){return current?.layer;},get applying(){return applying;},get moving(){return !!moving;}};
 };

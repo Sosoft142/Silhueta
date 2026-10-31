@@ -1054,6 +1054,8 @@ form .btn,.settings-links .btn{max-width:100%;white-space:normal;text-align:cent
 .btn svg,.nav-btn svg,.mobile-link svg{flex-shrink:0}
 .field label{line-height:1.5}
 .field input,.field select,.field textarea,.week-select,.body-choice,#historyFilter{min-width:0;max-width:100%}
+.body-choice,#historyFilter{min-height:44px}
+.mobile-link{min-width:0;line-height:1.35;overflow-wrap:anywhere}
 .sync-close{display:grid;place-items:center;flex:none;width:44px;height:44px;padding:8px}
 .sync-close svg{width:24px;height:24px}
 .sync-footer{flex-wrap:wrap;gap:8px 12px}
@@ -1378,7 +1380,7 @@ function applyNavigationRoute(route,options={}){
 }
 function openMobileDrawer(){appNavigation.open('drawer');}
 function closeMobileDrawer(){if(appNavigation.layer==='drawer')appNavigation.close();else hideMobileDrawer();}
-window.addEventListener('beforeunload',event=>{appNavigation?.remember();if(pendingFormChanges()||(!document.getElementById('syncModal').hidden&&!document.getElementById('syncConnectArea').hidden&&document.getElementById('gistToken').value.trim())){event.preventDefault();event.returnValue='';}});
+window.addEventListener('beforeunload',event=>{if(pendingFormChanges()||(!document.getElementById('syncModal').hidden&&!document.getElementById('syncConnectArea').hidden&&document.getElementById('gistToken').value.trim())){event.preventDefault();event.returnValue='';}});
 document.addEventListener('toggle',event=>{if(event.target.matches?.('#main details'))appNavigation?.remember();},true);
 
 function rememberQuickMetric(metric){if(!METRIC_KEYS.includes(metric))return;ui.quickMetric=metric;localWrite(QUICK_METRIC_PREF_KEY,metric);}
@@ -1418,7 +1420,7 @@ function playMotion(element,frames,duration=160){
 }
 function enterContent(element){return playMotion(element,[{opacity:.35,transform:'translateY(4px)'},{opacity:1,transform:'translateY(0)'}],140);}
 REDUCED_MOTION.addEventListener?.('change',()=>{if(REDUCED_MOTION.matches)for(const animation of [...ACTIVE_MOTION])animation.cancel();});
-function setView(view){if(view==='profile')view='settings';appNavigation.navigate({...captureNavigationScreen(),view},{guard:false});}
+function setView(view){if(view==='profile')view='settings';if(view===ui.view&&!appNavigation.layer){render();window.scrollTo({top:0,behavior:'instant'});appNavigation.remember();return;}appNavigation.navigate({...captureNavigationScreen(),view},{guard:false});}
 function showMobileDrawer(){
  const d=document.getElementById('mobileDrawer');if(!d||(!d.hidden&&!d.inert))return;const hidden=d.hidden,panel=d.querySelector('.mobile-drawer-panel'),shade=d.querySelector('.mobile-drawer-shade'),start=hidden?{opacity:0,transform:'translateX(-12px)'}:{opacity:getComputedStyle(panel).opacity,transform:getComputedStyle(panel).transform},shadeStart=hidden?0:getComputedStyle(shade).opacity;
  drawerMotionEpoch++;d.hidden=false;d.inert=false;d.removeAttribute('aria-hidden');document.body.classList.add('drawer-open');document.querySelector('.mobile-menu-trigger[aria-controls]')?.setAttribute('aria-expanded','true');d.querySelector('.mobile-drawer-head [data-action=closeDrawer]')?.focus();
@@ -1934,7 +1936,7 @@ document.addEventListener('click',e=>{const summary=e.target.closest('summary'),
  case'guideMetric':{const key=el.dataset.metric;if(METRIC_KEYS.includes(key)){ui.guideMetric=key;const tip=document.querySelector('.guide-tip');if(tip){tip.innerHTML=guideFigure(key);tip.setAttribute('aria-label','Como medir: '+BODY_LABELS[key]);enterContent(tip)}document.querySelectorAll('.guide-region').forEach(btn=>{const active=btn.dataset.metric===key;btn.classList.toggle('selected',active);btn.setAttribute('aria-pressed',String(active))})}break}
  case'measureMode':{if(!confirmDiscardEdits())break;ui.measureMode=el.dataset.mode==='batch'?'batch':'quick';ui.editEntryId=null;render();enterContent(document.querySelector('.measure-main>.card'));break}
  case'cancelEditMetric':if(appNavigation.layer==='editor')appNavigation.close();else if(confirmDiscardEdits()){ui.editEntryId=null;render()}break;
- case'editMetric':{if(!confirmDiscardEdits())break;const item=state.metricEntries[el.dataset.id];if(item&&!item.deleted){ui.editEntryId=el.dataset.id;ui.quickMetric=item.metric;ui.measureMode='quick';ui.measureSection='register';appNavigation.navigate({...captureNavigationScreen(),view:'measure'},{layer:'editor',replace:appNavigation.layer==='editor',guard:false});document.getElementById('quickValue')?.focus({preventScroll:true});}break}
+ case'editMetric':{if(!confirmDiscardEdits())break;const item=state.metricEntries[el.dataset.id];if(item&&!item.deleted){ui.editEntryId=el.dataset.id;ui.quickMetric=item.metric;ui.measureMode='quick';ui.measureSection='register';appNavigation.navigate({...captureNavigationScreen(),view:'measure',editEntryId:el.dataset.id},{layer:'editor',replace:appNavigation.layer==='editor',guard:false});document.getElementById('quickValue')?.focus({preventScroll:true});}break}
  case'deleteMetric':{const item=state.metricEntries[el.dataset.id];if(item&&!item.deleted&&confirm('Excluir somente esta medição? Ela deixará de aparecer nos gráficos, mas as demais serão preservadas.')){const wasEditing=ui.editEntryId===el.dataset.id,previous={...item};deleteMetricEntry(el.dataset.id);if(wasEditing)ui.editEntryId=null;persist();render({preserveDrafts:true,excludeForm:wasEditing?'quickForm':''});offerDeletionUndo(el.dataset.id,previous);}break}
  case'favMove':{const f=state.preferences.favoriteMetrics,key=el.dataset.metric,i=f.indexOf(key),n=i+Number(el.dataset.direction);if(i>=0&&n>=0&&n<f.length){[f[i],f[n]]=[f[n],f[i]];persist();render()}break}
  case'historyPage':{const direction=Number(el.dataset.direction);if(![-1,1].includes(direction))break;ui.historyPage+=direction;render({preserveDrafts:true});document.getElementById('historySummary')?.focus({preventScroll:true});document.getElementById('historyBrowser')?.scrollIntoView({behavior:'instant',block:'start'});break;}
