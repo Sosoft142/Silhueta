@@ -278,6 +278,11 @@ tbody tr:last-child td{border-bottom:0}
 .sync-message{min-height:19px;margin:11px 0 0;font-size:12px}
 .sync-message.sync-error{color:#a14b56;font-weight:650}
 body.sync-open{overflow:hidden}
+@media(max-width:650px){
+ .metrics-custom-grid{display:flex;flex-wrap:wrap}
+ .metrics-custom-grid>.metric-tile{flex:1 1 calc(50% - 5px);min-width:min-content;max-width:100%}
+}
+@media(max-width:340px){.metrics-custom-grid>.metric-tile{flex-basis:100%}}
 @media(max-width:660px){
  .sync-dialog>.sync-buttons:not(.sync-secondary-actions){display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,.7fr) minmax(0,.7fr);gap:7px}
  .sync-dialog>.sync-buttons:not(.sync-secondary-actions) button{white-space:normal;min-width:0;padding:9px 7px;font-size:12px}
@@ -1056,6 +1061,8 @@ form .btn,.settings-links .btn{max-width:100%;white-space:normal;text-align:cent
 .field input,.field select,.field textarea,.week-select,.body-choice,#historyFilter{min-width:0;max-width:100%}
 .body-choice,#historyFilter{min-height:44px}
 .mobile-link{min-width:0;line-height:1.35;overflow-wrap:anywhere}
+.mobile-link span{display:block;min-width:0;max-width:100%;overflow-wrap:anywhere}
+.nav-btn,.nav-btn span{min-width:0;overflow-wrap:anywhere}
 .sync-close{display:grid;place-items:center;flex:none;width:44px;height:44px;padding:8px}
 .sync-close svg{width:24px;height:24px}
 .sync-footer{flex-wrap:wrap;gap:8px 12px}
@@ -1067,7 +1074,13 @@ form .btn,.settings-links .btn{max-width:100%;white-space:normal;text-align:cent
 @media(max-width:850px){
  .topbar{display:grid;grid-template-columns:minmax(0,1fr) 44px;gap:12px}
  .topbar-right{justify-self:end}
+ .main-shell{padding-bottom:max(110px,calc(var(--mobile-nav-height,86px) + 18px))}
 }
+@media(max-width:650px){
+ .metrics-custom-grid{display:flex;flex-wrap:wrap}
+ .metrics-custom-grid>.metric-tile{flex:1 1 calc(50% - 5px);min-width:min-content;max-width:100%}
+}
+@media(max-width:340px){.metrics-custom-grid>.metric-tile{flex-basis:100%}}
 @media(max-width:660px){
  .sync-dialog>.sync-buttons:not(.sync-secondary-actions){grid-template-columns:minmax(0,1fr)}
  .sync-buttons button{font-size:14px;min-height:44px}
@@ -1955,6 +1968,7 @@ document.addEventListener('submit',e=>{if(e.target.id==='measurementCalendarForm
 window.addEventListener('focus',updateMeasurementCountdown);
 document.addEventListener('visibilitychange',()=>{if(!document.hidden)updateMeasurementCountdown();});
 setInterval(updateMeasurementCountdown,60000);
+const mobileNavElement=document.getElementById('mobileNav'),updateMobileNavInset=()=>document.documentElement.style.setProperty('--mobile-nav-height',Math.ceil(mobileNavElement.getBoundingClientRect().height)+'px'),mobileNavSizeObserver=typeof ResizeObserver==='function'?new ResizeObserver(updateMobileNavInset):null;mobileNavSizeObserver?.observe(mobileNavElement);
 setSidebarCollapsed(localRead(SIDEBAR_PREF_KEY)==='1');persist({preserveTimestamp:true,keepSync:true,suppressSync:true});ui.week=pickWeek();ui.nutWeek=currentWeek();appNavigation=createSilhuetaNavigation({captureScreen:captureNavigationScreen,normalizeScreen:normalizeNavigationScreen,applyRoute:applyNavigationRoute,mayLeave:mayLeaveNavigation});appNavigation.start();updateLastSyncConfirmation();setSyncState(hasTokenSaved()?'Verificando nuvem…':'Não conectado',hasTokenSaved()?'ready':'');if(hasTokenSaved())setTimeout(()=>syncNow('startup'),500);
 })();
 </script>
