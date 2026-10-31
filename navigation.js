@@ -1,6 +1,6 @@
 /* Same-document history for Silhueta. Form values and credentials stay in the DOM. */
 (()=>{'use strict';
-const OWNER='silhueta.navigation.v1',LAYERS=new Set(['drawer','sync','editor']);
+const OWNER='silhueta.navigation.v1',LAYERS=new Set(['drawer','sync','editor','goals','macros','calendar']);
 const id=()=>crypto.randomUUID();
 window.createSilhuetaNavigation=function({captureScreen,normalizeScreen,applyRoute,mayLeave}){
  let current=null,moving=null,queued=null,applying=false,scrollTimer=0;const entries=new Map();
@@ -40,12 +40,16 @@ window.createSilhuetaNavigation=function({captureScreen,normalizeScreen,applyRou
   moving={kind:'close',from:current,skipGuard:true,after};preview(previewRoute||parent);history.back();
  }
  function pop(event){
-  const target=read(event.state);if(!target||target.session!==current.session)return;
+  let target=read(event.state);if(!target||target.session!==current.session)return;
   if(moving?.kind==='restore'){
    if(target.key!==moving.from.key)return;
-   current=moving.from;moving=null;flush();return;
+   current=moving.from;moving=null;remember();flush();return;
   }
-  const operation=moving,previous=current;moving=null;
+  const operation=moving;let previous=current;moving=null;
+  // Manual scroll restoration lets us sample the departing document even when
+  // Back arrives before its debounced scroll write. No draft content is read.
+  if(!operation){previous={...current,screen:normalizeScreen(captureScreen()),scroll:point()};entries.set(previous.index,previous);current=previous;}
+  const cached=entries.get(target.index);if(cached?.key===target.key)target=read(cached);
   if(!operation?.skipGuard&&!mayLeave(previous,target)){
    queued=null;moving={kind:'restore',from:previous};history.go(previous.index-target.index);return;
   }
