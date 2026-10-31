@@ -278,11 +278,6 @@ tbody tr:last-child td{border-bottom:0}
 .sync-message{min-height:19px;margin:11px 0 0;font-size:12px}
 .sync-message.sync-error{color:#a14b56;font-weight:650}
 body.sync-open{overflow:hidden}
-@media(max-width:650px){
- .metrics-custom-grid{display:flex;flex-wrap:wrap}
- .metrics-custom-grid>.metric-tile{flex:1 1 calc(50% - 5px);min-width:min-content;max-width:100%}
-}
-@media(max-width:340px){.metrics-custom-grid>.metric-tile{flex-basis:100%}}
 @media(max-width:660px){
  .sync-dialog>.sync-buttons:not(.sync-secondary-actions){display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,.7fr) minmax(0,.7fr);gap:7px}
  .sync-dialog>.sync-buttons:not(.sync-secondary-actions) button{white-space:normal;min-width:0;padding:9px 7px;font-size:12px}
@@ -1058,6 +1053,8 @@ form .btn,.settings-links .btn{max-width:100%;white-space:normal;text-align:cent
 .readable-select-value[hidden]{display:none}
 .btn svg,.nav-btn svg,.mobile-link svg{flex-shrink:0}
 .field label{line-height:1.5}
+.detail-panel>summary{flex-wrap:wrap;min-width:0;line-height:1.5;overflow-wrap:anywhere}
+.detail-panel>summary>span{min-width:0;max-width:100%;white-space:normal}
 .field input,.field select,.field textarea,.week-select,.body-choice,#historyFilter{min-width:0;max-width:100%}
 .body-choice,#historyFilter{min-height:44px}
 .mobile-link{min-width:0;line-height:1.35;overflow-wrap:anywhere}
