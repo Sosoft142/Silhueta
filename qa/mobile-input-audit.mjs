@@ -20,7 +20,7 @@ async function openPage(width=390,seed=emptyState(),acceptDialogs=false,options=
  const context=await browser.newContext({viewport:{width,height:844},deviceScaleFactor:1,isMobile:width<=850,hasTouch:width<=850,locale:'pt-BR',timezoneId:options.timezoneId||'America/Sao_Paulo',reducedMotion:options.reducedMotion||'no-preference'});
  await context.route('https://api.github.com/**',route=>route.abort());
  await context.addInitScript(data=>{if(!localStorage.getItem('silhueta.app.v1'))localStorage.setItem('silhueta.app.v1',JSON.stringify(data));},seed);
- const page=await context.newPage(),errors=[],dialogs=[];page.on('pageerror',e=>errors.push(e.message));page.on('console',msg=>{if(msg.type()==='error')errors.push(msg.text());});page.on('dialog',async d=>{dialogs.push(d.message());acceptDialogs?await d.accept():await d.dismiss();});
+ const page=await context.newPage(),errors=[],dialogs=[];page.on('pageerror',e=>errors.push(e.message));page.on('console',msg=>{if(msg.type()==='error')errors.push(msg.text());});page.on('dialog',async d=>{dialogs.push(d.message());(acceptDialogs||d.type()==='beforeunload')?await d.accept():await d.dismiss();});
  if(options.clockTime)await page.clock.install({time:new Date(options.clockTime)});
  await page.goto('http://127.0.0.1:4173/',{waitUntil:'networkidle'});return{context,page,errors,dialogs};
 }
@@ -343,6 +343,7 @@ try{
   await showHistory(page);await page.locator('[data-action="editMetric"][data-id="'+id+'"]').click();await page.locator('#quickValue').fill('83.1');await page.locator('#quickDate').fill('2026-10-23');await page.locator('#quickForm button[type="submit"]').click();
   const edited=await state(page);assert(edited.metricEntries[id].value===83.1&&Object.keys(edited.metricEntries).length===Object.keys(saved.metricEntries).length,'Editing duplicated the record');
   assert((await page.locator('#toast .toast-message').innerText())==='Registro atualizado neste aparelho: Cintura · 83,1 cm · 23/10/2026.'&&(await page.locator('#quickLastMeasurement').innerText()).includes('83,1 cm em 23/10/2026'),'Editing did not update both confirmation and latest reference');
+  await showRegistration(page);
   for(const [metric,value,label,unit]of [['weight','74.2','Peso','kg'],['bodyFat','22.3','Gordura corporal','%']]){
    await page.locator('#quickMetric').selectOption(metric);await page.locator('#quickValue').fill(value);await page.locator('#quickDate').fill('2026-10-24');await page.locator('#quickForm button[type="submit"]').click();
    const message=await page.locator('#toast .toast-message').innerText();assert(message.includes(label+' · '+value.replace('.',',')+' '+unit+' · 24/10/2026.'),'Wrong unit, value or date in confirmation: '+message);
