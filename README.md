@@ -1,6 +1,10 @@
-# Silhueta · versão 2.9.19 — clareza e agilidade no acompanhamento
+# Silhueta · versão 2.9.20 — clareza e agilidade no acompanhamento
 
 Aplicativo web instalável (PWA) para acompanhar medidas corporais, composição corporal, nutrição e evolução.
+
+A versão 2.9.20 reduz trabalho repetido nas atualizações: os menus mantêm seus elementos e atualizam apenas a indicação da tela ativa; o histórico evita gravar estados idênticos; os seletores reutilizam o contexto de medição e o observador de tamanho, agrupando leituras antes das alterações visuais. As medições são validadas e ordenadas uma vez por renderização, com uma cópia temporária compartilhada entre cartões, histórico e gráficos. Essa cópia é descartada ao final de cada atualização, evitando referências desatualizadas depois de salvar, excluir, desfazer ou sincronizar.
+
+A restauração de formulários conserva também o cursor, a seleção e a rolagem interna do campo ativo. Os testes específicos verificam 5.000 medições, a identidade dos botões de navegação, a redução das gravações repetidas e a reutilização de observadores, além das regressões de dados, navegação, visual e PWA. A apresentação, os efeitos rápidos e a identidade da instalação são preservados.
 
 A versão 2.9.19 integra telas, Registrar/Histórico, menu, sincronização e edição ao histórico do navegador. Voltar fecha primeiro a camada aberta, pede confirmação antes de descartar alterações e restaura filtros, página, observações abertas e rolagem. Salvar ou cancelar uma edição consome sua etapa; os formulários expansíveis fecham primeiro e conservam os rascunhos enquanto a tela permanece aberta; fechar e reabrir rapidamente uma janela não deixa um fechamento antigo atingir a nova. O histórico contém apenas opções de navegação e IDs; valores de formulários e credenciais permanecem fora dele. Na página inicial limpa não existe uma entrada artificial para prender a saída. O mesmo fluxo atende a navegação do navegador e do PWA; a validação automatizada não substitui o teste físico do gesto no Galaxy S24.
 
