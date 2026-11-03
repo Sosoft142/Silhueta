@@ -1128,7 +1128,7 @@ form .btn,.settings-links .btn{max-width:100%;white-space:normal;text-align:cent
 <script src="./navigation.js"></script>
 <script>
 (()=>{'use strict';
-const APP_VERSION='2.9.19';
+const APP_VERSION='2.9.20';
 const STORAGE_KEY='silhueta.app.v1', VERSION=7;
 const QUICK_METRIC_PREF_KEY='silhueta.ui.quickMetric';
 const MEASUREMENT_REMINDER_TIME_KEY='silhueta.ui.measurementReminderTime';
@@ -1273,7 +1273,21 @@ function cleanPreferences(pref){
  const valid=x=>Array.isArray(x)?[...new Set(x.filter(k=>METRIC_KEYS.includes(k)))]:[];
  return {favoriteMetrics:valid(v.favoriteMetrics).slice(0,8),quickMetrics:valid(v.quickMetrics).slice(0,8),measurementWeekday:isMeasurementWeekday(v.measurementWeekday)?v.measurementWeekday:null};
 }
-function allMetricEntries(metric){return Object.entries(state.metricEntries||{}).filter(([id,r])=>r&&!r.deleted&&METRIC_KEYS.includes(r.metric)&&cleanNum(r.value)!==null&&(!metric||r.metric===metric)).map(([id,r])=>({...r,id,value:cleanNum(r.value),date:isDate(r.date)?r.date:''})).sort((a,b)=>(b.date||'').localeCompare(a.date||'')||String(b.updatedAt||'').localeCompare(String(a.updatedAt||''))||a.id.localeCompare(b.id));}
+function readMetricEntries(metric){return Object.entries(state.metricEntries||{}).filter(([id,r])=>r&&!r.deleted&&METRIC_KEYS.includes(r.metric)&&cleanNum(r.value)!==null&&(!metric||r.metric===metric)).map(([id,r])=>({...r,id,value:cleanNum(r.value),date:isDate(r.date)?r.date:''})).sort((a,b)=>(b.date||'').localeCompare(a.date||'')||String(b.updatedAt||'').localeCompare(String(a.updatedAt||''))||a.id.localeCompare(b.id));}
+// Share one validated, ordered snapshot only for the current synchronous render.
+let metricRenderSnapshot=null;
+function withMetricSnapshot(run){
+ const previous=metricRenderSnapshot;if(!previous)metricRenderSnapshot=new Map();
+ try{return run();}finally{metricRenderSnapshot=previous;}
+}
+function allMetricEntries(metric){
+ if(!metricRenderSnapshot)return readMetricEntries(metric);
+ if(!metricRenderSnapshot.has(null)){
+  const all=readMetricEntries();metricRenderSnapshot.set(null,all);
+  for(const entry of all){if(!metricRenderSnapshot.has(entry.metric))metricRenderSnapshot.set(entry.metric,[]);metricRenderSnapshot.get(entry.metric).push(entry);}
+ }
+ return (metricRenderSnapshot.get(metric||null)||[]).slice();
+}
 function latestMetric(key){const item=allMetricEntries(key)[0];return item?{...item,actualDate:item.date}:null;}
 function metricUnit(key){return METRIC_UNITS[key]||'cm'}
 function fmtMetric(metric,value){return nfmt(value,metric==='bodyFat'?1:1)+' '+metricUnit(metric)}
@@ -1453,7 +1467,15 @@ function setSidebarCollapsed(collapsed){
  try{localStorage.setItem(SIDEBAR_PREF_KEY,collapsed?'1':'0')}catch(e){}
 }
 function toggleSidebar(){setSidebarCollapsed(!document.querySelector('.app')?.classList.contains('sidebar-collapsed'))}
+let navigationBuilt=false,renderedNavView=null;
 function navRender(){
+ if(navigationBuilt){
+  if(renderedNavView===ui.view)return;
+  for(const nav of document.querySelectorAll('#desktopNav,#desktopUtilityNav,#mobileNav,#mobileDrawerNav,#mobileDrawerUtilityNav'))for(const button of nav.querySelectorAll('[data-action="go"]')){
+   const active=button.dataset.view===ui.view;button.classList.toggle('active',active);if(active)button.setAttribute('aria-current','page');else button.removeAttribute('aria-current');
+  }
+  renderedNavView=ui.view;return;
+ }
  const desktop=document.getElementById('desktopNav'),mobile=document.getElementById('mobileNav');
  const navButton=([id,label,ic])=>`<button class="nav-btn ${ui.view===id?'active':''}" data-action="go" data-view="${id}" aria-label="${label}" title="${label}" ${ui.view===id?'aria-current="page"':''}>${ico(ic)}<span>${label}</span></button>`;
  desktop.innerHTML=NAV.map(navButton).join('');
@@ -1461,6 +1483,7 @@ function navRender(){
  mobile.innerHTML=NAV.map(([id,label,ic])=>`<button class="mobile-link ${ui.view===id?'active':''}" data-action="go" data-view="${id}" aria-label="${label}" ${ui.view===id?'aria-current="page"':''}>${ico(ic)}<span>${label}</span></button>`).join('');
  document.getElementById('mobileDrawerNav').innerHTML=NAV.map(navButton).join('');
  document.getElementById('mobileDrawerUtilityNav').innerHTML=AUX_NAV.map(navButton).join('');
+ navigationBuilt=true;renderedNavView=ui.view;
 }
 function heading(title,desc,action=''){return `<div class="page-head"><div class="left"><h1 class="page-title">${title}</h1><p class="page-desc">${desc}</p></div>${action?`<div class="toolbar-flex">${action}</div>`:''}</div>`}
 function button(text,ic,act,more='',kind='btn-primary'){return `<button type="button" class="btn ${kind}" data-action="${act}" ${more}>${ico(ic,16)}${text}</button>`}
@@ -1620,7 +1643,7 @@ function fitHistoryCharts(){
   wrap.innerHTML=holder.content.firstElementChild.innerHTML;wrap.dataset.chartWidth=String(width);
  };
  wraps.forEach(draw);
- if(typeof ResizeObserver!=='undefined'&&wraps.length){chartResizeObserver=new ResizeObserver(entries=>entries.forEach(entry=>draw(entry.target)));wraps.forEach(wrap=>chartResizeObserver.observe(wrap));}
+ if(typeof ResizeObserver!=='undefined'&&wraps.length){chartResizeObserver=new ResizeObserver(entries=>withMetricSnapshot(()=>entries.forEach(entry=>draw(entry.target))));wraps.forEach(wrap=>chartResizeObserver.observe(wrap));}
 }
 function goalSettings(){const p=state.profile,fields=[['goalWeight','Peso','weight','kg'],['goalWaist','Cintura','waist','cm'],['goalHip','Quadril','hip','cm']];
  const results=fields.filter(([k])=>Number.isFinite(p[k])).map(([k,label,metric,unit])=>{const current=latestMetric(metric),diff=current?current.value-p[k]:null;return `<div class="goal-result"><strong>${label}</strong><span>Referência desejada: ${nfmt(p[k],1)} ${unit}</span><span>${current?'Última medida: '+nfmt(current.value,1)+' '+unit+' ('+dateBR(current.date)+')':'Aguardando medida real'}</span>${diff!==null?`<span>Diferença atual: ${diff>0?'+':''}${nfmt(diff,1)} ${unit}</span>`:''}</div>`}).join('');
@@ -1759,30 +1782,44 @@ function help(){return heading('Como usar','O essencial para registrar seus dado
 function captureFormDrafts(excludeForm=''){
  const forms=[...document.querySelectorAll('#main form')].filter(f=>f.id!==excludeForm).map(form=>({id:form.id,fields:[...form.elements].filter(el=>el.name&&!['submit','button','hidden'].includes(el.type)).map(el=>({id:el.id,name:el.name,type:el.type,value:el.value,checked:el.checked}))}));
  const details=[...document.querySelectorAll('#main details')].map(el=>({id:el.id,className:el.className,open:el.open}));
- return {forms,details,focusId:document.activeElement?.id||''};
+ const focused=document.activeElement,selection=typeof focused?.selectionStart==='number'?{start:focused.selectionStart,end:focused.selectionEnd,direction:focused.selectionDirection,top:focused.scrollTop,left:focused.scrollLeft}:null;
+ return {forms,details,focusId:focused?.id||'',selection};
 }
 function restoreFormDrafts(snapshot){
  if(!snapshot)return;
  for(const saved of snapshot.forms){const form=document.getElementById(saved.id);if(!form)continue;for(const field of saved.fields){const el=[...form.elements].find(item=>field.id?item.id===field.id:item.name===field.name&&item.type===field.type);if(!el)continue;if(field.type==='checkbox'||field.type==='radio')el.checked=field.checked;else el.value=field.value;}}
  [...document.querySelectorAll('#main details')].forEach((el,i)=>{const saved=el.id?snapshot.details.find(item=>item.id===el.id):snapshot.details[i];if(saved&&el.className===saved.className)el.open=saved.open;});
- if(snapshot.focusId)document.getElementById(snapshot.focusId)?.focus({preventScroll:true});
+ const focused=snapshot.focusId?document.getElementById(snapshot.focusId):null;if(focused){focused.focus({preventScroll:true});if(snapshot.selection&&typeof focused.setSelectionRange==='function'){try{focused.setSelectionRange(snapshot.selection.start,snapshot.selection.end,snapshot.selection.direction);focused.scrollTop=snapshot.selection.top;focused.scrollLeft=snapshot.selection.left;}catch{}}}
 }
-let selectCaptionObserver=null;
-function fitReadableSelects(){
- selectCaptionObserver?.disconnect();const canvas=document.createElement('canvas').getContext('2d'),updates=new Map();
- for(const select of document.querySelectorAll('#main select[id]')){
-  const update=()=>{
-   if(!select.isConnected)return;const text=select.selectedOptions[0]?.textContent||'',style=getComputedStyle(select),captionId=select.id+'FullValue';let caption=document.getElementById(captionId);
-   canvas.font=style.font;const available=select.clientWidth-parseFloat(style.paddingLeft)-parseFloat(style.paddingRight)-26,clipped=select.getClientRects().length&&canvas.measureText(text).width>available;
-   select.title=text;
-   if(clipped&&!caption){caption=document.createElement('span');caption.id=captionId;caption.className='readable-select-value';caption.setAttribute('aria-hidden','true');(select.closest('.week-chooser')||select).after(caption);}
-   if(caption){caption.hidden=!clipped;if(clipped){caption.textContent=text;caption.style.fontSize=style.fontSize;}}
-  };
-  updates.set(select,update);update();
+// Keep one measurement context and observer; reconcile targets after a render.
+let selectCaptionObserver=null,selectCaptionFrame=0,selectCaptionCanvas=null;
+const observedCaptionSelects=new Set();
+function updateSelectCaptions(){
+ if(!observedCaptionSelects.size)return;
+ selectCaptionCanvas??=document.createElement('canvas').getContext('2d');
+ const measurements=[];
+ for(const select of observedCaptionSelects){
+  if(!select.isConnected)continue;const text=select.selectedOptions[0]?.textContent||'',style=getComputedStyle(select);
+  selectCaptionCanvas.font=style.font;
+  const available=select.clientWidth-parseFloat(style.paddingLeft)-parseFloat(style.paddingRight)-26;
+  measurements.push({select,text,font:style.fontSize,clipped:!!select.getClientRects().length&&selectCaptionCanvas.measureText(text).width>available});
  }
- if(typeof ResizeObserver==='function'){selectCaptionObserver=new ResizeObserver(entries=>{for(const entry of entries)updates.get(entry.target)?.();});for(const select of updates.keys())selectCaptionObserver.observe(select);}
+ // Complete layout reads before changing captions, avoiding read/write alternation.
+ for(const {select,text,font,clipped} of measurements){
+  const captionId=select.id+'FullValue';let caption=document.getElementById(captionId);
+  if(select.title!==text)select.title=text;
+  if(clipped&&!caption){caption=document.createElement('span');caption.id=captionId;caption.className='readable-select-value';caption.setAttribute('aria-hidden','true');(select.closest('.week-chooser')||select).after(caption);}
+  if(caption){if(caption.hidden===clipped)caption.hidden=!clipped;if(clipped){if(caption.textContent!==text)caption.textContent=text;if(caption.style.fontSize!==font)caption.style.fontSize=font;}}
+ }
 }
-function render(options={}){MOTION_BY_ELEMENT.get(document.getElementById('main'))?.cancel();const drafts=options.preserveDrafts?captureFormDrafts(options.excludeForm):null;navRender();const views={dashboard,measure:measurement,trends,nutrition,settings,help};document.getElementById('main').innerHTML=(views[ui.view]||dashboard)();document.title=({dashboard:'Painel',measure:'Medições',trends:'Evolução',nutrition:'Nutrição',settings:'Configurações',help:'Como usar'})[ui.view]+' · Silhueta';restoreFormDrafts(drafts);updateQuickLastMeasurement();updateMeasurementCountdown();fitHistoryCharts();fitReadableSelects();renderedNavigationScreen=captureNavigationScreen();appNavigation?.remember();}
+function fitReadableSelects(){
+ if(!selectCaptionObserver&&typeof ResizeObserver==='function')selectCaptionObserver=new ResizeObserver(()=>{if(!selectCaptionFrame)selectCaptionFrame=requestAnimationFrame(()=>{selectCaptionFrame=0;updateSelectCaptions();});});
+ const current=new Set(document.querySelectorAll('#main select[id]'));
+ for(const select of observedCaptionSelects)if(!current.has(select)){selectCaptionObserver?.unobserve(select);observedCaptionSelects.delete(select);}
+ for(const select of current)if(!observedCaptionSelects.has(select)){observedCaptionSelects.add(select);selectCaptionObserver?.observe(select);}
+ updateSelectCaptions();
+}
+function render(options={}){return withMetricSnapshot(()=>{MOTION_BY_ELEMENT.get(document.getElementById('main'))?.cancel();const drafts=options.preserveDrafts?captureFormDrafts(options.excludeForm):null;navRender();const views={dashboard,measure:measurement,trends,nutrition,settings,help};document.getElementById('main').innerHTML=(views[ui.view]||dashboard)();document.title=({dashboard:'Painel',measure:'Medições',trends:'Evolução',nutrition:'Nutrição',settings:'Configurações',help:'Como usar'})[ui.view]+' · Silhueta';restoreFormDrafts(drafts);updateQuickLastMeasurement();updateMeasurementCountdown();fitHistoryCharts();fitReadableSelects();renderedNavigationScreen=captureNavigationScreen();appNavigation?.remember();});}
 
 function inputObj(form){return Object.fromEntries(new FormData(form).entries())}
 function saveMeasure(){const f=document.getElementById('quickForm');if(f)saveQuick(f)}
@@ -1955,7 +1992,7 @@ document.addEventListener('click',e=>{const summary=e.target.closest('summary'),
  case'historyPage':{const direction=Number(el.dataset.direction);if(![-1,1].includes(direction))break;ui.historyPage+=direction;render({preserveDrafts:true});document.getElementById('historySummary')?.focus({preventScroll:true});document.getElementById('historyBrowser')?.scrollIntoView({behavior:'instant',block:'start'});break;}
  case'measureTab':{ui.measureTab=el.dataset.tab==='extra'?'extra':'primary';for(const tab of document.querySelectorAll('.body-tab'))tab.setAttribute('aria-selected',String(tab.dataset.tab===ui.measureTab));for(const panel of document.querySelectorAll('.measure-pane'))panel.hidden=panel.id!=='pane-'+ui.measureTab;break}case'toggleSidebar':toggleSidebar();break;case'openDrawer':openMobileDrawer();break;case'closeDrawer':closeMobileDrawer();break;case'openSync':openSync();break;case'closeSync':closeSync();break;case'gistSync':case'gistUpload':case'gistDownload':runGist(act);break;case'gistCopyBackup':gistCopyBackup();break;case'gistRestoreOpen':document.getElementById('syncRestoreBox').hidden=false;document.getElementById('gistRestoreText').focus();break;case'gistRestoreCancel':document.getElementById('syncRestoreBox').hidden=true;break;case'gistRestore':gistRestoreBackup();break;case'gistRemoveToken':gistRemoveToken();break;case'go':{if(el.dataset.view===ui.view&&el.closest('.nav-btn,.mobile-nav')){if(appNavigation.layer==='drawer')closeMobileDrawer();break;}if(confirmDiscardEdits()){if(el.dataset.view==='measure'&&!el.closest('.nav-btn,.mobile-nav'))ui.measureSection='register';setView(el.dataset.view)}break;}case'newMeasurement':if(!confirmDiscardEdits())break;ui.week=pickWeek();ui.measureSection='register';setView('measure');break;case'editWeek':if(!confirmDiscardEdits())break;ui.week=Number(el.dataset.week);setView('measure');break;case'prevWeek':if(!confirmDiscardEdits())break;ui.week=Math.max(0,ui.week-1);render();break;case'nextWeek':if(!confirmDiscardEdits())break;ui.week=Math.min(52,ui.week+1);render();break;case'prevNutWeek':if(!confirmDiscardEdits())break;ui.nutWeek=Math.max(0,ui.nutWeek-1);render();break;case'nextNutWeek':if(!confirmDiscardEdits())break;ui.nutWeek=Math.min(52,ui.nutWeek+1);render();break;case'editNutWeek':if(!confirmDiscardEdits())break;ui.nutWeek=Number(el.dataset.week);setView('nutrition');break;case'saveMeasure':saveMeasure();break;case'saveNutrition':saveNutrition();break;case'saveSettings':saveSettings();break;case'saveMacroTargets':saveMacroTargets();break;case'saveGoals':saveGoals();break;case'deleteMeasure':if(confirm('Apagar os dados desta semana?')){delete state.measurements[String(ui.week)];persist();toast('Semana apagada.');render()}break;case'exportCSV':exportCSV();break;case'exportNutCSV':exportNutCSV();break;case'exportJSON':exportJSON();break;case'import':document.getElementById('importFile').click();break;case'reset':reset();break;}
 });
-document.addEventListener('change',e=>{queueMicrotask(()=>{fitReadableSelects();appNavigation.remember();});if(e.target.dataset.action==='favToggle'){
+document.addEventListener('change',e=>{queueMicrotask(()=>{if(e.target.tagName==='SELECT')fitReadableSelects();appNavigation.remember();});if(e.target.dataset.action==='favToggle'){
    const key=e.target.dataset.metric,f=state.preferences.favoriteMetrics;
    if(e.target.checked&&!f.includes(key)){if(f.length>=8){toast('Selecione até oito indicadores.');e.target.checked=false;return}f.push(key)}
    else if(!e.target.checked){if(f.length===1){toast('Mantenha pelo menos um indicador.');e.target.checked=true;return}state.preferences.favoriteMetrics=f.filter(k=>k!==key)}

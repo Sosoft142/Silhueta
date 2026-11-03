@@ -3,15 +3,16 @@
 const OWNER='silhueta.navigation.v1',LAYERS=new Set(['drawer','sync','editor','goals','macros','calendar']);
 const id=()=>crypto.randomUUID();
 window.createSilhuetaNavigation=function({captureScreen,normalizeScreen,applyRoute,mayLeave}){
- let current=null,moving=null,queued=null,applying=false,scrollTimer=0;const entries=new Map();
+ let current=null,moving=null,queued=null,applying=false,scrollTimer=0,lastWritten='';const entries=new Map();
  const point=()=>({x:Math.max(0,scrollX),y:Math.max(0,scrollY)});
  function read(raw){
   if(raw?.owner!==OWNER||typeof raw.session!=='string'||typeof raw.key!=='string'||!Number.isInteger(raw.index)||raw.index<0)return null;
   return {owner:OWNER,session:raw.session,key:raw.key,index:raw.index,screen:normalizeScreen(raw.screen),layer:LAYERS.has(raw.layer)?raw.layer:null,scroll:{x:Math.max(0,Number(raw.scroll?.x)||0),y:Math.max(0,Number(raw.scroll?.y)||0)}};
  }
+ function write(method,route){history[method](route,'');lastWritten=JSON.stringify(route);}
  function remember(){
   if(!current||applying||moving)return;
-  current={...current,screen:normalizeScreen(captureScreen()),scroll:point()};entries.set(current.index,current);history.replaceState(current,'');
+  current={...current,screen:normalizeScreen(captureScreen()),scroll:point()};entries.set(current.index,current);if(JSON.stringify(current)!==lastWritten)write('replaceState',current);
  }
  function display(route,options={}){
   current=route;applying=true;
@@ -29,18 +30,18 @@ window.createSilhuetaNavigation=function({captureScreen,normalizeScreen,applyRou
   if(current.layer===layer&&JSON.stringify(current.screen)===JSON.stringify(screen)){remember();return;}
   next.key=replace?current.key:id();next.index=current.index+(replace?0:1);next.scroll=layer?point():{x:0,y:0};
   if(!replace)for(const index of entries.keys())if(index>current.index)entries.delete(index);
-  history[replace?'replaceState':'pushState'](next,'');display(next,{navigating:true});
+  write(replace?'replaceState':'pushState',next);display(next,{navigating:true});
  }
  function close({skipGuard=false,after=null,previewRoute=null}={}){
   if(moving){if(after)queued=after;return;}
   if(!current.layer){after?.();return;}
-  if(current.index===0){const next={...current,layer:null};if(!skipGuard&&!mayLeave(current,next))return;history.replaceState(next,'');display(next);after?.();return;}
+  if(current.index===0){const next={...current,layer:null};if(!skipGuard&&!mayLeave(current,next))return;write('replaceState',next);display(next);after?.();return;}
   const parent=entries.get(current.index-1)||{...current,layer:null};
   if(!skipGuard&&!mayLeave(current,parent))return;
   moving={kind:'close',from:current,skipGuard:true,after};preview(previewRoute||parent);history.back();
  }
  function pop(event){
-  let target=read(event.state);if(!target||target.session!==current.session)return;
+  let target=read(event.state);if(!target||target.session!==current.session)return;lastWritten=JSON.stringify(event.state);
   if(moving?.kind==='restore'){
    if(target.key!==moving.from.key)return;
    current=moving.from;moving=null;remember();flush();return;
@@ -60,7 +61,7 @@ window.createSilhuetaNavigation=function({captureScreen,normalizeScreen,applyRou
   history.scrollRestoration='manual';
   const restored=read(history.state);
   current=restored||{owner:OWNER,session:id(),key:id(),index:0,screen:normalizeScreen(captureScreen()),layer:null,scroll:{x:0,y:0}};
-  history.replaceState(current,'');window.addEventListener('popstate',pop);
+  write('replaceState',current);window.addEventListener('popstate',pop);
   window.addEventListener('scroll',()=>{clearTimeout(scrollTimer);scrollTimer=setTimeout(remember,80);},{passive:true});
   display(current,{initial:true});
   // Reload restores the screen, not a half-completed connection/menu. Consume
