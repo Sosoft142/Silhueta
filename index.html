@@ -1128,7 +1128,7 @@ form .btn,.settings-links .btn{max-width:100%;white-space:normal;text-align:cent
 <script src="./navigation.js"></script>
 <script>
 (()=>{'use strict';
-const APP_VERSION='2.9.19';
+const APP_VERSION='2.9.20';
 const STORAGE_KEY='silhueta.app.v1', VERSION=7;
 const QUICK_METRIC_PREF_KEY='silhueta.ui.quickMetric';
 const MEASUREMENT_REMINDER_TIME_KEY='silhueta.ui.measurementReminderTime';
@@ -1273,10 +1273,32 @@ function cleanPreferences(pref){
  const valid=x=>Array.isArray(x)?[...new Set(x.filter(k=>METRIC_KEYS.includes(k)))]:[];
  return {favoriteMetrics:valid(v.favoriteMetrics).slice(0,8),quickMetrics:valid(v.quickMetrics).slice(0,8),measurementWeekday:isMeasurementWeekday(v.measurementWeekday)?v.measurementWeekday:null};
 }
-function allMetricEntries(metric){return Object.entries(state.metricEntries||{}).filter(([id,r])=>r&&!r.deleted&&METRIC_KEYS.includes(r.metric)&&cleanNum(r.value)!==null&&(!metric||r.metric===metric)).map(([id,r])=>({...r,id,value:cleanNum(r.value),date:isDate(r.date)?r.date:''})).sort((a,b)=>(b.date||'').localeCompare(a.date||'')||String(b.updatedAt||'').localeCompare(String(a.updatedAt||''))||a.id.localeCompare(b.id));}
+function readMetricEntries(metric){
+ const entries=[];
+ for(const [id,record] of Object.entries(state.metricEntries||{})){
+  if(!record||record.deleted||!METRIC_KEYS.includes(record.metric)||(metric&&record.metric!==metric))continue;
+  const value=cleanNum(record.value);
+  if(value!==null)entries.push({...record,id,value,date:isDate(record.date)?record.date:''});
+ }
+ return entries.sort((a,b)=>b.date.localeCompare(a.date)||String(b.updatedAt||'').localeCompare(String(a.updatedAt||''))||a.id.localeCompare(b.id));
+}
+// Share one validated, ordered snapshot only for the current synchronous render.
+let metricRenderSnapshot=null;
+function withMetricSnapshot(run){
+ const previous=metricRenderSnapshot;if(!previous)metricRenderSnapshot=new Map();
+ try{return run();}finally{metricRenderSnapshot=previous;}
+}
+function allMetricEntries(metric){
+ if(!metricRenderSnapshot)return readMetricEntries(metric);
+ if(!metricRenderSnapshot.has(null)){
+  const all=readMetricEntries();metricRenderSnapshot.set(null,all);
+  for(const entry of all){if(!metricRenderSnapshot.has(entry.metric))metricRenderSnapshot.set(entry.metric,[]);metricRenderSnapshot.get(entry.metric).push(entry);}
+ }
+ return metricRenderSnapshot.get(metric||null)||[];
+}
 function latestMetric(key){const item=allMetricEntries(key)[0];return item?{...item,actualDate:item.date}:null;}
 function metricUnit(key){return METRIC_UNITS[key]||'cm'}
-function fmtMetric(metric,value){return nfmt(value,metric==='bodyFat'?1:1)+' '+metricUnit(metric)}
+function fmtMetric(metric,value){return nfmt(value,1)+' '+metricUnit(metric)}
 function newEntryId(){return 'm_'+(crypto.randomUUID?crypto.randomUUID():Date.now().toString(36)+'_'+Math.random().toString(36).slice(2));}
 function saveMetricEntry(metric,value,date,id=null,note=''){
  if(!METRIC_KEYS.includes(metric))throw Error('Medida desconhecida');
@@ -1352,7 +1374,7 @@ function persist(opts={}){const keepSync=!!opts.keepSync,preserveTimestamp=!!opt
 const rememberedQuickMetric=localRead(QUICK_METRIC_PREF_KEY);
 const HISTORY_PAGE_SIZE=10;
 const HISTORY_DATE_FORMAT=new Intl.DateTimeFormat('pt-BR',{day:'numeric',month:'long',year:'numeric',timeZone:'UTC'});
-let ui={view:'dashboard',favoritesOpen:false,week:0,nutWeek:0,measureTab:'primary',extraChartKey:'bust',measureSection:'register',measureMode:'quick',quickMetric:METRIC_KEYS.includes(rememberedQuickMetric)?rememberedQuickMetric:'weight',editEntryId:null,historyFilter:'all',historyPage:0,chartMetric:'weight',guideMetric:'waist'};
+let ui={view:'dashboard',favoritesOpen:false,nutWeek:0,measureSection:'register',measureMode:'quick',quickMetric:METRIC_KEYS.includes(rememberedQuickMetric)?rememberedQuickMetric:'weight',editEntryId:null,historyFilter:'all',historyPage:0,chartMetric:'weight',guideMetric:'waist'};
 
 // Navigation stores only whitelisted view options; drafts never enter history.state.
 let appNavigation=null,renderedNavigationScreen=null;
@@ -1361,7 +1383,7 @@ function normalizeNavigationScreen(raw={}){
  const metric=(value,fallback)=>METRIC_KEYS.includes(value)?value:fallback;
  const week=value=>Number.isInteger(value)&&value>=0&&value<=52?value:0;
  return {view:NAVIGATION_VIEWS.has(raw.view)?raw.view:'dashboard',favoritesOpen:raw.favoritesOpen===true,
-  week:week(raw.week),nutWeek:week(raw.nutWeek),measureTab:raw.measureTab==='extra'?'extra':'primary',extraChartKey:metric(raw.extraChartKey,'bust'),
+  nutWeek:week(raw.nutWeek),
   measureSection:raw.measureSection==='history'?'history':'register',measureMode:raw.measureMode==='batch'?'batch':'quick',quickMetric:metric(raw.quickMetric,'weight'),
   editEntryId:raw.view==='measure'&&typeof raw.editEntryId==='string'&&state.metricEntries[raw.editEntryId]&&!state.metricEntries[raw.editEntryId].deleted?raw.editEntryId:null,
   historyFilter:metric(raw.historyFilter,'all'),historyPage:Number.isInteger(raw.historyPage)&&raw.historyPage>=0?Math.min(raw.historyPage,100000):0,
@@ -1398,10 +1420,6 @@ document.addEventListener('toggle',event=>{if(event.target.matches?.('#main deta
 
 function rememberQuickMetric(metric){if(!METRIC_KEYS.includes(metric))return;ui.quickMetric=metric;localWrite(QUICK_METRIC_PREF_KEY,metric);}
 function currentWeek(){if(!state.profile.startDate)return 0;return Math.max(0,Math.min(52,Math.floor(dateDiff(nowISO(),state.profile.startDate)/7)||0))}
-function record(w){return state.measurements[String(w)]||{}}
-function records(){return Array.from({length:53},(_,i)=>({week:i,date:dateAdd(state.profile.startDate,i*7),...record(i)}))}
-function realData(r){return [...ALL_BODY_KEYS,'bodyFat','workouts'].some(k=>cleanNum(r[k])!==null)||!!r.notes}
-function pickWeek(){const baseline=record(0);if(!Number.isFinite(baseline.waist)||!Number.isFinite(baseline.hip))return 0;const done=records().filter(r=>realData(r)).map(r=>r.week);let current=currentWeek();if(!done.length)return current;let last=Math.max(...done);return last<current?current:Math.min(52,last+1)}
 let pendingDeletion=null,deletionUndoTimer=0;
 function clearDeletionUndo(){pendingDeletion=null;clearTimeout(deletionUndoTimer);const el=document.getElementById('toast');el.querySelector('.toast-action')?.remove();el.querySelector('.toast-undo-context')?.remove();}
 function toast(msg,duration=3200){
@@ -1453,14 +1471,23 @@ function setSidebarCollapsed(collapsed){
  try{localStorage.setItem(SIDEBAR_PREF_KEY,collapsed?'1':'0')}catch(e){}
 }
 function toggleSidebar(){setSidebarCollapsed(!document.querySelector('.app')?.classList.contains('sidebar-collapsed'))}
+let renderedNavView=null;
 function navRender(){
- const desktop=document.getElementById('desktopNav'),mobile=document.getElementById('mobileNav');
- const navButton=([id,label,ic])=>`<button class="nav-btn ${ui.view===id?'active':''}" data-action="go" data-view="${id}" aria-label="${label}" title="${label}" ${ui.view===id?'aria-current="page"':''}>${ico(ic)}<span>${label}</span></button>`;
- desktop.innerHTML=NAV.map(navButton).join('');
- document.getElementById('desktopUtilityNav').innerHTML=AUX_NAV.map(navButton).join('');
- mobile.innerHTML=NAV.map(([id,label,ic])=>`<button class="mobile-link ${ui.view===id?'active':''}" data-action="go" data-view="${id}" aria-label="${label}" ${ui.view===id?'aria-current="page"':''}>${ico(ic)}<span>${label}</span></button>`).join('');
- document.getElementById('mobileDrawerNav').innerHTML=NAV.map(navButton).join('');
- document.getElementById('mobileDrawerUtilityNav').innerHTML=AUX_NAV.map(navButton).join('');
+ if(renderedNavView===ui.view)return;
+ for(const [id,items,buttonClass] of [
+  ['desktopNav',NAV,'nav-btn'],['desktopUtilityNav',AUX_NAV,'nav-btn'],
+  ['mobileNav',NAV,'mobile-link'],['mobileDrawerNav',NAV,'nav-btn'],['mobileDrawerUtilityNav',AUX_NAV,'nav-btn']
+ ]){
+  const nav=document.getElementById(id);
+  if(renderedNavView===null)nav.innerHTML=items.map(([view,label,icon])=>`<button class="${buttonClass}" data-action="go" data-view="${view}" aria-label="${label}" title="${label}">${ico(icon)}<span>${label}</span></button>`).join('');
+  const previous=nav.querySelector('[aria-current="page"]');
+  previous?.classList.remove('active');
+  previous?.removeAttribute('aria-current');
+  const active=nav.querySelector(`[data-view="${ui.view}"]`);
+  active?.classList.add('active');
+  active?.setAttribute('aria-current','page');
+ }
+ renderedNavView=ui.view;
 }
 function heading(title,desc,action=''){return `<div class="page-head"><div class="left"><h1 class="page-title">${title}</h1><p class="page-desc">${desc}</p></div>${action?`<div class="toolbar-flex">${action}</div>`:''}</div>`}
 function button(text,ic,act,more='',kind='btn-primary'){return `<button type="button" class="btn ${kind}" data-action="${act}" ${more}>${ico(ic,16)}${text}</button>`}
@@ -1587,7 +1614,7 @@ function saveBatch(form){
 }
 
 function historyChart(metricSeries,unit='cm',width=740,selectedId=''){
- const series=metricSeries.map(s=>({...s,points:allMetricEntries(s.metric).filter(e=>isDate(e.date)).slice().reverse().map(e=>({id:e.id,metric:e.metric,date:e.date,time:Date.parse(e.date+'T00:00:00Z'),value:e.value}))}));
+ const series=metricSeries.map(s=>({...s,points:allMetricEntries(s.metric).filter(e=>e.date).reverse().map(e=>({id:e.id,metric:e.metric,date:e.date,time:Date.parse(e.date+'T00:00:00Z'),value:e.value}))}));
  const data=series.flatMap(s=>s.points);if(!data.length)return `<div class="empty-state">${ico('chart',26)}<strong>Sem dados para o gráfico</strong><span>Registre uma medida com sua data para acompanhar a evolução.</span></div>`;
  const selected=data.find(p=>p.id===selectedId)||data.reduce((a,b)=>a.time>b.time?a:b);
  const W=Math.max(220,Math.round(width)),H=W<450?240:278,L=52,R=24,T=23,B=43;let low=Math.min(...data.map(x=>x.value)),high=Math.max(...data.map(x=>x.value));const yPad=Math.max(1,(high-low)*.2);low-=yPad;high+=yPad;
@@ -1620,7 +1647,7 @@ function fitHistoryCharts(){
   wrap.innerHTML=holder.content.firstElementChild.innerHTML;wrap.dataset.chartWidth=String(width);
  };
  wraps.forEach(draw);
- if(typeof ResizeObserver!=='undefined'&&wraps.length){chartResizeObserver=new ResizeObserver(entries=>entries.forEach(entry=>draw(entry.target)));wraps.forEach(wrap=>chartResizeObserver.observe(wrap));}
+ if(typeof ResizeObserver!=='undefined'&&wraps.length){chartResizeObserver=new ResizeObserver(entries=>withMetricSnapshot(()=>entries.forEach(entry=>draw(entry.target))));wraps.forEach(wrap=>chartResizeObserver.observe(wrap));}
 }
 function goalSettings(){const p=state.profile,fields=[['goalWeight','Peso','weight','kg'],['goalWaist','Cintura','waist','cm'],['goalHip','Quadril','hip','cm']];
  const results=fields.filter(([k])=>Number.isFinite(p[k])).map(([k,label,metric,unit])=>{const current=latestMetric(metric),diff=current?current.value-p[k]:null;return `<div class="goal-result"><strong>${label}</strong><span>Referência desejada: ${nfmt(p[k],1)} ${unit}</span><span>${current?'Última medida: '+nfmt(current.value,1)+' '+unit+' ('+dateBR(current.date)+')':'Aguardando medida real'}</span>${diff!==null?`<span>Diferença atual: ${diff>0?'+':''}${nfmt(diff,1)} ${unit}</span>`:''}</div>`}).join('');
@@ -1701,7 +1728,7 @@ for(const key of flatKeys){const lt=Number(lclock[key])||0,rt=Number(rclock[key]
 for(const section of ['measurements','nutritionLogs'])for(const [week,entry] of Object.entries(output[section]))if(entry&&typeof entry==='object'&&!Object.keys(entry).length)delete output[section][week];
 output.meta.updatedAt=new Date(Math.max(Date.parse(local.meta.updatedAt)||0,Date.parse(remote.meta.updatedAt)||0)).toISOString();output.meta.lastSyncAt=nowStamp();return {data:output,conflicts}}
 function syncComparable(d){return JSON.stringify({fields:Object.entries(flattenSyncFields(d)).sort((a,b)=>a[0].localeCompare(b[0])),clock:Object.entries(d.meta?.clock||{}).sort((a,b)=>a[0].localeCompare(b[0]))})}
-function commitSyncState(data){state=normalizeStateData(data);persist({keepSync:true,preserveTimestamp:true,suppressSync:true});lastSyncSnapshot=makeSyncSnapshot();ui.week=pickWeek();ui.nutWeek=currentWeek();render();}
+function commitSyncState(data){state=normalizeStateData(data);persist({keepSync:true,preserveTimestamp:true,suppressSync:true});lastSyncSnapshot=makeSyncSnapshot();ui.nutWeek=currentWeek();render();}
 function hasTokenSaved(){return !!(localRead(TOKEN_KEY)||gistSessionToken)}
 function showSync(){if(!document.getElementById('syncModal').hidden)return;document.getElementById('syncModal').hidden=false;document.body.classList.add('sync-open');const token=localRead(TOKEN_KEY),input=document.getElementById('gistToken');input.value='';input.placeholder=token?'Token já conectado neste dispositivo':'Cole seu token clássico aqui';document.getElementById('gistRemember').checked=true;document.getElementById('syncConnectArea').hidden=hasTokenSaved();document.getElementById('syncMainButton').textContent=hasTokenSaved()?'Sincronizar agora':'Conectar e sincronizar';if(gistBusy)setSyncState('Conferindo nuvem…','progress');else if(!['error','dirty'].includes(syncStateKind)){if(syncVerifiedAt)setSyncState('Nuvem verificada neste aparelho','ok');else if(hasTokenSaved())setSyncState('Aguardando confirmação da nuvem','ready');else setSyncState('Não conectado');}updateLastSyncConfirmation();(hasTokenSaved()?document.getElementById('syncMainButton'):input).focus({preventScroll:true});}
 function hideSync(){const modal=document.getElementById('syncModal');if(modal.hidden)return;modal.hidden=true;document.body.classList.remove('sync-open');document.getElementById('syncTrigger')?.focus({preventScroll:true});}
@@ -1759,33 +1786,47 @@ function help(){return heading('Como usar','O essencial para registrar seus dado
 function captureFormDrafts(excludeForm=''){
  const forms=[...document.querySelectorAll('#main form')].filter(f=>f.id!==excludeForm).map(form=>({id:form.id,fields:[...form.elements].filter(el=>el.name&&!['submit','button','hidden'].includes(el.type)).map(el=>({id:el.id,name:el.name,type:el.type,value:el.value,checked:el.checked}))}));
  const details=[...document.querySelectorAll('#main details')].map(el=>({id:el.id,className:el.className,open:el.open}));
- return {forms,details,focusId:document.activeElement?.id||''};
+ const focused=document.activeElement,selection=typeof focused?.selectionStart==='number'?{start:focused.selectionStart,end:focused.selectionEnd,direction:focused.selectionDirection,top:focused.scrollTop,left:focused.scrollLeft}:null;
+ return {forms,details,focusId:focused?.id||'',selection};
 }
 function restoreFormDrafts(snapshot){
  if(!snapshot)return;
  for(const saved of snapshot.forms){const form=document.getElementById(saved.id);if(!form)continue;for(const field of saved.fields){const el=[...form.elements].find(item=>field.id?item.id===field.id:item.name===field.name&&item.type===field.type);if(!el)continue;if(field.type==='checkbox'||field.type==='radio')el.checked=field.checked;else el.value=field.value;}}
  [...document.querySelectorAll('#main details')].forEach((el,i)=>{const saved=el.id?snapshot.details.find(item=>item.id===el.id):snapshot.details[i];if(saved&&el.className===saved.className)el.open=saved.open;});
- if(snapshot.focusId)document.getElementById(snapshot.focusId)?.focus({preventScroll:true});
+ const focused=snapshot.focusId?document.getElementById(snapshot.focusId):null;if(focused){focused.focus({preventScroll:true});if(snapshot.selection&&typeof focused.setSelectionRange==='function'){try{focused.setSelectionRange(snapshot.selection.start,snapshot.selection.end,snapshot.selection.direction);focused.scrollTop=snapshot.selection.top;focused.scrollLeft=snapshot.selection.left;}catch{}}}
 }
-let selectCaptionObserver=null;
-function fitReadableSelects(){
- selectCaptionObserver?.disconnect();const canvas=document.createElement('canvas').getContext('2d'),updates=new Map();
- for(const select of document.querySelectorAll('#main select[id]')){
-  const update=()=>{
-   if(!select.isConnected)return;const text=select.selectedOptions[0]?.textContent||'',style=getComputedStyle(select),captionId=select.id+'FullValue';let caption=document.getElementById(captionId);
-   canvas.font=style.font;const available=select.clientWidth-parseFloat(style.paddingLeft)-parseFloat(style.paddingRight)-26,clipped=select.getClientRects().length&&canvas.measureText(text).width>available;
-   select.title=text;
-   if(clipped&&!caption){caption=document.createElement('span');caption.id=captionId;caption.className='readable-select-value';caption.setAttribute('aria-hidden','true');(select.closest('.week-chooser')||select).after(caption);}
-   if(caption){caption.hidden=!clipped;if(clipped){caption.textContent=text;caption.style.fontSize=style.fontSize;}}
-  };
-  updates.set(select,update);update();
+// Keep one measurement context and observer; reconcile targets after a render.
+let selectCaptionObserver=null,selectCaptionFrame=0,selectCaptionCanvas=null;
+const observedCaptionSelects=new Set();
+function updateSelectCaptions(){
+ if(!observedCaptionSelects.size)return;
+ selectCaptionCanvas??=document.createElement('canvas').getContext('2d');
+ if(!selectCaptionCanvas)return;
+ const measurements=[];
+ for(const select of observedCaptionSelects){
+  if(!select.isConnected)continue;const text=select.selectedOptions[0]?.textContent||'',style=getComputedStyle(select);
+  selectCaptionCanvas.font=style.font;
+  const available=select.clientWidth-parseFloat(style.paddingLeft)-parseFloat(style.paddingRight)-26;
+  measurements.push({select,text,font:style.fontSize,clipped:!!select.getClientRects().length&&selectCaptionCanvas.measureText(text).width>available});
  }
- if(typeof ResizeObserver==='function'){selectCaptionObserver=new ResizeObserver(entries=>{for(const entry of entries)updates.get(entry.target)?.();});for(const select of updates.keys())selectCaptionObserver.observe(select);}
+ // Complete layout reads before changing captions, avoiding read/write alternation.
+ for(const {select,text,font,clipped} of measurements){
+  const captionId=select.id+'FullValue';let caption=document.getElementById(captionId);
+  if(select.title!==text)select.title=text;
+  if(clipped&&!caption){caption=document.createElement('span');caption.id=captionId;caption.className='readable-select-value';caption.setAttribute('aria-hidden','true');(select.closest('.week-chooser')||select).after(caption);}
+  if(caption){if(caption.hidden===clipped)caption.hidden=!clipped;if(clipped){if(caption.textContent!==text)caption.textContent=text;if(caption.style.fontSize!==font)caption.style.fontSize=font;}}
+ }
 }
-function render(options={}){MOTION_BY_ELEMENT.get(document.getElementById('main'))?.cancel();const drafts=options.preserveDrafts?captureFormDrafts(options.excludeForm):null;navRender();const views={dashboard,measure:measurement,trends,nutrition,settings,help};document.getElementById('main').innerHTML=(views[ui.view]||dashboard)();document.title=({dashboard:'Painel',measure:'Medições',trends:'Evolução',nutrition:'Nutrição',settings:'Configurações',help:'Como usar'})[ui.view]+' · Silhueta';restoreFormDrafts(drafts);updateQuickLastMeasurement();updateMeasurementCountdown();fitHistoryCharts();fitReadableSelects();renderedNavigationScreen=captureNavigationScreen();appNavigation?.remember();}
+function fitReadableSelects(){
+ if(!selectCaptionObserver&&typeof ResizeObserver==='function')selectCaptionObserver=new ResizeObserver(()=>{if(!selectCaptionFrame)selectCaptionFrame=requestAnimationFrame(()=>{selectCaptionFrame=0;updateSelectCaptions();});});
+ selectCaptionObserver?.disconnect();
+ observedCaptionSelects.clear();
+ for(const select of document.querySelectorAll('#main select[id]')){observedCaptionSelects.add(select);selectCaptionObserver?.observe(select);}
+ updateSelectCaptions();
+}
+function render(options={}){return withMetricSnapshot(()=>{MOTION_BY_ELEMENT.get(document.getElementById('main'))?.cancel();const drafts=options.preserveDrafts?captureFormDrafts(options.excludeForm):null;navRender();const views={dashboard,measure:measurement,trends,nutrition,settings,help};document.getElementById('main').innerHTML=(views[ui.view]||dashboard)();document.title=({dashboard:'Painel',measure:'Medições',trends:'Evolução',nutrition:'Nutrição',settings:'Configurações',help:'Como usar'})[ui.view]+' · Silhueta';restoreFormDrafts(drafts);updateQuickLastMeasurement();updateMeasurementCountdown();fitHistoryCharts();fitReadableSelects();renderedNavigationScreen=captureNavigationScreen();appNavigation?.remember();});}
 
 function inputObj(form){return Object.fromEntries(new FormData(form).entries())}
-function saveMeasure(){const f=document.getElementById('quickForm');if(f)saveQuick(f)}
 function nutritionValue(key,raw){
  if(raw===null||raw===undefined||raw==='')return null;
  const value=(typeof raw==='number'||typeof raw==='string')?safeNum(raw,...NUTRITION_RANGES[key]):null;
@@ -1918,7 +1959,7 @@ function importFile(file){
    const parsed=JSON.parse(txt),data=parsed&&Object.prototype.hasOwnProperty.call(parsed,'data')?parsed.data:parsed;
    const candidate=validateBackupData(data);
    if(!confirm('Importar este backup substituindo os dados atuais? Faça um backup antes, se necessário.'))return;
-   clearDeletionUndo();state=candidate;ui.week=0;ui.nutWeek=0;ui.editEntryId=null;persist();toast('Backup importado com sucesso.');setView('dashboard');
+   clearDeletionUndo();state=candidate;ui.nutWeek=0;ui.editEntryId=null;persist();toast('Backup importado com sucesso.');setView('dashboard');
   }else if(file.name.toLowerCase().endsWith('.csv')){
    if(!confirm('Importar os registros deste CSV para o projeto atual? Os registros existentes serão preservados; semanas correspondentes poderão ser atualizadas.'))return;
    const n=importCSV(txt);persist();toast(n?n+' registro(s) importado(s).':'Nenhum registro novo. Os dados existentes foram preservados.');setView('dashboard');
@@ -1933,7 +1974,7 @@ function reset(){
  // Do not propagate an empty state to the Gist. Reconnecting later restores the cloud copy.
  clearTimeout(syncDebounce);syncPending=false;
  localRemove(TOKEN_KEY);gistSessionToken='';syncVerifiedAt=0;clearLastSyncConfirmation();clearDeletionUndo();localRemove(QUICK_METRIC_PREF_KEY);localRemove(MEASUREMENT_REMINDER_TIME_KEY);
- state=DEFAULT();ui.favoritesOpen=false;ui.quickMetric='weight';ui.editEntryId=null;ui.measureSection='register';ui.historyFilter='all';ui.historyPage=0;ui.week=0;ui.nutWeek=0;
+ state=DEFAULT();ui.favoritesOpen=false;ui.quickMetric='weight';ui.editEntryId=null;ui.measureSection='register';ui.historyFilter='all';ui.historyPage=0;ui.nutWeek=0;
  persist({keepSync:true,suppressSync:true});
  setSyncState('Não conectado');toast('Aparelho reiniciado. O backup na nuvem não foi apagado.');setView('dashboard');
 }
@@ -1953,9 +1994,9 @@ document.addEventListener('click',e=>{const summary=e.target.closest('summary'),
  case'deleteMetric':{const item=state.metricEntries[el.dataset.id];if(item&&!item.deleted&&confirm('Excluir somente esta medição? Ela deixará de aparecer nos gráficos, mas as demais serão preservadas.')){const wasEditing=ui.editEntryId===el.dataset.id,previous={...item};deleteMetricEntry(el.dataset.id);if(wasEditing)ui.editEntryId=null;persist();render({preserveDrafts:true,excludeForm:wasEditing?'quickForm':''});offerDeletionUndo(el.dataset.id,previous);}break}
  case'favMove':{const f=state.preferences.favoriteMetrics,key=el.dataset.metric,i=f.indexOf(key),n=i+Number(el.dataset.direction);if(i>=0&&n>=0&&n<f.length){[f[i],f[n]]=[f[n],f[i]];persist();render()}break}
  case'historyPage':{const direction=Number(el.dataset.direction);if(![-1,1].includes(direction))break;ui.historyPage+=direction;render({preserveDrafts:true});document.getElementById('historySummary')?.focus({preventScroll:true});document.getElementById('historyBrowser')?.scrollIntoView({behavior:'instant',block:'start'});break;}
- case'measureTab':{ui.measureTab=el.dataset.tab==='extra'?'extra':'primary';for(const tab of document.querySelectorAll('.body-tab'))tab.setAttribute('aria-selected',String(tab.dataset.tab===ui.measureTab));for(const panel of document.querySelectorAll('.measure-pane'))panel.hidden=panel.id!=='pane-'+ui.measureTab;break}case'toggleSidebar':toggleSidebar();break;case'openDrawer':openMobileDrawer();break;case'closeDrawer':closeMobileDrawer();break;case'openSync':openSync();break;case'closeSync':closeSync();break;case'gistSync':case'gistUpload':case'gistDownload':runGist(act);break;case'gistCopyBackup':gistCopyBackup();break;case'gistRestoreOpen':document.getElementById('syncRestoreBox').hidden=false;document.getElementById('gistRestoreText').focus();break;case'gistRestoreCancel':document.getElementById('syncRestoreBox').hidden=true;break;case'gistRestore':gistRestoreBackup();break;case'gistRemoveToken':gistRemoveToken();break;case'go':{if(el.dataset.view===ui.view&&el.closest('.nav-btn,.mobile-nav')){if(appNavigation.layer==='drawer')closeMobileDrawer();break;}if(confirmDiscardEdits()){if(el.dataset.view==='measure'&&!el.closest('.nav-btn,.mobile-nav'))ui.measureSection='register';setView(el.dataset.view)}break;}case'newMeasurement':if(!confirmDiscardEdits())break;ui.week=pickWeek();ui.measureSection='register';setView('measure');break;case'editWeek':if(!confirmDiscardEdits())break;ui.week=Number(el.dataset.week);setView('measure');break;case'prevWeek':if(!confirmDiscardEdits())break;ui.week=Math.max(0,ui.week-1);render();break;case'nextWeek':if(!confirmDiscardEdits())break;ui.week=Math.min(52,ui.week+1);render();break;case'prevNutWeek':if(!confirmDiscardEdits())break;ui.nutWeek=Math.max(0,ui.nutWeek-1);render();break;case'nextNutWeek':if(!confirmDiscardEdits())break;ui.nutWeek=Math.min(52,ui.nutWeek+1);render();break;case'editNutWeek':if(!confirmDiscardEdits())break;ui.nutWeek=Number(el.dataset.week);setView('nutrition');break;case'saveMeasure':saveMeasure();break;case'saveNutrition':saveNutrition();break;case'saveSettings':saveSettings();break;case'saveMacroTargets':saveMacroTargets();break;case'saveGoals':saveGoals();break;case'deleteMeasure':if(confirm('Apagar os dados desta semana?')){delete state.measurements[String(ui.week)];persist();toast('Semana apagada.');render()}break;case'exportCSV':exportCSV();break;case'exportNutCSV':exportNutCSV();break;case'exportJSON':exportJSON();break;case'import':document.getElementById('importFile').click();break;case'reset':reset();break;}
+ case'toggleSidebar':toggleSidebar();break;case'openDrawer':openMobileDrawer();break;case'closeDrawer':closeMobileDrawer();break;case'openSync':openSync();break;case'closeSync':closeSync();break;case'gistSync':case'gistUpload':case'gistDownload':runGist(act);break;case'gistCopyBackup':gistCopyBackup();break;case'gistRestoreOpen':document.getElementById('syncRestoreBox').hidden=false;document.getElementById('gistRestoreText').focus();break;case'gistRestoreCancel':document.getElementById('syncRestoreBox').hidden=true;break;case'gistRestore':gistRestoreBackup();break;case'gistRemoveToken':gistRemoveToken();break;case'go':{if(el.dataset.view===ui.view&&el.closest('.nav-btn,.mobile-nav')){if(appNavigation.layer==='drawer')closeMobileDrawer();break;}if(confirmDiscardEdits()){if(el.dataset.view==='measure'&&!el.closest('.nav-btn,.mobile-nav'))ui.measureSection='register';setView(el.dataset.view)}break;}case'prevNutWeek':if(!confirmDiscardEdits())break;ui.nutWeek=Math.max(0,ui.nutWeek-1);render();break;case'nextNutWeek':if(!confirmDiscardEdits())break;ui.nutWeek=Math.min(52,ui.nutWeek+1);render();break;case'editNutWeek':if(!confirmDiscardEdits())break;ui.nutWeek=Number(el.dataset.week);setView('nutrition');break;case'saveNutrition':saveNutrition();break;case'saveSettings':saveSettings();break;case'saveMacroTargets':saveMacroTargets();break;case'saveGoals':saveGoals();break;case'exportCSV':exportCSV();break;case'exportNutCSV':exportNutCSV();break;case'exportJSON':exportJSON();break;case'import':document.getElementById('importFile').click();break;case'reset':reset();break;}
 });
-document.addEventListener('change',e=>{queueMicrotask(()=>{fitReadableSelects();appNavigation.remember();});if(e.target.dataset.action==='favToggle'){
+document.addEventListener('change',e=>{queueMicrotask(()=>{if(observedCaptionSelects.has(e.target))updateSelectCaptions();appNavigation.remember();});if(e.target.dataset.action==='favToggle'){
    const key=e.target.dataset.metric,f=state.preferences.favoriteMetrics;
    if(e.target.checked&&!f.includes(key)){if(f.length>=8){toast('Selecione até oito indicadores.');e.target.checked=false;return}f.push(key)}
    else if(!e.target.checked){if(f.length===1){toast('Mantenha pelo menos um indicador.');e.target.checked=true;return}state.preferences.favoriteMetrics=f.filter(k=>k!==key)}
@@ -1963,13 +2004,13 @@ document.addEventListener('change',e=>{queueMicrotask(()=>{fitReadableSelects();
  }if(e.target.id==='quickMetric'){if(!METRIC_KEYS.includes(e.target.value))return;rememberQuickMetric(e.target.value);const label=document.querySelector('label[for="quickValue"]'),field=document.getElementById('quickValue');if(label)label.textContent='Valor ('+metricUnit(e.target.value)+')';if(field){field.min=e.target.value==='weight'?'20':e.target.value==='bodyFat'?'0':'10';field.max=e.target.value==='bodyFat'?'100':'300';field.placeholder=metricUnit(e.target.value);field.value='';}updateQuickLastMeasurement();return}
  if(e.target.id==='historyFilter'){ui.historyFilter=e.target.value;ui.historyPage=0;render({preserveDrafts:true});return}
  if(e.target.id==='chartMetric'){ui.chartMetric=e.target.value;render({preserveDrafts:true});return}
- if(e.target.id==='weekPicker'){if(!confirmDiscardEdits()){e.target.value=String(ui.week);return}ui.week=Number(e.target.value);render()}if(e.target.id==='nutWeekPicker'){if(!confirmDiscardEdits()){e.target.value=String(ui.nutWeek);return}ui.nutWeek=Number(e.target.value);render()}if(e.target.id==='extraChartSelect'){ui.extraChartKey=e.target.value;render({preserveDrafts:true})}if(e.target.id==='importFile'){importFile(e.target.files[0]);e.target.value=''}});
-document.addEventListener('submit',e=>{if(e.target.id==='measurementCalendarForm'){e.preventDefault();openMeasurementCalendar();return;}if(['quickForm','batchForm','measureForm','nutritionForm','settingsForm','measurementScheduleForm','macroForm','goalForm'].includes(e.target.id)){e.preventDefault();if(e.target.id==='quickForm')saveQuick(e.target);if(e.target.id==='batchForm')saveBatch(e.target);if(e.target.id==='nutritionForm')saveNutrition();if(e.target.id==='settingsForm')saveSettings();if(e.target.id==='measurementScheduleForm')saveMeasurementSchedule();if(e.target.id==='macroForm')saveMacroTargets();if(e.target.id==='goalForm')saveGoals()}});
+ if(e.target.id==='nutWeekPicker'){if(!confirmDiscardEdits()){e.target.value=String(ui.nutWeek);return}ui.nutWeek=Number(e.target.value);render()}if(e.target.id==='importFile'){importFile(e.target.files[0]);e.target.value=''}});
+document.addEventListener('submit',e=>{if(e.target.id==='measurementCalendarForm'){e.preventDefault();openMeasurementCalendar();return;}if(['quickForm','batchForm','nutritionForm','settingsForm','measurementScheduleForm','macroForm','goalForm'].includes(e.target.id)){e.preventDefault();if(e.target.id==='quickForm')saveQuick(e.target);if(e.target.id==='batchForm')saveBatch(e.target);if(e.target.id==='nutritionForm')saveNutrition();if(e.target.id==='settingsForm')saveSettings();if(e.target.id==='measurementScheduleForm')saveMeasurementSchedule();if(e.target.id==='macroForm')saveMacroTargets();if(e.target.id==='goalForm')saveGoals()}});
 window.addEventListener('focus',updateMeasurementCountdown);
 document.addEventListener('visibilitychange',()=>{if(!document.hidden)updateMeasurementCountdown();});
 setInterval(updateMeasurementCountdown,60000);
 const mobileNavElement=document.getElementById('mobileNav'),updateMobileNavInset=()=>document.documentElement.style.setProperty('--mobile-nav-height',Math.ceil(mobileNavElement.getBoundingClientRect().height)+'px'),mobileNavSizeObserver=typeof ResizeObserver==='function'?new ResizeObserver(updateMobileNavInset):null;mobileNavSizeObserver?.observe(mobileNavElement);
-setSidebarCollapsed(localRead(SIDEBAR_PREF_KEY)==='1');persist({preserveTimestamp:true,keepSync:true,suppressSync:true});ui.week=pickWeek();ui.nutWeek=currentWeek();appNavigation=createSilhuetaNavigation({captureScreen:captureNavigationScreen,normalizeScreen:normalizeNavigationScreen,applyRoute:applyNavigationRoute,mayLeave:mayLeaveNavigation});appNavigation.start();updateLastSyncConfirmation();setSyncState(hasTokenSaved()?'Verificando nuvem…':'Não conectado',hasTokenSaved()?'ready':'');if(hasTokenSaved())setTimeout(()=>syncNow('startup'),500);
+setSidebarCollapsed(localRead(SIDEBAR_PREF_KEY)==='1');persist({preserveTimestamp:true,keepSync:true,suppressSync:true});ui.nutWeek=currentWeek();appNavigation=createSilhuetaNavigation({captureScreen:captureNavigationScreen,normalizeScreen:normalizeNavigationScreen,applyRoute:applyNavigationRoute,mayLeave:mayLeaveNavigation});appNavigation.start();updateLastSyncConfirmation();setSyncState(hasTokenSaved()?'Verificando nuvem…':'Não conectado',hasTokenSaved()?'ready':'');if(hasTokenSaved())setTimeout(()=>syncNow('startup'),500);
 })();
 </script>
 <script>document.addEventListener('keydown',e=>{
