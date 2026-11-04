@@ -1,6 +1,8 @@
-# Silhueta · versão 2.9.20 — clareza e agilidade no acompanhamento
+# Silhuetta · versão 2.9.21 — clareza e agilidade no acompanhamento
 
 Aplicativo web instalável (PWA) para acompanhar medidas corporais, composição corporal, nutrição e evolução.
+
+A versão 2.9.21 adota o nome Silhuetta e separa um pouco mais a marca do botão de menu. Em telas móveis, deslize horizontalmente pelo conteúdo para percorrer Início, Medidas, Evolução e Nutrição. Em Início, deslize para a direita para abrir o menu lateral. Comece o gesto alguns centímetros para dentro da tela, deixando as bordas para o Android.
 
 A versão 2.9.20 reduz trabalho repetido nas atualizações: os menus mantêm seus elementos e atualizam apenas a indicação da tela ativa; o histórico evita gravar estados idênticos; os seletores reutilizam o contexto de medição e o observador de tamanho, agrupando leituras antes das alterações visuais. As medições são validadas e ordenadas uma vez por renderização, com uma cópia temporária compartilhada entre cartões, histórico e gráficos. Essa cópia é descartada ao final de cada atualização, evitando referências desatualizadas depois de salvar, excluir, desfazer ou sincronizar.
 
@@ -26,7 +28,7 @@ A versão 2.9.16 reúne o dia das medições e o Google Agenda em **Configuraç�
 
 Os formulários de rotina continuam separados e preservam os rascunhos ao salvar outro campo ou fechar a seção da agenda. O modelo de evento do Google Agenda conserva a confirmação externa e o cálculo da próxima data. A auditoria cobre a seção recolhida e expandida, navegação por teclado e cartões com três, quatro e cinco indicadores em cinco larguras, além dos fluxos de dados e PWA existentes.
 
-A versão 2.9.15 acrescenta **Configurações → Lembrete no Google Agenda**. Depois de salvar o dia das medições, escolha o horário e use **Adicionar ao Google Agenda**. O botão abre um evento semanal de 15 minutos, com a próxima ocorrência futura, o fuso do aparelho e um link de volta ao Silhueta. No Google Agenda, confira a repetição e a notificação e salve o evento. Alterações e exclusões de eventos já criados são feitas na própria agenda; mudar o dia no Silhueta não altera automaticamente um evento externo.
+A versão 2.9.15 acrescenta **Configurações → Lembrete no Google Agenda**. Depois de salvar o dia das medições, escolha o horário e use **Adicionar ao Google Agenda**. O botão abre um evento semanal de 15 minutos, com a próxima ocorrência futura, o fuso do aparelho e um link de volta ao Silhuetta. No Google Agenda, confira a repetição e a notificação e salve o evento. Alterações e exclusões de eventos já criados são feitas na própria agenda; mudar o dia no Silhuetta não altera automaticamente um evento externo.
 
 O horário escolhido fica guardado somente neste aparelho em `silhueta.ui.measurementReminderTime`. A integração abre um modelo de evento, sem afirmar que ele foi salvo ou que as notificações estão ativadas. O link contém título genérico, datas, fuso, recorrência e endereço do app. A auditoria intercepta o destino externo com dados sintéticos e cobre horários passados, domingo, virada do ano, horário de verão, rascunhos e layout mobile e desktop.
 
@@ -48,7 +50,7 @@ A versão 2.9.9 substitui o roxo das cores de sistema por `#FCFAFD`, o mesmo fun
 
 A versão 2.9.8 mostra a última medição da região no **Registro rápido**, com valor, unidade e data real. A referência muda ao selecionar uma região e acompanha alterações, exclusões e restaurações do histórico, sem preencher o novo valor nem modificar a data ou as observações em edição. Regiões sem histórico são identificadas, sem tratar o peso do perfil como pesagem. A confirmação após salvar ou editar uma medição informa a região, o valor e a data por cinco segundos; uma falha no armazenamento local exibe uma mensagem de recuperação em vez de confirmar o salvamento.
 
-A versão 2.9.7 acrescenta o horário da última sincronização confirmada neste aparelho, a ação **Desfazer** por dez segundos após excluir uma medição e a memória da última região usada no registro rápido. Essa memória guarda apenas a região, sem reaproveitar valores, datas ou observações. As instruções de instalação ficam ocultas quando o Silhueta está aberto como aplicativo. Não há um novo aviso de atualização.
+A versão 2.9.7 acrescenta o horário da última sincronização confirmada neste aparelho, a ação **Desfazer** por dez segundos após excluir uma medição e a memória da última região usada no registro rápido. Essa memória guarda apenas a região, sem reaproveitar valores, datas ou observações. As instruções de instalação ficam ocultas quando o Silhuetta está aberto como aplicativo. Não há um novo aviso de atualização.
 
 O horário de confirmação é salvo localmente após a leitura de verificação do Gist e fica associado ao Gist confirmado; não vem de backups importados nem é enviado aos outros dispositivos. Uma falha mantém a confirmação anterior como histórico, sem indicar uma nova confirmação. Desconectar ou reiniciar o aparelho limpa esse histórico local. A ação Desfazer preserva o identificador, a data, o valor e as observações da medição e cria uma alteração mais recente que seu marcador de exclusão; uma versão remota mais recente não é sobrescrita. Os testes usam Gists e tokens sintéticos interceptados, sem acessar dados ou credenciais pessoais.
 
@@ -87,7 +89,7 @@ Hospedado no GitHub Pages: https://sosoft142.github.io/Silhueta/
 O aplicativo preserva alterações em campos diferentes durante a mesclagem. Se o mesmo campo for modificado simultaneamente, utiliza o horário da última edição; não há resolução avançada de conflitos nem garantia de atualização instantânea enquanto o aplicativo está fechado.
 
 ## Instalação no Android
-Abra **Configurações → Instalar Silhueta** no próprio app. O botão fica disponível quando o navegador emite `beforeinstallprompt` e abre a confirmação de instalação diretamente. Cada oferta é usada uma única vez; cancelamentos e falhas aguardam uma nova oferta. A instalação exige HTTPS, fornecido pelo GitHub Pages.
+Abra **Configurações → Instalar Silhuetta** no próprio app. O botão fica disponível quando o navegador emite `beforeinstallprompt` e abre a confirmação de instalação diretamente. Cada oferta é usada uma única vez; cancelamentos e falhas aguardam uma nova oferta. A instalação exige HTTPS, fornecido pelo GitHub Pages.
 
 No Chrome 155, a tela **Instalar e criar atalho** pode informar incorretamente que uma PWA já está instalada e falhar ao abri-la. O [Chromium 568841400](https://issues.chromium.org/issues/568841400) documenta essa regressão. No [código do Chrome 155.0.8059.84](https://github.com/chromium/chromium/blob/155.0.8059.84/chrome/android/java/src/org/chromium/chrome/browser/webapps/AppInstallMenuHandler.java), esse menu consulta a origem inteira. O fluxo interno de instalação verifica o endereço de início em `WebappsClientAndroid::DoesNewWebAppConflictWithExistingInstallation`, permitindo tentar a instalação sem passar por aquela tela do menu. Isso é um contorno; a correção do registro de aplicativos pertence ao navegador.
 
@@ -175,7 +177,7 @@ Para atualizar o ícone na tela inicial do Android, aguarde a atualização do s
 ### Verificação local
 Testes em 320, 390, 768 e 1440 px, incluindo alternância de abas sem perder campos, datas diferentes para busto/bíceps/cintura, ordenação pela data de cada medida (independentemente da semana), persistência local, abertura do painel e visualização das curvas. Não foi realizada conexão com o Gist real da usuária.
 
-## Silhueta 2.3 — novas funcionalidades
+## Silhuetta 2.3 — novas funcionalidades
 
 **Histórico individual:** as medidas agora são eventos independentes, com identificador e data próprios. É possível registrar duas pesagens no mesmo dia ou várias medidas da mesma região dentro de uma semana, editar e excluir apenas um registro. Cada exclusão cria um marcador sincronizável (tombstone), para evitar que um aparelho desatualizado o restaure.
 
@@ -193,7 +195,7 @@ Testes em 320, 390, 768 e 1440 px, incluindo alternância de abas sem perder cam
 
 - O Gist mantém o mesmo arquivo criptografado e a mesma autenticação de versões anteriores.
 - Cada registro independente é sincronizado atomicamente por identificador. Alterações simultâneas no **mesmo registro** usam o relógio da última edição; não há solução avançada de conflitos.
-- **Atualize o Silhueta em todos os dispositivos antes de registrar novas medições.** Um cliente antigo não oferece o novo histórico e pode não tratar corretamente alterações da versão 2.3.
+- **Atualize o Silhuetta em todos os dispositivos antes de registrar novas medições.** Um cliente antigo não oferece o novo histórico e pode não tratar corretamente alterações da versão 2.3.
 - **Exporte um backup JSON antes da primeira sincronização depois da atualização.** A migração foi testada com dados simulados, mas a conexão com o Gist real da usuária não foi executada nesta sessão.
 
 ### Testes locais

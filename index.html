@@ -3,10 +3,12 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="application-name" content="Silhuetta" />
+<meta name="apple-mobile-web-app-title" content="Silhuetta" />
 <meta name="theme-color" content="#FCFAFD" />
 <meta name="color-scheme" content="light" />
 <meta name="description" content="Seu diário de recomposição corporal, medições, nutrição e progresso em um só lugar." />
-<title>Silhueta — Seu acompanhamento</title>
+<title>Silhuetta — Seu acompanhamento</title>
 <link rel="manifest" href="./manifest.webmanifest" />
 <link rel="icon" href="./icons/icon-192-v21.png" sizes="192x192" />
 <link rel="apple-touch-icon" href="./icons/apple-touch-icon-v21.png" />
@@ -546,7 +548,7 @@ body{font-size:15px;line-height:1.55;background:#fcfafd}
 @media(max-width:850px){
  .brand-sm.nav-short{display:flex}
 }
-/* Silhueta 2.2 · Optional body measurements with individually dated records */
+/* Silhuetta 2.2 · Optional body measurements with individually dated records */
 .body-tablist{display:flex;gap:7px;flex-wrap:wrap;padding:5px;border:1px solid #e9dce8;background:#fbf6fa;border-radius:17px;margin:20px 0 22px}
 .body-tab{flex:1 1 145px;min-height:46px;border:0;border-radius:12px;color:#795c75;background:transparent;font-weight:750;text-align:center;padding:10px 15px}
 .body-tab[aria-selected="true"]{background:white;color:#983c77;box-shadow:0 3px 13px #51305215}
@@ -590,7 +592,7 @@ body{font-size:15px;line-height:1.55;background:#fcfafd}
  .more-measure-grid{grid-template-columns:1fr}
  .more-measure-summary summary{gap:8px}
 }
-/* Silhueta v2.3: independent history, personalizable cards and anatomy. */
+/* Silhuetta v2.3: independent history, personalizable cards and anatomy. */
 .metrics-custom-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,185px),1fr));gap:13px;margin:15px 0 21px}
 .metric-tile{background:#fff;border:1px solid #e9deeb;border-radius:19px;min-width:0;padding:19px;text-align:left;display:flex;flex-direction:column;gap:7px;color:#58475e;box-shadow:0 5px 19px rgba(81,43,74,.04)}
 .metric-tile:hover,.metric-tile:focus-visible{background:#fdf7fc;border-color:#cb9bbc}
@@ -764,7 +766,7 @@ body{font-size:15px;line-height:1.55;background:#fcfafd}
  .anatomy-card .guide-tip{padding:7px}
  .anatomy-card .guide-region{font-size:10.5px;padding:7px 5px}
 }
-/* Silhueta 2.7: guia ilustrado integrado; em telas estreitas preserva a imagem ao lado da seleção. */
+/* Silhuetta 2.7: guia ilustrado integrado; em telas estreitas preserva a imagem ao lado da seleção. */
 .anatomy-card .anatomy-shell{display:grid;grid-template-columns:minmax(190px,.65fr) minmax(0,1.35fr);gap:14px;align-items:start}
 .anatomy-card .guide-region-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));max-height:none;overflow:visible;gap:7px;min-width:0;padding:0}
 .anatomy-card .guide-region{min-height:44px;font-size:12px;padding:9px;line-height:1.2}
@@ -807,7 +809,7 @@ body{font-size:15px;line-height:1.55;background:#fcfafd}
  .anatomy-card .guide-tip{padding:5px}
  .anatomy-card .guide-region{font-size:10px;padding:7px 5px}
 }
-/* Silhueta v2.7.1: mobile-first anatomical guide visual fixes */
+/* Silhuetta v2.7.1: mobile-first anatomical guide visual fixes */
 .anatomy-card .guide-region:focus-visible{outline:3px solid #9d5591;outline-offset:2px}
 .anatomy-card .anatomy-photo img{object-position:center;background:#f5ebf4}
 .anatomy-card .anatomy-tag{font-size:12px;line-height:1.4}
@@ -1074,6 +1076,7 @@ form .btn,.settings-links .btn{max-width:100%;white-space:normal;text-align:cent
 @media(max-width:850px){
  .topbar{display:grid;grid-template-columns:minmax(0,1fr) 44px;gap:12px}
  .topbar-right{justify-self:end}
+ #mobileMenuButton{margin-inline-end:4px}
  .main-shell{padding-bottom:max(110px,calc(var(--mobile-nav-height,86px) + 18px))}
 }
 @media(max-width:650px){
@@ -1094,14 +1097,14 @@ form .btn,.settings-links .btn{max-width:100%;white-space:normal;text-align:cent
 </head>
 <body>
 <div class="app">
- <aside class="sidebar" id="appSidebar" aria-label="Menu de navegação"><button class="sidebar-toggle" type="button" data-action="toggleSidebar" id="sidebarToggle" aria-label="Recolher barra lateral" aria-expanded="true" aria-controls="desktopNav" title="Recolher barra lateral"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m14 5-7 7 7 7"/></svg></button><div class="brand"><div class="mark" aria-hidden="true"><img src="./icons/brand-mark.svg" width="34" height="57" alt="" /></div><div><h1>Silhueta</h1></div></div><div class="nav-label">Acompanhamento</div><nav class="nav-list" id="desktopNav"></nav><div class="sidebar-spacer"></div><nav class="nav-list sidebar-utilities" id="desktopUtilityNav" aria-label="Configurações e ajuda"></nav></aside>
- <div class="main-shell"><div class="topbar"><div class="brand-sm nav-short"><button class="mobile-menu-trigger" id="mobileMenuButton" data-action="openDrawer" aria-label="Abrir menu lateral" aria-controls="mobileDrawer" aria-expanded="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg></button><img class="brand-symbol" src="./icons/brand-mark.svg" width="26" height="44" alt="" /> <span class="brand-name">Silhueta</span></div><div class="topbar-right"><button type="button" class="sync-trigger" id="syncTrigger" data-action="openSync" aria-haspopup="dialog" aria-controls="syncModal" aria-label="Abrir sincronização" title="Abrir sincronização"><svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2.15" aria-hidden="true" stroke-linecap="round" stroke-linejoin="round"><path d="M6.2 18h11a4.3 4.3 0 0 0 .2-8.6A5.9 5.9 0 0 0 6 10.5 3.8 3.8 0 0 0 6.2 18Z"/></svg></button></div></div><div id="storageNotice" role="status"></div><main id="main" tabindex="-1"></main></div>
+ <aside class="sidebar" id="appSidebar" aria-label="Menu de navegação"><button class="sidebar-toggle" type="button" data-action="toggleSidebar" id="sidebarToggle" aria-label="Recolher barra lateral" aria-expanded="true" aria-controls="desktopNav" title="Recolher barra lateral"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m14 5-7 7 7 7"/></svg></button><div class="brand"><div class="mark" aria-hidden="true"><img src="./icons/brand-mark.svg" width="34" height="57" alt="" /></div><div><h1>Silhuetta</h1></div></div><div class="nav-label">Acompanhamento</div><nav class="nav-list" id="desktopNav"></nav><div class="sidebar-spacer"></div><nav class="nav-list sidebar-utilities" id="desktopUtilityNav" aria-label="Configurações e ajuda"></nav></aside>
+ <div class="main-shell"><div class="topbar"><div class="brand-sm nav-short"><button class="mobile-menu-trigger" id="mobileMenuButton" data-action="openDrawer" aria-label="Abrir menu lateral" aria-controls="mobileDrawer" aria-expanded="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg></button><img class="brand-symbol" src="./icons/brand-mark.svg" width="26" height="44" alt="" /> <span class="brand-name">Silhuetta</span></div><div class="topbar-right"><button type="button" class="sync-trigger" id="syncTrigger" data-action="openSync" aria-haspopup="dialog" aria-controls="syncModal" aria-label="Abrir sincronização" title="Abrir sincronização"><svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2.15" aria-hidden="true" stroke-linecap="round" stroke-linejoin="round"><path d="M6.2 18h11a4.3 4.3 0 0 0 .2-8.6A5.9 5.9 0 0 0 6 10.5 3.8 3.8 0 0 0 6.2 18Z"/></svg></button></div></div><div id="storageNotice" role="status"></div><main id="main" tabindex="-1"></main></div>
 </div>
 <nav class="mobile-nav" id="mobileNav" aria-label="Navegação principal"></nav>
 <div class="mobile-drawer" id="mobileDrawer" hidden>
   <button class="mobile-drawer-shade" type="button" data-action="closeDrawer" aria-label="Fechar menu lateral"></button>
   <aside class="mobile-drawer-panel" role="dialog" aria-modal="true" aria-label="Menu lateral">
-    <div class="mobile-drawer-head"><strong>Silhueta</strong><button type="button" class="mobile-menu-trigger" data-action="closeDrawer" aria-label="Fechar menu lateral"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg></button></div>
+    <div class="mobile-drawer-head"><strong>Silhuetta</strong><button type="button" class="mobile-menu-trigger" data-action="closeDrawer" aria-label="Fechar menu lateral"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg></button></div>
     <p class="nav-label">Acompanhamento</p><nav class="nav-list" id="mobileDrawerNav" aria-label="Páginas principais"></nav>
     <nav class="nav-list sidebar-utilities" id="mobileDrawerUtilityNav" aria-label="Configurações e ajuda"></nav>
   </aside>
@@ -1128,7 +1131,7 @@ form .btn,.settings-links .btn{max-width:100%;white-space:normal;text-align:cent
 <script src="./navigation.js"></script>
 <script>
 (()=>{'use strict';
-const APP_VERSION='2.9.20';
+const APP_VERSION='2.9.21';
 const STORAGE_KEY='silhueta.app.v1', VERSION=7;
 const QUICK_METRIC_PREF_KEY='silhueta.ui.quickMetric';
 const MEASUREMENT_REMINDER_TIME_KEY='silhueta.ui.measurementReminderTime';
@@ -1138,14 +1141,14 @@ let deferredInstallPrompt=null,installationPhase='waiting',installationEpoch=0;
 const installedDisplay=window.matchMedia('(display-mode: standalone)');
 function isRunningInstalled(){return installedDisplay.matches||navigator.standalone===true;}
 function installationInfo(){
- if(isRunningInstalled())return {label:'Aberto como aplicativo',message:'Você está usando o Silhueta como aplicativo.',enabled:false};
+ if(isRunningInstalled())return {label:'Aberto como aplicativo',message:'Você está usando o Silhuetta como aplicativo.',enabled:false};
  const phases={
-  waiting:{label:'Instalar Silhueta',message:'O botão fica disponível quando o navegador permite instalar. Você pode continuar usando o site enquanto isso.'},
-  ready:{label:'Instalar Silhueta',message:'Abra o Silhueta pela lista de aplicativos. O navegador pedirá sua confirmação para instalar.',enabled:true},
+  waiting:{label:'Instalar Silhuetta',message:'O botão fica disponível quando o navegador permite instalar. Você pode continuar usando o site enquanto isso.'},
+  ready:{label:'Instalar Silhuetta',message:'Abra o Silhuetta pela lista de aplicativos. O navegador pedirá sua confirmação para instalar.',enabled:true},
   prompting:{label:'Aguardando confirmação…',message:'Confirme ou cancele a instalação na janela do navegador.'},
   requested:{label:'Instalação solicitada',message:'O pedido foi enviado ao navegador. Aguarde o ícone aparecer na lista de aplicativos; a criação do aplicativo pode levar alguns instantes.'},
-  dismissed:{label:'Instalar Silhueta',message:'Você cancelou a instalação. O botão ficará disponível quando o navegador oferecer uma nova tentativa.'},
-  error:{label:'Instalar Silhueta',message:'O navegador não conseguiu iniciar a instalação. Recarregue a página para tentar novamente.'}
+  dismissed:{label:'Instalar Silhuetta',message:'Você cancelou a instalação. O botão ficará disponível quando o navegador oferecer uma nova tentativa.'},
+  error:{label:'Instalar Silhuetta',message:'O navegador não conseguiu iniciar a instalação. Recarregue a página para tentar novamente.'}
  };
  return phases[installationPhase]||phases.waiting;
 }
@@ -1174,7 +1177,7 @@ async function installApp(){
  }catch(error){if(epoch===installationEpoch&&installationPhase==='prompting')installationPhase='error';}
  updateInstallControls();
 }
-function installSection(){if(isRunningInstalled())return '<div id="appInstallSection" hidden></div>';const info=installationInfo();return `<section id="appInstallSection" class="card settings-section"><h2>Instalar Silhueta</h2><p id="appInstallStatus" role="status" aria-live="polite">${esc(info.message)}</p><div class="settings-links">${button(info.label,'download','installApp',`id="installAppButton" aria-describedby="appInstallStatus" ${info.enabled?'':'disabled'}`,'btn-primary')}</div><p class="small-muted">Se o menu do Chrome informar que o app já está instalado, mas não conseguir abri-lo, tente a instalação por este botão.</p></section>`;}
+function installSection(){if(isRunningInstalled())return '<div id="appInstallSection" hidden></div>';const info=installationInfo();return `<section id="appInstallSection" class="card settings-section"><h2>Instalar Silhuetta</h2><p id="appInstallStatus" role="status" aria-live="polite">${esc(info.message)}</p><div class="settings-links">${button(info.label,'download','installApp',`id="installAppButton" aria-describedby="appInstallStatus" ${info.enabled?'':'disabled'}`,'btn-primary')}</div><p class="small-muted">Se o menu do Chrome informar que o app já está instalado, mas não conseguir abri-lo, tente a instalação por este botão.</p></section>`;}
 /* Settings icon: Feather Icons (https://github.com/feathericons/feather).
 The MIT License (MIT)
 
@@ -1415,6 +1418,38 @@ function applyNavigationRoute(route,options={}){
 }
 function openMobileDrawer(){appNavigation.open('drawer');}
 function closeMobileDrawer(){if(appNavigation.layer==='drawer')appNavigation.close();else hideMobileDrawer();}
+
+// Keep OS edge gestures, vertical scrolling and interactive controls available.
+const mobileSwipeViewport=matchMedia('(max-width:850px)');
+const swipeSurface=document.getElementById('main');
+let tabSwipe=null;
+swipeSurface.addEventListener('touchstart',event=>{
+ tabSwipe=null;
+ if(!mobileSwipeViewport.matches||event.touches.length!==1||appNavigation.layer||appNavigation.moving||
+    event.target.closest('button,a,input,textarea,select,summary,[contenteditable],.table-wrap,[data-history-chart]'))return;
+ const touch=event.touches[0],edge=24;
+ if(touch.clientX<=edge||touch.clientX>=innerWidth-edge)return;
+ tabSwipe={id:touch.identifier,x:touch.clientX,y:touch.clientY,view:ui.view};
+},{passive:true});
+swipeSurface.addEventListener('touchmove',event=>{
+ if(!tabSwipe)return;
+ const touch=event.touches[0];
+ if(event.touches.length!==1||Math.abs(touch.clientY-tabSwipe.y)>Math.max(20,Math.abs(touch.clientX-tabSwipe.x)))tabSwipe=null;
+},{passive:true});
+swipeSurface.addEventListener('touchcancel',()=>{tabSwipe=null;},{passive:true});
+swipeSurface.addEventListener('touchend',event=>{
+ const start=tabSwipe;tabSwipe=null;
+ if(!start||event.touches.length||start.view!==ui.view||appNavigation.layer||appNavigation.moving||!mobileSwipeViewport.matches)return;
+ const touch=[...event.changedTouches].find(t=>t.identifier===start.id);
+ if(!touch)return;
+ const dx=touch.clientX-start.x,dy=touch.clientY-start.y;
+ if(Math.abs(dx)<64||Math.abs(dx)<Math.abs(dy)*1.6)return;
+ const index=NAV.findIndex(([view])=>view===ui.view);
+ if(index<0)return;
+ if(index===0&&dx>0){openMobileDrawer();return;}
+ const next=NAV[index+(dx<0?1:-1)];
+ if(next)appNavigation.navigate({...captureNavigationScreen(),view:next[0]});
+},{passive:true});
 window.addEventListener('beforeunload',event=>{if(pendingFormChanges()||(!document.getElementById('syncModal').hidden&&!document.getElementById('syncConnectArea').hidden&&document.getElementById('gistToken').value.trim())){event.preventDefault();event.returnValue='';}});
 document.addEventListener('toggle',event=>{if(event.target.matches?.('#main details'))appNavigation?.remember();},true);
 
@@ -1511,7 +1546,7 @@ function measurementCalendarURL(time){
  let start=new Date(next.date+'T'+time+':00');if(start<=new Date())start=new Date(dateAdd(next.date,7)+'T'+time+':00');
  const expected=time.split(':').map(Number);if(!Number.isFinite(start.getTime())||start.getHours()!==expected[0]||start.getMinutes()!==expected[1])throw Error('Esse horário não está disponível na próxima data. Escolha outro horário.');
  const end=new Date(start.getTime()+15*60000),stamp=date=>date.toISOString().replace(/[-:]|\.\d{3}/g,''),url=new URL('https://calendar.google.com/calendar/render');
- url.search=new URLSearchParams({action:'TEMPLATE',text:'Silhueta: dia das medições',dates:stamp(start)+'/'+stamp(end),ctz:zone,recur:'RRULE:FREQ=WEEKLY;BYDAY='+['SU','MO','TU','WE','TH','FR','SA'][next.weekday],details:'Reserve alguns minutos para registrar suas medidas no Silhueta.\n\n'+new URL('./',location.href).href}).toString();return url.href;
+ url.search=new URLSearchParams({action:'TEMPLATE',text:'Silhuetta: dia das medições',dates:stamp(start)+'/'+stamp(end),ctz:zone,recur:'RRULE:FREQ=WEEKLY;BYDAY='+['SU','MO','TU','WE','TH','FR','SA'][next.weekday],details:'Reserve alguns minutos para registrar suas medidas no Silhuetta.\n\n'+new URL('./',location.href).href}).toString();return url.href;
 }
 function measurementCalendarSection(){
  const weekday=state.preferences.measurementWeekday,ready=isMeasurementWeekday(weekday),saved=localRead(MEASUREMENT_REMINDER_TIME_KEY),time=/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(saved)?saved:'09:00';
@@ -1557,7 +1592,7 @@ const ANATOMY_IMAGES={"abdomen":"data:image/webp;base64,UklGRujBAABXRUJQVlA4INzB
 const GUIDE_MEDIA={
  bust:{image:'bust',title:'Busto',position:'Maior circunferência do busto',steps:['A fita deve passar sobre a parte mais volumosa do busto.','Contorne o tronco mantendo a fita paralela ao chão, inclusive nas costas.','Mantenha braços relaxados; não comprima a pele.']},
  underbust:{image:'underbust',title:'Abaixo do busto',position:'Imediatamente abaixo das mamas',steps:['Coloque a fita rente à base do busto.','Mantenha a fita horizontal em toda a volta do tórax.','Respire naturalmente e anote sem apertar.']},
- shoulders:{image:'shoulders',title:'Ombros',position:'Largura ou circunferência dos ombros',steps:['Para o Silhueta, use a circunferência em volta dos ombros e parte superior do tronco.','Mantenha os braços relaxados.','Repita a mesma técnica em todas as medições.']},
+ shoulders:{image:'shoulders',title:'Ombros',position:'Largura ou circunferência dos ombros',steps:['Para o Silhuetta, use a circunferência em volta dos ombros e parte superior do tronco.','Mantenha os braços relaxados.','Repita a mesma técnica em todas as medições.']},
  neck:{image:'neck',title:'Pescoço',position:'Base do pescoço',steps:['Passe a fita em volta da base do pescoço.','Mantenha cabeça ereta e olhar à frente.','Não aperte nem incline a fita.']},
  waist:{image:'waist',title:'Cintura',position:'Ponto médio entre a última costela e o osso do quadril',steps:['Encontre o ponto médio entre a borda inferior da última costela e a crista ilíaca.','A fita deve contornar o tronco horizontalmente nesse nível.','Meça após uma expiração normal, sem contrair o abdômen.']},
  abdomen:{image:'abdomen',title:'Abdômen',position:'Circunferência na altura do umbigo',steps:['Para esta medida, use sempre o nível do umbigo.','Contorne o abdômen com a fita horizontal.','Não confunda com a cintura, que tem outro ponto de referência.']},
@@ -1683,7 +1718,7 @@ function settings(){const p=state.profile,hasDate=!!p.startDate,weekday=state.pr
  return heading('Configurações','Rotina, lembretes e preferências do aplicativo.')+
   `<div class="settings-stack"><section class="card settings-section routine-settings"><div class="card-head"><div><h2>Rotina de medições</h2><p id="measurementScheduleHelp">Escolha um dia para acompanhar a próxima medição na tela inicial.</p></div></div><form id="measurementScheduleForm"><div class="field"><label for="measurementWeekday">Dia das medições</label><select id="measurementWeekday" name="measurementWeekday" aria-describedby="measurementScheduleHelp"><option value="" ${weekday===null?'selected':''}>Não definido</option>${[1,2,3,4,5,6,0].map(day=>`<option value="${day}" ${weekday===day?'selected':''}>${MEASUREMENT_WEEKDAYS[day]}</option>`).join('')}</select></div><div class="settings-summary"><span class="small-muted">${isMeasurementWeekday(weekday)?'Dia atual: '+MEASUREMENT_WEEKDAYS[weekday]:'Nenhum dia definido.'}</span><button type="submit" class="btn btn-primary">${ico('check',16)} Salvar dia</button></div></form>${measurementCalendarSection()}</section><section class="card settings-section"><div class="card-head"><div><h2>Data de início do projeto</h2><p>Opcional. Use apenas se quiser organizar o diário de Nutrição por semanas. As medições corporais têm datas independentes.</p></div></div>
  <form id="settingsForm">${dateField('startDate','Início do projeto',p.startDate)}<div class="settings-summary"><span class="small-muted">${hasDate?'Início atual: '+dateBR(p.startDate):'Nenhuma data definida. Você já pode registrar medidas.'}</span>${button('Salvar data','check','saveSettings','','btn-primary')}</div></form></section>
- <section class="card settings-section"><h2>Outras opções</h2><p>As preferências ficam junto das funções que você utiliza.</p><div class="settings-links">${button('Metas de nutrição','nutrition','go','data-view="nutrition"','btn-plain')}${button('Metas corporais','trends','go','data-view="trends"','btn-plain')}${button('Backups e ajuda','help','go','data-view="help"','btn-plain')}</div><details class="help-extra"><summary>Sobre os dados do perfil antigo</summary><p class="small-muted">Idade, altura, peso de referência e demais informações anteriores continuam preservados nos dados salvos e nos backups, mas não são exigidos para registrar medidas.</p></details></section>${installSection()}</div><footer class="app-version" aria-label="Versão do aplicativo">Silhueta · Versão <span data-app-version>${APP_VERSION}</span></footer>`;
+ <section class="card settings-section"><h2>Outras opções</h2><p>As preferências ficam junto das funções que você utiliza.</p><div class="settings-links">${button('Metas de nutrição','nutrition','go','data-view="nutrition"','btn-plain')}${button('Metas corporais','trends','go','data-view="trends"','btn-plain')}${button('Backups e ajuda','help','go','data-view="help"','btn-plain')}</div><details class="help-extra"><summary>Sobre os dados do perfil antigo</summary><p class="small-muted">Idade, altura, peso de referência e demais informações anteriores continuam preservados nos dados salvos e nos backups, mas não são exigidos para registrar medidas.</p></details></section>${installSection()}</div><footer class="app-version" aria-label="Versão do aplicativo">Silhuetta · Versão <span data-app-version>${APP_VERSION}</span></footer>`;
 }
 /* Sincronização de duas vias, por campo, preservando dados existentes e backups legados. */
 const GIST_ID_KEY='silhueta.gist.id.v1',TOKEN_KEY='silhueta.github.token.v2',GIST_FILENAME='silhueta.enc.json',SYNC_CONFIRM_KEY='silhueta.ui.lastSyncConfirmation';
@@ -1743,7 +1778,7 @@ async function aesKey(password,salt,iterations){const raw=await crypto.subtle.im
 async function sealState(password,content=state){const salt=crypto.getRandomValues(new Uint8Array(16)),iv=crypto.getRandomValues(new Uint8Array(12)),iterations=310000,key=await aesKey(password,salt,iterations);const payload={app:'Silhueta',version:3,exportedAt:nowStamp(),data:content},ct=await crypto.subtle.encrypt({name:'AES-GCM',iv},key,new TextEncoder().encode(JSON.stringify(payload)));return {format:'silhueta-gist-encrypted-v1',algorithm:'AES-256-GCM',kdf:'PBKDF2-SHA256',iterations,salt:b64bytes(salt),iv:b64bytes(iv),ciphertext:b64bytes(new Uint8Array(ct))}}
 async function unsealState(contents,password){let envelope;try{envelope=typeof contents==='string'?JSON.parse(contents):contents}catch(e){throw Error('Backup remoto inválido.')}if(envelope?.format!=='silhueta-gist-encrypted-v1'||envelope.algorithm!=='AES-256-GCM'||envelope.kdf!=='PBKDF2-SHA256'||!Number.isInteger(envelope.iterations)||envelope.iterations<100000||envelope.iterations>1000000)throw Error('Formato remoto de backup incompatível.');try{const salt=bytesB64(envelope.salt),iv=bytesB64(envelope.iv),ciphertext=bytesB64(envelope.ciphertext);if(salt.length!==16||iv.length!==12||ciphertext.length<16)throw Error('Conteúdo inválido');const key=await aesKey(password,salt,envelope.iterations),buffer=await crypto.subtle.decrypt({name:'AES-GCM',iv},key,ciphertext),decoded=JSON.parse(new TextDecoder().decode(buffer));if(decoded.app!=='Silhueta'||!decoded.data?.profile||!decoded.data?.measurements)throw Error('Dados inválidos');return normalizeStateData(decoded.data)}catch(e){throw Error('Não consegui abrir o Gist. Use o MESMO token nos dois aparelhos. Se usava senha adicional na versão antiga, exporte um backup JSON no aparelho antigo e importe-o aqui.') }}
 async function githubGist(method,path,token,data){let response;try{response=await fetch('https://api.github.com'+path,{method,mode:'cors',cache:'no-store',headers:{'Accept':'application/vnd.github+json','Authorization':'Bearer '+token,'X-GitHub-Api-Version':'2022-11-28',...(data?{'Content-Type':'application/json'}:{})},body:data?JSON.stringify(data):undefined})}catch(e){throw Error('Falha de conexão com o GitHub. Verifique sua internet.')}if(!response.ok){let detail='';try{const err=await response.json();detail=err.message||''}catch(e){}throw Error('GitHub retornou '+response.status+(detail?': '+detail:''))}return response.json()}
-async function remoteEnvelope(id,token){const gist=await githubGist('GET','/gists/'+encodeURIComponent(id),token),file=gist.files?.[GIST_FILENAME];if(!file)throw Error('O Gist não contém o backup do Silhueta.');if(file.truncated)throw Error('O Gist remoto está grande demais. Faça backup JSON local.');return {gist,content:file.content}}
+async function remoteEnvelope(id,token){const gist=await githubGist('GET','/gists/'+encodeURIComponent(id),token),file=gist.files?.[GIST_FILENAME];if(!file)throw Error('O Gist não contém o backup do Silhuetta.');if(file.truncated)throw Error('O Gist remoto está grande demais. Faça backup JSON local.');return {gist,content:file.content}}
 async function discoverGist(token){const saved=savedGistId();if(saved){try{return (await remoteEnvelope(saved,token)).gist.id}catch(e){if(!String(e.message).includes('404'))throw e;rememberGistId('')}}let candidates=[];for(let page=1;page<=10;page++){const items=await githubGist('GET','/gists?per_page=100&page='+page,token);if(!Array.isArray(items))throw Error('Não foi possível localizar o backup.');candidates.push(...items.filter(x=>x.files?.[GIST_FILENAME]));if(items.length<100)break}if(!candidates.length)return '';candidates.sort((a,b)=>Date.parse(b.updated_at||b.created_at||0)-Date.parse(a.updated_at||a.created_at||0));rememberGistId(candidates[0].id);return candidates[0].id}
 function confirmDiscardEdits(){return !pendingFormChanges()||confirm('Há alterações não salvas neste formulário. Deseja sair sem salvá-las?')}
 function pendingFormChanges(root=document.getElementById('main')){
@@ -1759,7 +1794,7 @@ async function syncNow(reason='manual'){if(gistBusy){syncPending=true;return}if(
  return;
 }
  gistBusy=true;syncPending=false;let inputToken='';try{const {token,password}=getGistCredentials();inputToken=token;setSyncState('Conferindo nuvem…','progress');gistStatus('Verificando alterações neste aparelho e no Gist…');let id=await discoverGist(token);
- if(!id){const newData=bootstrapClocks(normalizeStateData(state)),encrypted=await sealState(password,newData),created=await githubGist('POST','/gists',token,{description:'Silhueta — backup criptografado',public:false,files:{[GIST_FILENAME]:{content:JSON.stringify(encrypted)}}});if(!created.id)throw Error('Não foi possível criar o backup no GitHub.');id=created.id;rememberGistId(id);}
+ if(!id){const newData=bootstrapClocks(normalizeStateData(state)),encrypted=await sealState(password,newData),created=await githubGist('POST','/gists',token,{description:'Silhuetta — backup criptografado',public:false,files:{[GIST_FILENAME]:{content:JSON.stringify(encrypted)}}});if(!created.id)throw Error('Não foi possível criar o backup no GitHub.');id=created.id;rememberGistId(id);}
  let remote=await remoteEnvelope(id,token),remoteData=await unsealState(remote.content,password),merged=mergeSyncStates(state,remoteData),target=merged.data;
  if(syncComparable(target)!==syncComparable(remoteData)){const envelope=await sealState(password,target);await githubGist('PATCH','/gists/'+encodeURIComponent(id),token,{files:{[GIST_FILENAME]:{content:JSON.stringify(envelope)}}});}
  remote=await remoteEnvelope(id,token);const verified=await unsealState(remote.content,password);
@@ -1775,13 +1810,13 @@ async function runGist(action){if(action==='gistSync')return syncNow('manual')}
 function scheduleSync(delay=1400){if(!hasTokenSaved())return;clearTimeout(syncDebounce);syncVerifiedAt=0;setSyncState('Alterações aguardando envio','dirty');syncDebounce=setTimeout(()=>syncNow('save'),delay)}
 function refreshSyncIfNeeded(){if(!hasTokenSaved()||document.hidden||Date.now()-lastRemotePoll<12000)return;syncNow('poll')}
 document.addEventListener('visibilitychange',()=>{if(!document.hidden)refreshSyncIfNeeded()});window.addEventListener('online',()=>{if(hasTokenSaved())syncNow('online')});window.addEventListener('focus',()=>{if(hasTokenSaved())refreshSyncIfNeeded()});setInterval(()=>{if(hasTokenSaved()&&!document.hidden)refreshSyncIfNeeded()},45000);
-async function gistCopyBackup(){const t=JSON.stringify({app:'Silhueta',exportDate:nowISO(),data:state},null,2);try{await navigator.clipboard.writeText(t);gistStatus('Backup JSON copiado para a área de transferência. Contém seus dados em texto legível.');toast('Backup copiado.')}catch(e){gistStatus('Não foi possível copiar. Use Como usar → Baixar backup JSON.',true)}}
+async function gistCopyBackup(){const t=JSON.stringify({app:'Silhuetta',exportDate:nowISO(),data:state},null,2);try{await navigator.clipboard.writeText(t);gistStatus('Backup JSON copiado para a área de transferência. Contém seus dados em texto legível.');toast('Backup copiado.')}catch(e){gistStatus('Não foi possível copiar. Use Como usar → Baixar backup JSON.',true)}}
 function gistRestoreBackup(){gistStatus('Use Como usar → Importar backup JSON para restaurar um arquivo.',false)}
 function gistRemoveToken(){if(!confirm('Desconectar este aparelho da sincronização? Os dados locais serão preservados.'))return;localRemove(TOKEN_KEY);gistSessionToken='';syncVerifiedAt=0;clearLastSyncConfirmation();document.getElementById('syncConnectArea').hidden=false;document.getElementById('gistToken').value='';document.getElementById('syncMainButton').textContent='Conectar e sincronizar';setSyncState('Não conectado');gistStatus('Desconectado. Os dados locais foram mantidos.')}
 function help(){return heading('Como usar','O essencial para registrar seus dados com segurança e entender os resultados.')+
  `<section class="howto-steps"><article class="howto-step"><span class="howto-num">1</span><div><h2>Comece por uma medição</h2><p>Em <strong>Medidas</strong>, escolha uma região, informe o valor e a data. Outros dados são opcionais.</p><button class="text-action" data-action="go" data-view="measure">Registrar medida ${ico('chevron',15)}</button></div></article><article class="howto-step"><span class="howto-num">2</span><div><h2>Consulte e ajuste os registros</h2><p>O histórico em <strong>Medidas</strong> permite consultar, editar ou excluir cada registro separadamente. Após excluir, você tem dez segundos para desfazer. O guia anatômico está disponível quando precisar.</p><button class="text-action" data-action="go" data-view="measure">Consultar histórico ${ico('chevron',15)}</button></div></article><article class="howto-step"><span class="howto-num">3</span><div><h2>Observe a evolução</h2><p>Em <strong>Evolução</strong>, os gráficos usam somente registros reais. Você também pode definir metas opcionais de peso, cintura e quadril.</p><button class="text-action" data-action="go" data-view="trends">Ver evolução ${ico('chevron',15)}</button></div></article></section>`+
  `<div class="help-bottom"><article class="card"><h2>Entenda os números</h2><div class="glossary-row"><strong>Medidas anteriores</strong><span>Referências do antigo perfil são preservadas, mas não geram medições.</span></div><div class="glossary-row"><strong>Peso medido</strong><span>Uma pesagem salva com sua própria data, independente da semana.</span></div><div class="glossary-row"><strong>Relação cintura/quadril</strong><span>Cintura dividida pelo quadril; compare preferencialmente valores medidos na mesma data.</span></div><div class="glossary-row"><strong>Metas opcionais</strong><span>Configure alimentação em Nutrição e objetivos corporais em Evolução.</span></div></article>
- <article class="card"><h2>Seus dados e dispositivos</h2><p class="help-mini">O Silhueta salva primeiro neste aparelho. Quando a nuvem está conectada, envia alterações após salvar e verifica atualizações enquanto o app está aberto.</p><button class="btn btn-soft" data-action="openSync">${ico('cloud',16)} Configurar sincronização</button><div class="help-divider"></div><h3>Faça uma cópia de segurança</h3><div class="help-backup-actions">${button('Baixar backup JSON','download','exportJSON','','btn-plain')}${button('Importar arquivo','upload','import','','btn-plain')}</div><details class="help-extra"><summary>Mais opções de exportação</summary><div class="help-backup-actions">${button('Medições CSV','download','exportCSV','','btn-plain')}${button('Nutrição CSV','download','exportNutCSV','','btn-plain')}</div></details><p class="fine-print">O backup JSON contém dados pessoais em texto legível. Guarde-o em local privado.</p><details class="help-extra danger-section"><summary>Reiniciar apenas este dispositivo</summary><p>Apaga os dados locais e desconecta da nuvem. Não apaga o backup no Gist.</p><button class="btn btn-danger" data-action="reset">Reiniciar este aparelho</button></details></article></div>`;
+ <article class="card"><h2>Seus dados e dispositivos</h2><p class="help-mini">O Silhuetta salva primeiro neste aparelho. Quando a nuvem está conectada, envia alterações após salvar e verifica atualizações enquanto o app está aberto.</p><button class="btn btn-soft" data-action="openSync">${ico('cloud',16)} Configurar sincronização</button><div class="help-divider"></div><h3>Faça uma cópia de segurança</h3><div class="help-backup-actions">${button('Baixar backup JSON','download','exportJSON','','btn-plain')}${button('Importar arquivo','upload','import','','btn-plain')}</div><details class="help-extra"><summary>Mais opções de exportação</summary><div class="help-backup-actions">${button('Medições CSV','download','exportCSV','','btn-plain')}${button('Nutrição CSV','download','exportNutCSV','','btn-plain')}</div></details><p class="fine-print">O backup JSON contém dados pessoais em texto legível. Guarde-o em local privado.</p><details class="help-extra danger-section"><summary>Reiniciar apenas este dispositivo</summary><p>Apaga os dados locais e desconecta da nuvem. Não apaga o backup no Gist.</p><button class="btn btn-danger" data-action="reset">Reiniciar este aparelho</button></details></article></div>`;
 }
 function captureFormDrafts(excludeForm=''){
  const forms=[...document.querySelectorAll('#main form')].filter(f=>f.id!==excludeForm).map(form=>({id:form.id,fields:[...form.elements].filter(el=>el.name&&!['submit','button','hidden'].includes(el.type)).map(el=>({id:el.id,name:el.name,type:el.type,value:el.value,checked:el.checked}))}));
@@ -1824,7 +1859,7 @@ function fitReadableSelects(){
  for(const select of document.querySelectorAll('#main select[id]')){observedCaptionSelects.add(select);selectCaptionObserver?.observe(select);}
  updateSelectCaptions();
 }
-function render(options={}){return withMetricSnapshot(()=>{MOTION_BY_ELEMENT.get(document.getElementById('main'))?.cancel();const drafts=options.preserveDrafts?captureFormDrafts(options.excludeForm):null;navRender();const views={dashboard,measure:measurement,trends,nutrition,settings,help};document.getElementById('main').innerHTML=(views[ui.view]||dashboard)();document.title=({dashboard:'Painel',measure:'Medições',trends:'Evolução',nutrition:'Nutrição',settings:'Configurações',help:'Como usar'})[ui.view]+' · Silhueta';restoreFormDrafts(drafts);updateQuickLastMeasurement();updateMeasurementCountdown();fitHistoryCharts();fitReadableSelects();renderedNavigationScreen=captureNavigationScreen();appNavigation?.remember();});}
+function render(options={}){return withMetricSnapshot(()=>{MOTION_BY_ELEMENT.get(document.getElementById('main'))?.cancel();const drafts=options.preserveDrafts?captureFormDrafts(options.excludeForm):null;navRender();const views={dashboard,measure:measurement,trends,nutrition,settings,help};document.getElementById('main').innerHTML=(views[ui.view]||dashboard)();document.title=({dashboard:'Painel',measure:'Medições',trends:'Evolução',nutrition:'Nutrição',settings:'Configurações',help:'Como usar'})[ui.view]+' · Silhuetta';restoreFormDrafts(drafts);updateQuickLastMeasurement();updateMeasurementCountdown();fitHistoryCharts();fitReadableSelects();renderedNavigationScreen=captureNavigationScreen();appNavigation?.remember();});}
 
 function inputObj(form){return Object.fromEntries(new FormData(form).entries())}
 function nutritionValue(key,raw){
@@ -1852,10 +1887,10 @@ const csvescape=x=>{if(x===null||x===undefined)return '';let str=String(x);retur
 function csvRows(rows){return rows.map(row=>row.map(csvescape).join(',')).join('\r\n')}
 function exportCSV(){
  const entries=allMetricEntries();const rows=[['Data','Região','Medida','Unidade','ID'],...entries.map(e=>[e.date,BODY_LABELS[e.metric],e.value,metricUnit(e.metric),e.id])];
- download('silhueta_historico_completo.csv',csvRows(rows),'text/csv;charset=utf-8');toast('Histórico completo exportado em CSV.');
+ download('silhuetta_historico_completo.csv',csvRows(rows),'text/csv;charset=utf-8');toast('Histórico completo exportado em CSV.');
 }
-function exportNutCSV(){const rows=[['Semana','Calorias médias','Proteína média (g)','Carboidratos médios (g)','Gordura média (g)','Cardio (min)','Treinos (nº)','Sono (h)','Observações'],...Array.from({length:53},(_,w)=>{let r=state.nutritionLogs[String(w)]||{};return[w,r.calories??'',r.protein??'',r.carbs??'',r.fat??'',r.cardio??'',r.workouts??'',r.sleep??'',r.notes||'']})];download('silhueta_nutricao.csv',csvRows(rows),'text/csv;charset=utf-8');toast('Nutrição exportada em CSV.')}
-function exportJSON(){download('silhueta_backup_'+nowISO()+'.json',JSON.stringify({app:'Silhueta',exportDate:nowISO(),data:state},null,2),'application/json;charset=utf-8');toast('Backup completo exportado.')}
+function exportNutCSV(){const rows=[['Semana','Calorias médias','Proteína média (g)','Carboidratos médios (g)','Gordura média (g)','Cardio (min)','Treinos (nº)','Sono (h)','Observações'],...Array.from({length:53},(_,w)=>{let r=state.nutritionLogs[String(w)]||{};return[w,r.calories??'',r.protein??'',r.carbs??'',r.fat??'',r.cardio??'',r.workouts??'',r.sleep??'',r.notes||'']})];download('silhuetta_nutricao.csv',csvRows(rows),'text/csv;charset=utf-8');toast('Nutrição exportada em CSV.')}
+function exportJSON(){download('silhuetta_backup_'+nowISO()+'.json',JSON.stringify({app:'Silhuetta',exportDate:nowISO(),data:state},null,2),'application/json;charset=utf-8');toast('Backup completo exportado.')}
 function parseCSV(txt){txt=txt.replace(/^\ufeff/,'');let first=txt.split(/\r?\n/)[0]||'';let delimiter=first.split(';').length>first.split(',').length?';':',';let rows=[],row=[],cell='',quoted=false;for(let i=0;i<txt.length;i++){let c=txt[i];if(c==='"'){if(quoted&&txt[i+1]==='"'){cell+='"';i++}else quoted=!quoted}else if(c===delimiter&&!quoted){row.push(cell);cell=''}else if((c==='\n'||c==='\r')&&!quoted){if(c==='\r'&&txt[i+1]==='\n')i++;row.push(cell);if(row.some(x=>x.trim()!==''))rows.push(row);cell='';row=[]}else cell+=c}row.push(cell);if(row.some(x=>x.trim()!==''))rows.push(row);return rows}
 function requireImportRecord(value,label){
  if(!value||typeof value!=='object'||Array.isArray(value))throw Error('Estrutura inválida em '+label+'.');
@@ -2018,6 +2053,6 @@ setSidebarCollapsed(localRead(SIDEBAR_PREF_KEY)==='1');persist({preserveTimestam
  if(e.key==='Escape'){e.preventDefault();if(!document.getElementById('syncModal').hidden)document.querySelector('[data-action=closeSync]').click();else if(!document.getElementById('mobileDrawer').hidden)document.querySelector('#mobileDrawer [data-action=closeDrawer]')?.click();return;}
  const drawer=document.getElementById('mobileDrawer'),sync=document.getElementById('syncModal'),active=!sync.hidden?sync.querySelector('.sync-dialog'):drawer&&!drawer.hidden&&!drawer.inert?drawer.querySelector('.mobile-drawer-panel'):null;if(e.key==='Tab'&&active){const items=[...active.querySelectorAll('button:not([disabled]),input:not([disabled]),a[href]')].filter(el=>el.getClientRects().length);if(!items.length)return;const first=items[0],last=items.at(-1);if(e.shiftKey&&document.activeElement===first){e.preventDefault();last.focus()}else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first.focus()}}
 });</script>
-<script>if("serviceWorker" in navigator && (location.protocol === "https:" || location.hostname === "localhost")) { navigator.serviceWorker.register("./service-worker.js",{scope:"./",updateViaCache:"none"}).catch(error=>console.warn("Silhueta: não foi possível ativar os recursos offline.",error)); }</script>
+<script>if("serviceWorker" in navigator && (location.protocol === "https:" || location.hostname === "localhost")) { navigator.serviceWorker.register("./service-worker.js",{scope:"./",updateViaCache:"none"}).catch(error=>console.warn("Silhuetta: não foi possível ativar os recursos offline.",error)); }</script>
 </body>
 </html>

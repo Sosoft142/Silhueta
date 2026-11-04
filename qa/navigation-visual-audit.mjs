@@ -40,7 +40,46 @@ async function waitRoute(page,view,layer=null){await page.waitForFunction(({view
 async function history(page){await go(page,'measure');await page.locator('#measureHistoryTab').click();await page.waitForFunction(()=>history.state?.screen.measureSection==='history');}
 async function photo(page,name){await page.waitForTimeout(200);const bytes=await page.screenshot({path:path.join(output,name+'.jpg'),type:'jpeg',quality:48,fullPage:false});shots.push({name,bytes});}
 
+async function swipe(page,x,y,dx,dy=0){
+ const session=await page.context().newCDPSession(page);
+ try{
+  const send=(type,points)=>session.send('Input.dispatchTouchEvent',{type,touchPoints:points});
+  await send('touchStart',[{x,y}]);
+  for(let step=1;step<=5;step++)await send('touchMove',[{x:x+dx*step/5,y:y+dy*step/5}]);
+  await send('touchEnd',[]);
+ }finally{await session.detach();}
+}
 try{
+ await run('Silhuetta branding and mobile swipe through tabs and drawer',async({page})=>{
+  assert.match(await page.title(),/Silhuetta/);
+  assert.equal(await page.locator('.brand-name').textContent(),'Silhuetta');
+  const gap=await page.evaluate(()=>document.querySelector('.brand-symbol').getBoundingClientRect().left-document.getElementById('mobileMenuButton').getBoundingClientRect().right);
+  assert(gap>=12,'The logo needs space next to the menu button');
+  const manifest=await page.evaluate(async()=>await (await fetch('./manifest.webmanifest')).json());
+  assert.equal(manifest.short_name,'Silhuetta');assert.equal(manifest.id,'/Silhueta/index.html');
+  await swipe(page,90,120,135);await waitRoute(page,'dashboard','drawer');
+  assert.equal(await page.locator('.mobile-drawer-head strong').textContent(),'Silhuetta');
+  await travel(page,-1);await waitRoute(page,'dashboard');
+  await swipe(page,285,120,-145);await waitRoute(page,'measure');
+  await swipe(page,285,120,-145);await waitRoute(page,'trends');
+  await swipe(page,285,120,-145);await waitRoute(page,'nutrition');
+  await swipe(page,90,120,145);await waitRoute(page,'trends');
+  await travel(page,-1);await waitRoute(page,'nutrition');
+ },{standalone:true});
+ await run('Mobile swipes preserve system edges, vertical scrolling and dirty forms',async({page,dialogs})=>{
+  await swipe(page,12,120,130);assert.equal((await route(page)).layer,null);
+  await page.evaluate(()=>scrollTo({top:250,behavior:'instant'}));
+  await swipe(page,90,360,15,-150);
+  await page.waitForFunction(()=>scrollY>250);
+  assert.equal((await route(page)).screen.view,'dashboard');assert.equal((await route(page)).layer,null);
+  await go(page,'measure');
+  await page.locator('#quickValue').fill('71.2');
+  await page.evaluate(()=>scrollTo(0,0));
+  await swipe(page,280,120,-135);
+  assert.equal((await route(page)).screen.view,'measure');
+  assert.equal(await page.locator('#quickValue').inputValue(),'71.2');
+  assert.equal(dialogs.at(-1)?.type,'confirm');
+ });
  await run('Fluidity: a large history is ordered once per screen render',async({page})=>{
   const initial=await page.evaluate(()=>({queries:__flow.queries,renders:__flow.renders}));assert.equal(initial.queries,1);assert.equal(await page.locator('.recent-total').innerText(),'5000 medições');const details=[];
   for(const view of ['measure','trends','dashboard']){const before=await page.evaluate(()=>({queries:__flow.queries,renders:__flow.renders}));await go(page,view);await page.waitForTimeout(120);const after=await page.evaluate(()=>({queries:__flow.queries,renders:__flow.renders}));assert.deepEqual(await page.evaluate(()=>__flow.renderQueries.slice(-1)),[1],view+' repeated a full query within its render');assert.equal(after.renders-before.renders,1,view+' repeated its render');details.push({view,queries:after.queries-before.queries});}

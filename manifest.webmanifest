@@ -1,7 +1,7 @@
 {
   "id": "/Silhueta/index.html",
-  "name": "Silhueta — Meu projeto corporal",
-  "short_name": "Silhueta",
+  "name": "Silhuetta — Meu projeto corporal",
+  "short_name": "Silhuetta",
   "description": "Acompanhamento de medições, nutrição e recomposição corporal",
   "start_url": "./index.html",
   "scope": "./",
