@@ -1077,6 +1077,7 @@ form .btn,.settings-links .btn{max-width:100%;white-space:normal;text-align:cent
  .topbar{display:grid;grid-template-columns:minmax(0,1fr) 44px;gap:12px}
  .topbar-right{justify-self:end}
  #mobileMenuButton{margin-inline-end:4px}
+ .main-shell{overflow-x:clip}
  .main-shell{padding-bottom:max(110px,calc(var(--mobile-nav-height,86px) + 18px))}
 }
 @media(max-width:650px){
@@ -1131,7 +1132,7 @@ form .btn,.settings-links .btn{max-width:100%;white-space:normal;text-align:cent
 <script src="./navigation.js"></script>
 <script>
 (()=>{'use strict';
-const APP_VERSION='2.9.21';
+const APP_VERSION='2.9.22';
 const STORAGE_KEY='silhueta.app.v1', VERSION=7;
 const QUICK_METRIC_PREF_KEY='silhueta.ui.quickMetric';
 const MEASUREMENT_REMINDER_TIME_KEY='silhueta.ui.measurementReminderTime';
@@ -1413,7 +1414,10 @@ function applyNavigationRoute(route,options={}){
  const open=new Set(screen.openDetails);for(const details of document.querySelectorAll('#main details[id]'))details.open=open.has(details.id);
  if(route.layer==='sync')showSync();else hideSync();
  if(route.layer==='drawer')showMobileDrawer();else hideMobileDrawer();
- if(repaint&&previous?.view!==screen.view&&!options.initial)enterContent(document.getElementById('main'));
+ if(previous&&previous.view!==screen.view&&tabSwipe)clearTabSwipe();
+ if(repaint&&previous?.view!==screen.view&&!options.initial){
+  if(swipeEntryOffset)slideTabFrom(swipeEntryOffset);else enterContent(swipeSurface);
+ }
  window.scrollTo({left:route.scroll.x,top:route.scroll.y,behavior:'instant'});renderedNavigationScreen=captureNavigationScreen();
 }
 function openMobileDrawer(){appNavigation.open('drawer');}
@@ -1422,9 +1426,23 @@ function closeMobileDrawer(){if(appNavigation.layer==='drawer')appNavigation.clo
 // Keep OS edge gestures, vertical scrolling and interactive controls available.
 const mobileSwipeViewport=matchMedia('(max-width:850px)');
 const swipeSurface=document.getElementById('main');
-let tabSwipe=null;
-swipeSurface.addEventListener('touchstart',event=>{
+let tabSwipe=null,swipeEntryOffset=0;
+function slideTabFrom(offset){
+ if(offset)playMotion(swipeSurface,[{transform:`translateX(${offset}px)`},{transform:'translateX(0)'}],180);
+}
+function clearTabSwipe(){
+ const offset=tabSwipe?.offset||0;
  tabSwipe=null;
+ swipeSurface.style.removeProperty('translate');
+ return offset;
+}
+function cancelTabSwipe(){slideTabFrom(clearTabSwipe());}
+function swipeDestination(view,dx){
+ const index=NAV.findIndex(([name])=>name===view);
+ return index<0?undefined:NAV[index+(dx<0?1:-1)]?.[0];
+}
+swipeSurface.addEventListener('touchstart',event=>{
+ clearTabSwipe();
  if(!mobileSwipeViewport.matches||event.touches.length!==1||appNavigation.layer||appNavigation.moving||
     event.target.closest('button,a,input,textarea,select,summary,[contenteditable],.table-wrap,[data-history-chart]'))return;
  const touch=event.touches[0],edge=24;
@@ -1434,21 +1452,34 @@ swipeSurface.addEventListener('touchstart',event=>{
 swipeSurface.addEventListener('touchmove',event=>{
  if(!tabSwipe)return;
  const touch=event.touches[0];
- if(event.touches.length!==1||Math.abs(touch.clientY-tabSwipe.y)>Math.max(20,Math.abs(touch.clientX-tabSwipe.x)))tabSwipe=null;
+ if(event.touches.length!==1||tabSwipe.view!==ui.view||appNavigation.layer||appNavigation.moving){cancelTabSwipe();return;}
+ const dx=touch.clientX-tabSwipe.x,dy=touch.clientY-tabSwipe.y;
+ if(!tabSwipe.horizontal){
+  if(Math.abs(dy)>Math.max(12,Math.abs(dx))){cancelTabSwipe();return;}
+  if(Math.abs(dx)<12||Math.abs(dx)<Math.abs(dy)*1.6)return;
+  tabSwipe.horizontal=true;
+ }
+ if(REDUCED_MOTION.matches)return;
+ if(!tabSwipe.offset)MOTION_BY_ELEMENT.get(swipeSurface)?.cancel();
+ tabSwipe.offset=swipeDestination(tabSwipe.view,dx)?dx:0;
+ swipeSurface.style.translate=`${tabSwipe.offset}px 0`;
 },{passive:true});
-swipeSurface.addEventListener('touchcancel',()=>{tabSwipe=null;},{passive:true});
+swipeSurface.addEventListener('touchcancel',cancelTabSwipe,{passive:true});
+mobileSwipeViewport.addEventListener('change',cancelTabSwipe);
 swipeSurface.addEventListener('touchend',event=>{
- const start=tabSwipe;tabSwipe=null;
+ const start=tabSwipe,offset=clearTabSwipe();
  if(!start||event.touches.length||start.view!==ui.view||appNavigation.layer||appNavigation.moving||!mobileSwipeViewport.matches)return;
  const touch=[...event.changedTouches].find(t=>t.identifier===start.id);
- if(!touch)return;
+ if(!touch){slideTabFrom(offset);return;}
  const dx=touch.clientX-start.x,dy=touch.clientY-start.y;
- if(Math.abs(dx)<64||Math.abs(dx)<Math.abs(dy)*1.6)return;
- const index=NAV.findIndex(([view])=>view===ui.view);
- if(index<0)return;
- if(index===0&&dx>0){openMobileDrawer();return;}
- const next=NAV[index+(dx<0?1:-1)];
- if(next)appNavigation.navigate({...captureNavigationScreen(),view:next[0]});
+ if(Math.abs(dx)<64||Math.abs(dx)<Math.abs(dy)*1.6){slideTabFrom(offset);return;}
+ if(ui.view==='dashboard'&&dx>0){openMobileDrawer();return;}
+ const next=swipeDestination(ui.view,dx);
+ if(!next){slideTabFrom(offset);return;}
+ swipeEntryOffset=-Math.sign(dx)*Math.min(110,Math.abs(dx));
+ try{appNavigation.navigate({...captureNavigationScreen(),view:next});}
+ finally{swipeEntryOffset=0;}
+ if(ui.view===start.view)slideTabFrom(offset);
 },{passive:true});
 window.addEventListener('beforeunload',event=>{if(pendingFormChanges()||(!document.getElementById('syncModal').hidden&&!document.getElementById('syncConnectArea').hidden&&document.getElementById('gistToken').value.trim())){event.preventDefault();event.returnValue='';}});
 document.addEventListener('toggle',event=>{if(event.target.matches?.('#main details'))appNavigation?.remember();},true);

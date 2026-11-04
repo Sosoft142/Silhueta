@@ -1,6 +1,8 @@
-# Silhuetta · versão 2.9.21 — clareza e agilidade no acompanhamento
+# Silhuetta · versão 2.9.22 — clareza e agilidade no acompanhamento
 
 Aplicativo web instalável (PWA) para acompanhar medidas corporais, composição corporal, nutrição e evolução.
+
+Na versão 2.9.22, a guia acompanha o dedo enquanto você desliza horizontalmente. Ao soltar, a próxima guia entra ou a atual retorna, conforme a distância do gesto.
 
 A versão 2.9.21 adota o nome Silhuetta e separa um pouco mais a marca do botão de menu. Em telas móveis, deslize horizontalmente pelo conteúdo para percorrer Início, Medidas, Evolução e Nutrição. Em Início, deslize para a direita para abrir o menu lateral. Comece o gesto alguns centímetros para dentro da tela, deixando as bordas para o Android.
 

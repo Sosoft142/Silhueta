@@ -40,16 +40,35 @@ async function waitRoute(page,view,layer=null){await page.waitForFunction(({view
 async function history(page){await go(page,'measure');await page.locator('#measureHistoryTab').click();await page.waitForFunction(()=>history.state?.screen.measureSection==='history');}
 async function photo(page,name){await page.waitForTimeout(200);const bytes=await page.screenshot({path:path.join(output,name+'.jpg'),type:'jpeg',quality:48,fullPage:false});shots.push({name,bytes});}
 
-async function swipe(page,x,y,dx,dy=0){
+async function swipe(page,x,y,dx,dy=0,beforeRelease){
  const session=await page.context().newCDPSession(page);
  try{
   const send=(type,points)=>session.send('Input.dispatchTouchEvent',{type,touchPoints:points});
   await send('touchStart',[{x,y}]);
   for(let step=1;step<=5;step++)await send('touchMove',[{x:x+dx*step/5,y:y+dy*step/5}]);
+  await beforeRelease?.();
   await send('touchEnd',[]);
  }finally{await session.detach();}
 }
 try{
+ await run('The active tab follows the finger before release and short swipes snap back',async({page})=>{
+  const position=()=>page.locator('#main').evaluate(el=>getComputedStyle(el).translate);
+  const before=await route(page);
+  await swipe(page,260,120,-45,0,async()=>{
+   assert.equal(await position(),'-45px');
+   assert.equal((await route(page)).key,before.key);
+  });
+  await page.waitForFunction(()=>getComputedStyle(document.getElementById('main')).transform==='none');
+  assert.equal(await position(),'none');assert.equal((await route(page)).key,before.key);
+  await swipe(page,285,120,-130,0,async()=>{
+   assert.equal(await position(),'-130px');
+   assert.equal((await route(page)).screen.view,'dashboard');
+   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth),390);
+  });
+  await waitRoute(page,'measure');
+  assert.equal(await position(),'none');
+  await travel(page,-1);await waitRoute(page,'dashboard');
+ },{reducedMotion:'no-preference'});
  await run('Silhuetta branding and mobile swipe through tabs and drawer',async({page})=>{
   assert.match(await page.title(),/Silhuetta/);
   assert.equal(await page.locator('.brand-name').textContent(),'Silhuetta');
