@@ -69,7 +69,7 @@ A auditoria `qa/pwa-install-audit.mjs` verifica a identidade calculada pelo Chro
 Referências: [identidade de PWAs no Chrome](https://developer.chrome.com/docs/capabilities/pwa-manifest-id) e [atualizações do manifest no Chrome](https://web.dev/articles/manifest-updates).
 
 ## Publicação
-Hospedado no GitHub Pages: https://sosoft142.github.io/Silhueta/
+Hospedado no GitHub Pages: https://sosoft142.github.io/Silhuetta/
 
 ## Como começar
 1. Em **Medidas**, escolha a região e informe o valor e a data. O histórico fica na área **Histórico**, separado do formulário; o guia anatômico pode ser aberto quando necessário.

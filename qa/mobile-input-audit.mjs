@@ -117,7 +117,7 @@ async function run(name,fn,opts={}){
  let h;try{h=await openPage(opts.width||390,opts.seed||emptyState(),!!opts.acceptDialogs,opts);const detail=await fn(h);results.push({name,status:'pass',...detail});}catch(e){results.push({name,status:'fail',error:e.message});}finally{console.log('SILHUETA_TEST_RESULT '+JSON.stringify({name,status:results.at(-1)?.status,error:results.at(-1)?.error}));if(h){if(h.errors.length)runtimeErrors.push({test:name,errors:h.errors});await h.context.close();}}
 }
 try{
- const local=await readFile(path.join(root,'index.html'));let live={};try{const r=await fetch('https://sosoft142.github.io/Silhueta/',{signal:AbortSignal.timeout(20000)}),bytes=Buffer.from(await r.arrayBuffer());live={httpStatus:r.status,sameAsRepository:local.equals(bytes),sha256:createHash('sha256').update(bytes).digest('hex')};}catch(e){live={error:e.message};}
+ const local=await readFile(path.join(root,'index.html'));let live={};try{const r=await fetch('https://sosoft142.github.io/Silhuetta/',{signal:AbortSignal.timeout(20000)}),bytes=Buffer.from(await r.arrayBuffer());live={httpStatus:r.status,sameAsRepository:local.equals(bytes),sha256:createHash('sha256').update(bytes).digest('hex')};}catch(e){live={error:e.message};}
  results.push({name:'Published source comparison',status:live.sameAsRepository?'pass':'info',...live,repositoryBlob:createHash('sha1').update('blob '+local.length+'\0').update(local).digest('hex')});
  const layoutWidths=[320,360,390,414,660,768,851,1024,1101,1440];
  for(const width of layoutWidths){
