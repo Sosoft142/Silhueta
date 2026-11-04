@@ -1,4 +1,4 @@
-# Silhuetta · versão 2.9.22 — clareza e agilidade no acompanhamento
+# Silhuetta · versão 2.9.23 — clareza e agilidade no acompanhamento
 
 Aplicativo web instalável (PWA) para acompanhar medidas corporais, composição corporal, nutrição e evolução.
 

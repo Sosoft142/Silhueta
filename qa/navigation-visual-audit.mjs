@@ -69,6 +69,26 @@ try{
   assert.equal(await position(),'none');
   await travel(page,-1);await waitRoute(page,'dashboard');
  },{reducedMotion:'no-preference'});
+ await run('Horizontal swipes start on measurement cards and charts without clicking them',async({page})=>{
+  await page.evaluate(()=>{window.swipeClicks=[];document.addEventListener('click',event=>{
+   const control=event.target.closest('[data-action]');if(control)swipeClicks.push(control.dataset.action);
+  });});
+  const card=page.locator('.metric-tile[data-metric="waist"]');
+  const box=await card.boundingBox();
+  await swipe(page,box.x+box.width/2,box.y+box.height/2,-105,0,async()=>{
+   assert.equal(await page.locator('#main').evaluate(el=>getComputedStyle(el).translate),'-105px');
+  });
+  await waitRoute(page,'measure');
+  assert.deepEqual(await page.evaluate(()=>swipeClicks),[]);
+  await go(page,'trends');
+  const chart=await page.locator('[data-history-chart]').first().boundingBox();
+  await swipe(page,chart.x+chart.width*.7,chart.y+chart.height*.35,-115);
+  await waitRoute(page,'nutrition');
+  assert.equal(await page.evaluate(()=>swipeClicks.includes('inspectChartPoint')),false);
+  await go(page,'dashboard');
+  await card.tap();await waitRoute(page,'measure');
+  assert.equal(await page.locator('#quickMetric').inputValue(),'waist');
+ },{reducedMotion:'no-preference'});
  await run('Silhuetta branding and mobile swipe through tabs and drawer',async({page})=>{
   assert.match(await page.title(),/Silhuetta/);
   assert.equal(await page.locator('.brand-name').textContent(),'Silhuetta');

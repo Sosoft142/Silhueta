@@ -1078,6 +1078,7 @@ form .btn,.settings-links .btn{max-width:100%;white-space:normal;text-align:cent
  .topbar-right{justify-self:end}
  #mobileMenuButton{margin-inline-end:4px}
  .main-shell{overflow-x:clip}
+ #main{touch-action:pan-y pinch-zoom}
  .main-shell{padding-bottom:max(110px,calc(var(--mobile-nav-height,86px) + 18px))}
 }
 @media(max-width:650px){
@@ -1132,7 +1133,7 @@ form .btn,.settings-links .btn{max-width:100%;white-space:normal;text-align:cent
 <script src="./navigation.js"></script>
 <script>
 (()=>{'use strict';
-const APP_VERSION='2.9.22';
+const APP_VERSION='2.9.23';
 const STORAGE_KEY='silhueta.app.v1', VERSION=7;
 const QUICK_METRIC_PREF_KEY='silhueta.ui.quickMetric';
 const MEASUREMENT_REMINDER_TIME_KEY='silhueta.ui.measurementReminderTime';
@@ -1444,7 +1445,7 @@ function swipeDestination(view,dx){
 swipeSurface.addEventListener('touchstart',event=>{
  clearTabSwipe();
  if(!mobileSwipeViewport.matches||event.touches.length!==1||appNavigation.layer||appNavigation.moving||
-    event.target.closest('button,a,input,textarea,select,summary,[contenteditable],.table-wrap,[data-history-chart]'))return;
+    event.target.closest('input,textarea,select,[contenteditable],.table-wrap'))return;
  const touch=event.touches[0],edge=24;
  if(touch.clientX<=edge||touch.clientX>=innerWidth-edge)return;
  tabSwipe={id:touch.identifier,x:touch.clientX,y:touch.clientY,view:ui.view};
@@ -1456,7 +1457,7 @@ swipeSurface.addEventListener('touchmove',event=>{
  const dx=touch.clientX-tabSwipe.x,dy=touch.clientY-tabSwipe.y;
  if(!tabSwipe.horizontal){
   if(Math.abs(dy)>Math.max(12,Math.abs(dx))){cancelTabSwipe();return;}
-  if(Math.abs(dx)<12||Math.abs(dx)<Math.abs(dy)*1.6)return;
+  if(Math.abs(dx)<12||Math.abs(dx)<Math.abs(dy)*1.2)return;
   tabSwipe.horizontal=true;
  }
  if(REDUCED_MOTION.matches)return;
@@ -1471,8 +1472,10 @@ swipeSurface.addEventListener('touchend',event=>{
  if(!start||event.touches.length||start.view!==ui.view||appNavigation.layer||appNavigation.moving||!mobileSwipeViewport.matches)return;
  const touch=[...event.changedTouches].find(t=>t.identifier===start.id);
  if(!touch){slideTabFrom(offset);return;}
- const dx=touch.clientX-start.x,dy=touch.clientY-start.y;
- if(Math.abs(dx)<64||Math.abs(dx)<Math.abs(dy)*1.6){slideTabFrom(offset);return;}
+ // A completed horizontal drag must not also activate its starting control.
+ if(start.horizontal&&event.cancelable)event.preventDefault();
+ const dx=touch.clientX-start.x;
+ if(!start.horizontal||Math.abs(dx)<64){slideTabFrom(offset);return;}
  if(ui.view==='dashboard'&&dx>0){openMobileDrawer();return;}
  const next=swipeDestination(ui.view,dx);
  if(!next){slideTabFrom(offset);return;}
@@ -1480,7 +1483,7 @@ swipeSurface.addEventListener('touchend',event=>{
  try{appNavigation.navigate({...captureNavigationScreen(),view:next});}
  finally{swipeEntryOffset=0;}
  if(ui.view===start.view)slideTabFrom(offset);
-},{passive:true});
+},{passive:false});
 window.addEventListener('beforeunload',event=>{if(pendingFormChanges()||(!document.getElementById('syncModal').hidden&&!document.getElementById('syncConnectArea').hidden&&document.getElementById('gistToken').value.trim())){event.preventDefault();event.returnValue='';}});
 document.addEventListener('toggle',event=>{if(event.target.matches?.('#main details'))appNavigation?.remember();},true);
 
