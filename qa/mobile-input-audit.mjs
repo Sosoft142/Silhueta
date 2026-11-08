@@ -119,6 +119,45 @@ async function run(name,fn,opts={}){
 try{
  const local=await readFile(path.join(root,'index.html'));let live={};try{const r=await fetch('https://sosoft142.github.io/Silhuetta/',{signal:AbortSignal.timeout(20000)}),bytes=Buffer.from(await r.arrayBuffer());live={httpStatus:r.status,sameAsRepository:local.equals(bytes),sha256:createHash('sha256').update(bytes).digest('hex')};}catch(e){live={error:e.message};}
  results.push({name:'Published source comparison',status:live.sameAsRepository?'pass':'info',...live,repositoryBlob:createHash('sha1').update('blob '+local.length+'\0').update(local).digest('hex')});
+ await run('Checkup: Help history link opens the history panel',async({page})=>{
+  await go(page,'help');await page.getByRole('button',{name:'Consultar histórico',exact:true}).click();
+  assert(await page.locator('#measureHistoryPanel').isVisible(),'Help opened registration instead of history');
+ },{seed:filledState()});
+ await run('Checkup: measurement CSV preserves notes and undated legacy records',async({page,dialogs})=>{
+  const fixture=await state(page);
+  const pending=page.waitForEvent('download');await go(page,'trends');await page.locator('[data-action="exportCSV"]').click();
+  const file=await (await pending).path(),csv=await readFile(file);
+  await page.setInputFiles('#importFile',{name:'empty.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify({data:emptyState()}))});
+  await page.waitForFunction(()=>Object.keys(JSON.parse(localStorage.getItem('silhueta.app.v1')).metricEntries).length===0);
+  await page.setInputFiles('#importFile',{name:'roundtrip.csv',mimeType:'text/csv',buffer:csv});
+  await page.waitForTimeout(300);
+  const saved=await state(page);
+  for(const [id,record] of Object.entries(fixture.metricEntries)){
+   assert(saved.metricEntries[id]?.value===record.value,'CSV did not restore '+id+'; '+dialogs.join(' | '));
+   assert(saved.metricEntries[id]?.note===record.note,'CSV discarded the measurement note');
+  }
+ },{seed:(()=>{const data=filledState();data.metricEntries.legacy_0_neck={metric:'neck',value:33,date:'',origin:'legacy',note:'Vírgula, aspas "e"\nlinha nova',updatedAt:'2026-01-01T12:00:00Z'};return data;})(),acceptDialogs:true});
+ await run('Checkup: local edits supersede an imported future sync clock',async({page})=>{
+  const before=await state(page),key='profile.startDate';
+  await go(page,'settings');await page.locator('#startDate').fill('2026-01-02');await page.locator('[data-action="saveSettings"]').click();
+  assert((await state(page)).meta.clock[key]>before.meta.clock[key],'Saving lowered an existing sync clock');
+ },{seed:(()=>{const data=emptyState();data.meta.clock={'profile.startDate':Date.now()+86400000};return data;})(),acceptDialogs:true});
+ await run('Checkup: synchronization retains the selected nutrition week',async({page,context})=>{
+  await go(page,'nutrition');await page.locator('#nutWeekPicker').selectOption('2');
+  await mockGist(context,await state(page));await startMockSync(page);await waitSyncSuccess(page);
+  assert(await page.locator('#nutWeekPicker').inputValue()==='2','Sync changed the selected week');
+ },{seed:filledState(),acceptDialogs:true});
+ await run('Checkup: disconnecting ignores a pending synchronization response',async({page,context})=>{
+  const before=await state(page),remote=structuredClone(before);remote.profile.startDate='2026-01-01';remote.meta.clock={'profile.startDate':Date.now()+60000};
+  const mock=await mockGist(context,remote);mock.gate=new Promise(resolve=>{mock.release=resolve;});
+  await startMockSync(page,{remember:true});
+  await page.waitForFunction(()=>document.getElementById('syncState').classList.contains('sync-progress'));
+  await page.locator('[data-action="gistRemoveToken"]').click();mock.release();mock.gate=null;
+  await page.waitForTimeout(1200);
+  assert((await state(page)).profile.startDate===before.profile.startDate,'An old request changed data after disconnect');
+  assert(!await page.evaluate(()=>localStorage.getItem('silhueta.ui.lastSyncConfirmation')),'Disconnect was replaced with a cloud confirmation');
+  assert(!await page.locator('#syncState').evaluate(el=>el.classList.contains('sync-ok')),'Disconnected device became green');
+ },{seed:filledState(),acceptDialogs:true});
  const layoutWidths=[320,360,390,414,660,768,851,1024,1101,1440];
  for(const width of layoutWidths){
   await run('Layout normal and navigation '+width+'px',async({page,errors})=>{
