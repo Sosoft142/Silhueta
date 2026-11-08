@@ -22,3 +22,6 @@
 - Formulários expansíveis de metas e agenda têm etapa própria no histórico. Fechar uma seção preserva seu DOM e os rascunhos; sair da tela continua exigindo descarte confirmado. Salvar metas consome a etapa sem apagar outro formulário. Se um select nativo cortar seu valor, mostre o texto completo somente nesse caso, sem duplicar a leitura assistiva.
 
 - A ordenação compartilhada de medições dura somente a renderização síncrona (`withMetricSnapshot`); sempre descarte a cópia ao terminar, inclusive em caso de erro. Nunca reutilize esse resultado após uma edição, importação ou sincronização. Preserve os nós da navegação, a seleção do campo ativo e a reutilização do observador dos seletores. Gravações de History API devem ocorrer somente quando o estado efetivamente muda.
+
+- As cores ficam em preferences.appearance, como um conjunto sincronizado; null restaura a aparência original. Normalize apenas cores hexadecimais de seis dígitos e inclua as preferências no JSON e no Gist criptografado. Não crie uma cópia de aparência exclusiva do aparelho.
+- appearance.js e appearance.css fazem parte de CORE no service worker. As cores personalizadas devem manter os textos legíveis e preservar as cores semânticas de erro, progresso e confirmação da sincronização.

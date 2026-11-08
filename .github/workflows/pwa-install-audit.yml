@@ -4,6 +4,8 @@ on:
     branches: [main]
     paths:
       - index.html
+      - appearance.js
+      - appearance.css
       - navigation.js
       - manifest.webmanifest
       - service-worker.js
@@ -14,6 +16,8 @@ on:
   pull_request:
     paths:
       - index.html
+      - appearance.js
+      - appearance.css
       - navigation.js
       - manifest.webmanifest
       - service-worker.js

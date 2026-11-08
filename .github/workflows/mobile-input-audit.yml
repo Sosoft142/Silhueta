@@ -4,6 +4,8 @@ on:
     branches: [main, fix/mobile-inputs-2-9-1]
     paths:
       - index.html
+      - appearance.js
+      - appearance.css
       - navigation.js
       - service-worker.js
       - qa/mobile-input-audit.mjs
@@ -11,6 +13,8 @@ on:
   pull_request:
     paths:
       - index.html
+      - appearance.js
+      - appearance.css
       - navigation.js
       - service-worker.js
       - qa/mobile-input-audit.mjs

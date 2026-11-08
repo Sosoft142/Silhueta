@@ -11,7 +11,7 @@ const results=[],shots=[],runtimeErrors=[];
 const assert=(condition,message)=>{if(!condition)throw new Error(message);};
 const emptyState=()=>({version:7,meta:{updatedAt:'2026-10-20T12:00:00.000Z',lastSyncAt:'',syncState:'local-only',historyMigratedV23:true},profile:{age:null,height:null,baselineWeight:null,startDate:'',months:12,hormoneMonths:null,workoutsPlanned:null,goalWeight:null,goalWaist:null,goalHip:null},macros:{protein:null,carbs:null,fat:null,calorieReference:null},measurements:{},metricEntries:{},preferences:{favoriteMetrics:['weight','waist','hip'],quickMetrics:['weight','waist','hip']},nutritionLogs:{}});
 function filledState(){const s=emptyState();s.profile.startDate='2026-10-01';s.macros={protein:120,carbs:220,fat:60,calorieReference:1900};for(const [id,metric,value,date]of [['m_test_weight_old','weight',75,'2026-10-01'],['m_test_weight_new','weight',74.5,'2026-10-20'],['m_test_waist_old','waist',85,'2026-10-01'],['m_test_waist_new','waist',84.5,'2026-10-20'],['m_test_hip_old','hip',102,'2026-10-01'],['m_test_hip_new','hip',102.5,'2026-10-20']])s.metricEntries[id]={metric,value,date,note:'Registro fictício de teste',updatedAt:date+'T12:00:00.000Z'};s.nutritionLogs={'0':{calories:1900,workouts:3,cardio:90,sleep:7.5,notes:'Registro fictício de teste'}};return s;}
-const types={'.html':'text/html; charset=utf-8','.js':'application/javascript','.json':'application/json','.webmanifest':'application/manifest+json','.png':'image/png','.svg':'image/svg+xml'};
+const types={'.html':'text/html; charset=utf-8','.js':'application/javascript','.css':'text/css','.json':'application/json','.webmanifest':'application/manifest+json','.png':'image/png','.svg':'image/svg+xml'};
 function longHistoryState(count=137){const s=emptyState(),metrics=['weight','waist','hip','bust'];for(let i=0;i<count;i++){const date=new Date(Date.UTC(2026,9,28-Math.floor(i/4)*3)).toISOString().slice(0,10);s.metricEntries['m_history_'+String(i).padStart(3,'0')]={metric:metrics[i%4],value:75+i%8,date,note:i===0?'<img src=x onerror=alert(1)> '+ 'x'.repeat(450):'Observação fictícia '+i,updatedAt:date+'T12:'+String(59-i%4).padStart(2,'0')+':00.000Z'};}return s;}
 const server=createServer(async(req,res)=>{try{const pathname=decodeURIComponent(new URL(req.url,'http://localhost').pathname);const file=path.resolve(root,'.'+(pathname==='/'?'/index.html':pathname));if(!file.startsWith(root+path.sep)){res.writeHead(403);res.end();return;}const bytes=await readFile(file);res.writeHead(200,{'Content-Type':types[path.extname(file)]||'application/octet-stream','Cache-Control':'no-store'});res.end(bytes);}catch{res.writeHead(404);res.end('Not found');}});
 await new Promise(resolve=>server.listen(4173,'127.0.0.1',resolve));
@@ -158,6 +158,87 @@ try{
   assert(!await page.evaluate(()=>localStorage.getItem('silhueta.ui.lastSyncConfirmation')),'Disconnect was replaced with a cloud confirmation');
   assert(!await page.locator('#syncState').evaluate(el=>el.classList.contains('sync-ok')),'Disconnected device became green');
  },{seed:filledState(),acceptDialogs:true});
+ await run('Appearance: palettes and eight colors save immediately without losing another draft',async({page})=>{
+  await go(page,'settings');await page.locator('#startDate').fill('2026-03-02');
+  const options=await page.locator('#appearancePreset option').count();assert(options===15,'Expected fourteen palettes and a custom option');
+  for(const palette of ['teal','blue','purple','wine','green','ochre','coral','cyan','indigo','fuchsia','orange','lime','slate']){
+   await page.locator('#appearancePreset').selectOption(palette);
+   const saved=await state(page);
+   assert(saved.preferences.appearance?.accent&&await page.locator('#appearancePreset').inputValue()===palette,'Preset was not retained');
+   assert(await page.locator('#startDate').inputValue()==='2026-03-02','Appearance erased the date draft');
+  }
+  await page.locator('.appearance-details>summary').click();
+  for(const [field,color] of Object.entries({accent:'#195582',secondary:'#af4b2c',background:'#f1f5f9',surface:'#fffdf5',navigation:'#e1f2e8',border:'#718096',chartPrimary:'#125d98',chartSecondary:'#a83c22'})){
+   await page.locator('#appearance-hex-'+field).fill(color);await page.locator('#appearance-hex-'+field).blur();
+   assert((await state(page)).preferences.appearance[field]===color,'Custom '+field+' did not save');
+   assert(await page.locator('#appearance-'+field).inputValue()===color,'Color and code diverged');
+  }
+  assert(await page.locator('#appearancePreset').inputValue()==='custom','Custom appearance lost its label');
+  await snap(page,'390-personalized-colors');
+  await page.reload({waitUntil:'networkidle'});await go(page,'settings');
+  assert(await page.locator('#appearancePreset').inputValue()==='custom','Reload discarded appearance');
+  assert((await state(page)).preferences.appearance.chartSecondary==='#a83c22','Reload lost custom chart color');
+  await go(page,'trends');
+  assert(await page.locator('.chart-svg path[stroke="#125d98"]').count()>0,'Primary chart color was not applied');
+  assert(await page.locator('.chart-svg path[stroke="#a83c22"]').count()>0,'Secondary chart color was not applied');
+
+ },{seed:filledState()});
+ await run('Appearance: encrypted cloud backup restores colors on another device and syncs reset',async({page,context})=>{
+  await go(page,'settings');await page.locator('#appearancePreset').selectOption('teal');
+  const expected=(await state(page)).preferences.appearance,mock=await mockGist(context,emptyState());
+  await startMockSync(page);await waitSyncSuccess(page);
+  const cloud=await decryptedFixture(mock.envelope);
+  assert(JSON.stringify(cloud.preferences.appearance)===JSON.stringify(expected),'Encrypted Gist lacks the colors');
+  const second=await openPage(390,emptyState(),true);
+  try{
+   const remote=await mockGist(second.context,cloud);
+   await startMockSync(second.page);await waitSyncSuccess(second.page);await second.page.locator('.sync-close').click();
+   await go(second.page,'settings');
+   assert(await second.page.locator('#appearancePreset').inputValue()==='teal','Fresh device did not restore cloud colors');
+   await second.page.locator('[data-action="resetAppearance"]').click();
+   await second.page.locator('.sync-trigger').click();await second.page.locator('#syncMainButton').click();await waitSyncSuccess(second.page);
+   assert((await decryptedFixture(remote.envelope)).preferences.appearance===null,'Original palette reset was not backed up');
+   assert(await second.page.evaluate(()=>!document.documentElement.hasAttribute('data-custom-colors')),'Reset left palette overrides enabled');
+  }finally{await second.context.close();}
+ },{seed:filledState(),acceptDialogs:true});
+ await run('Appearance: JSON round trip and malformed colors preserve existing data',async({page,dialogs})=>{
+  await go(page,'settings');await page.locator('#appearancePreset').selectOption('indigo');
+  const expected=(await state(page)).preferences.appearance,pending=page.waitForEvent('download');
+  await go(page,'help');await page.locator('#main [data-action="exportJSON"]').click();
+  const bytes=await readFile(await (await pending).path());
+  await go(page,'settings');await page.locator('[data-action="resetAppearance"]').click();
+  await page.setInputFiles('#importFile',{name:'theme.json',mimeType:'application/json',buffer:bytes});
+  await page.waitForFunction(()=>JSON.parse(localStorage.getItem('silhueta.app.v1')).preferences.appearance?.accent==='#4f46e5');
+  assert(JSON.stringify((await state(page)).preferences.appearance)===JSON.stringify(expected),'Backup failed to restore colors');
+  const before=await state(page),invalid=structuredClone(before);invalid.preferences.appearance.accent='url(https://invalid.test)';
+  await page.setInputFiles('#importFile',{name:'bad-theme.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify({data:invalid}))});
+  await page.waitForTimeout(100);
+  assert(JSON.stringify(await state(page))===JSON.stringify(before),'Invalid color modified records');
+  assert(dialogs.some(message=>message.includes('Cor inválida')),'Invalid import did not explain the failure');
+ },{seed:filledState(),acceptDialogs:true});
+ await run('Appearance: mobile controls fit and custom backgrounds keep text readable',async({page})=>{
+  await go(page,'settings');await page.locator('#appearancePreset').selectOption('coral');await page.locator('.appearance-details>summary').click();
+  for(const color of ['#181820','#ffffff']){
+   for(const field of ['surface','navigation','background']){await page.locator('#appearance-hex-'+field).fill(color);await page.locator('#appearance-hex-'+field).blur();}
+   for(const width of [320,390,768,1440]){
+    await page.setViewportSize({width,height:844});
+    assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),'Color controls overflow');
+    const result=await page.locator('.appearance-settings').evaluate(el=>({text:getComputedStyle(el).color,bg:getComputedStyle(el).backgroundColor}));
+    assert(color==='#ffffff'?result.text!=='rgb(255, 255, 255)':result.text==='rgb(255, 255, 255)','Text did not adapt to custom surface');
+   }
+   await page.setViewportSize({width:390,height:844});await snap(page,color==='#ffffff'?'390-light-custom-colors':'390-dark-custom-colors');
+  }
+  for(const field of ['surface','navigation','background']){await page.locator('#appearance-hex-'+field).fill('#181820');await page.locator('#appearance-hex-'+field).blur();}
+  for(const view of ['dashboard','measure','trends','nutrition','help']){
+   await go(page,view);
+   if(['dashboard','measure','trends'].includes(view))await snap(page,'390-dark-'+view);
+  }
+  await go(page,'settings');await page.locator('.appearance-details>summary').click();
+  const before=(await state(page)).preferences.appearance;
+  await page.locator('#appearance-hex-accent').fill('invalid');await page.locator('#appearance-hex-accent').blur();
+  assert(await page.locator('#appearance-hex-accent').getAttribute('aria-invalid')==='true','Invalid code has no feedback');
+  assert(JSON.stringify((await state(page)).preferences.appearance)===JSON.stringify(before),'Invalid code was stored');
+ },{seed:filledState()});
  const layoutWidths=[320,360,390,414,660,768,851,1024,1101,1440];
  for(const width of layoutWidths){
   await run('Layout normal and navigation '+width+'px',async({page,errors})=>{

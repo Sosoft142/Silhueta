@@ -1,0 +1,60 @@
+.appearance-settings .settings-summary{gap:12px;margin-top:16px}
+.appearance-settings .settings-summary>span{flex:1 1 210px}
+.appearance-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;margin-top:16px}
+.appearance-field{min-width:0}
+.appearance-field>label{display:block;font-size:13px;font-weight:700;margin-bottom:7px}
+.appearance-inputs{display:grid;grid-template-columns:48px minmax(0,1fr);gap:8px}
+.appearance-inputs input{min-width:0;width:100%;height:46px;border:1px solid var(--border);border-radius:10px;background:white;color:var(--ink)}
+.appearance-inputs input[type=color]{padding:4px;cursor:pointer}
+.appearance-inputs input[type=text]{padding:8px;font-size:14px;font-family:ui-monospace,monospace}
+.appearance-inputs input[aria-invalid=true]{outline:2px solid #af4765}
+@media(max-width:420px){.appearance-grid{grid-template-columns:1fr}}
+/* Theme overrides are enabled only after choosing a custom palette. */
+html[data-custom-colors]{--ink:var(--theme-ink);--sub:var(--theme-muted);--border:var(--theme-border);--rose:var(--theme-accent);--rose-dark:var(--theme-accent-ink);--rose-soft:var(--theme-soft);--lavender:var(--theme-secondary);--lavender-soft:var(--theme-soft);--rose-pale:var(--theme-soft)}
+html[data-custom-colors] body{background:var(--theme-background);color:var(--theme-page-ink)}
+html[data-custom-colors] :is(.page-title,.brand-name){color:var(--theme-accent-page)}
+html[data-custom-colors] :is(.page-desc,.overview-heading p,.app-version){color:var(--theme-page-muted)}
+html[data-custom-colors] :is(.card,.metric-tile,.recent-week,.howto-step,.trends-intro,.anatomy-copy,.measurement-schedule){background:var(--theme-surface);border-color:var(--theme-border);color:var(--theme-ink)}
+html[data-custom-colors] :is(.sidebar,.mobile-nav,.mobile-drawer-panel){background:var(--theme-navigation);border-color:var(--theme-border);color:var(--theme-nav-ink)}
+html[data-custom-colors] :is(.nav-btn,.mobile-link){color:var(--theme-nav-muted)}
+html[data-custom-colors] :is(.nav-btn:hover,.nav-btn.active,.mobile-link.active){background:var(--theme-nav-soft);color:var(--theme-on-nav-soft)}
+html[data-custom-colors] :is(.brand h1,.nav-label,.mobile-drawer-head strong){color:var(--theme-nav-ink)}
+html[data-custom-colors] :is(.mobile-menu-trigger,.sidebar-toggle){background:var(--theme-navigation);border-color:var(--theme-border);color:var(--theme-nav-ink)}
+html[data-custom-colors] :is(.card,.metric-tile,.howto-step,.anatomy-copy) :is(h2,h3,label,strong,.metric-title){color:var(--theme-ink)}
+html[data-custom-colors] #main :is(.card-sub,.small-muted,.fine-print,.help-mini,.form-block-desc,.chart-hint,.metric-tile small,.metric-tile p){color:var(--theme-muted)}
+html[data-custom-colors] #main :is(.field input,.field textarea,.field select,.body-choice,.history-controls select,.week-select,.appearance-inputs input){background:var(--theme-surface);border-color:var(--theme-border);color:var(--theme-ink)}
+html[data-custom-colors] #main :is(input,textarea)::placeholder{color:var(--theme-muted)}
+html[data-custom-colors] :is(button,a,input,select,textarea):focus-visible{outline-color:var(--theme-accent-ink)}
+html[data-custom-colors] :is(.btn-primary,.sync-primary){background:var(--theme-accent);border-color:var(--theme-accent);color:var(--theme-on-accent);box-shadow:none}
+html[data-custom-colors] :is(.subtle-chip,.step-icon,.empty-symbol,.overview-icon,.howto-num){background:var(--theme-soft);border-color:var(--theme-border);color:var(--theme-on-soft)}
+html[data-custom-colors] :is(.btn-plain,.week-arrow,.sync-secondary-actions button){background:var(--theme-surface);border-color:var(--theme-border);color:var(--theme-ink)}
+html[data-custom-colors] :is(.measure-guide-link,.sync-link){color:var(--theme-accent-ink)}
+html[data-custom-colors] :is(.entry-mode,.week-context,.chart-readout,.goal-result,.settings-optional,.favorite-settings,.dashboard-customization){background:var(--theme-soft);border-color:var(--theme-border);color:var(--theme-ink)}
+html[data-custom-colors] :is(.entry-mode button,.measurement-tabs button,.guide-region){background:transparent;color:var(--theme-muted);border-color:var(--theme-border)}
+html[data-custom-colors] :is(.entry-mode button.selected,.guide-region.selected,.measurement-tabs button[aria-selected=true]){background:var(--theme-soft);color:var(--theme-on-soft);border-color:var(--theme-accent)}
+html[data-custom-colors] :is(.metric-tile:hover,.recent-week:hover,.history-item){background:var(--theme-surface);border-color:var(--theme-border)}
+html[data-custom-colors] :is(.history-date-heading,.history-controls,.measurement-tabs,.help-divider,.mobile-drawer-head,.sidebar-utilities){border-color:var(--theme-border)}
+html[data-custom-colors] :is(.history-summary,.history-date-heading h3,.recent-day h3,.recent-week small,.history-note summary,.goal-result span,.chart-legend){color:var(--theme-muted)}
+html[data-custom-colors] .overview-heading h2{color:var(--theme-page-ink)}
+html[data-custom-colors] .chart-svg text{fill:var(--theme-muted)}
+html[data-custom-colors] .chart-svg line{stroke:var(--theme-border)}
+html[data-custom-colors] .chart-dot{fill:var(--theme-surface)}
+html[data-custom-colors] .sync-dialog{background:var(--theme-surface);color:var(--theme-ink)}
+html[data-custom-colors] :is(.sync-header h2,.sync-close,.sync-field label,.sync-footer button){color:var(--theme-ink)}
+html[data-custom-colors] :is(.sync-input,.sync-dialog input){background:var(--theme-surface);border-color:var(--theme-border);color:var(--theme-ink)}
+
+html[data-custom-colors] .btn-soft{background:var(--theme-secondary-soft);border-color:var(--theme-border);color:var(--theme-on-secondary-soft)}
+html[data-custom-colors] :is(.text-action,.step-link){color:var(--theme-secondary-ink)}
+
+html[data-custom-colors] .recent-total{color:var(--theme-ink)}
+html[data-custom-colors] :is(.help-extra,.detail-panel,.inline-goal-form,.inline-macro-form)>summary{color:var(--theme-accent-ink)}
+html[data-custom-colors] :is(.card,.howto-step,.ux-hero) p{color:var(--theme-muted)}
+html[data-custom-colors] .ux-hero{background:var(--theme-soft);border-color:var(--theme-border)}
+html[data-custom-colors] .ux-hero h2{color:var(--theme-ink)}
+html[data-custom-colors] .overview-heading .text-action{color:var(--theme-accent-page)}
+html[data-custom-colors] :is(.sync-summary,.sync-caution){background:var(--theme-soft);border-color:var(--theme-border);color:var(--theme-ink)}
+
+html[data-custom-colors] .recent-week>span:last-child{color:var(--theme-muted)}
+html[data-custom-colors] :is(.field input,.field select,.field textarea,.appearance-inputs input){color-scheme:var(--theme-control-scheme)}
+html[data-custom-colors] .brand-symbol{filter:var(--theme-brand-filter)}
+html[data-custom-colors] .mark img{filter:var(--theme-nav-brand-filter)}

@@ -3,6 +3,8 @@ on:
   pull_request:
     paths:
       - index.html
+      - appearance.js
+      - appearance.css
       - navigation.js
       - qa/navigation-visual-audit.mjs
       - .github/workflows/navigation-visual-audit.yml
@@ -10,6 +12,8 @@ on:
     branches: [main]
     paths:
       - index.html
+      - appearance.js
+      - appearance.css
       - navigation.js
       - qa/navigation-visual-audit.mjs
       - .github/workflows/navigation-visual-audit.yml

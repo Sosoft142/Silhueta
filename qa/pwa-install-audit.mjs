@@ -21,7 +21,7 @@ async function check(name,fn){
  catch(error){results.push({name,status:'fail',error:error.message,pendingRequests:[...pendingRequests].map(r=>({url:r.url(),type:r.resourceType()}))});if(timedOut)throw error;}
  finally{clearTimeout(timer);console.log('SILHUETA_PWA_CHECK '+JSON.stringify(results.at(-1)));}
 }
-const mime={'.html':'text/html; charset=utf-8','.js':'application/javascript','.webmanifest':'application/manifest+json','.png':'image/png','.svg':'image/svg+xml'};
+const mime={'.html':'text/html; charset=utf-8','.js':'application/javascript','.css':'text/css','.webmanifest':'application/manifest+json','.png':'image/png','.svg':'image/svg+xml'};
 const server=createServer(async(req,res)=>{
  try{
   const url=new URL(req.url,'http://localhost'),prefix='/Silhueta/';
@@ -109,6 +109,17 @@ try{
    await context.setOffline(true);const data=await page.evaluate(async()=>fetch('./manifest.webmanifest?v=2.9.3').then(r=>r.json()));assert.equal(data.id,manifest.id);assert.equal(data.description,manifestRevision);
    const navigations=[];for(const entry of ['','index.html']){await page.goto(base+entry,{waitUntil:'domcontentloaded'});await readyApp(page);const saved=await page.evaluate(()=>JSON.parse(localStorage.getItem('silhueta.app.v1')).metricEntries.m_pwa_test);assert.equal(saved.value,75);assert.equal(saved.note,seed.metricEntries.m_pwa_test.note);assert.equal(saved.date,seed.metricEntries.m_pwa_test.date);navigations.push({entry:entry||'/',value:saved.value,date:saved.date});}
    return{htmlEntries,aliases,navigations};
+  }finally{await context.setOffline(false);}
+ });
+
+ await check('Saved palette and color controls work offline after reload',async()=>{
+  await page.locator('[data-view="settings"]').first().click();
+  await page.locator('#appearancePreset').selectOption('teal');
+  try{
+   await context.setOffline(true);await page.reload({waitUntil:'domcontentloaded'});await readyApp(page);
+   assert.equal(await page.locator('#appearancePreset').inputValue(),'teal');
+   assert.equal(await page.evaluate(()=>getComputedStyle(document.documentElement).getPropertyValue('--theme-accent').trim()),'#067f79');
+   assert.equal(await page.locator('.appearance-inputs').first().evaluate(el=>getComputedStyle(el).display),'grid');
   }finally{await context.setOffline(false);}
  });
  await check('Root and index entry URLs resolve to the same application identity',async()=>{await page.goto(base+'index.html',{waitUntil:'domcontentloaded'});await readyApp(page);const data=await manifestSnapshot(page);assert.equal(data.identity.appId,legacy?.identity.appId);return data.identity;});
