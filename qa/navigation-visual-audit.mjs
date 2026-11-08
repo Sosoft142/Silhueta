@@ -45,7 +45,11 @@ async function swipe(page,x,y,dx,dy=0,beforeRelease){
  try{
   const send=(type,points)=>session.send('Input.dispatchTouchEvent',{type,touchPoints:points});
   await send('touchStart',[{x,y}]);
-  for(let step=1;step<=5;step++)await send('touchMove',[{x:x+dx*step/5,y:y+dy*step/5}]);
+  for(let step=1;step<=5;step++){
+   await send('touchMove',[{x:x+dx*step/5,y:y+dy*step/5}]);
+   // Newer Chromium coalesces touch moves until the rendering frame.
+   await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
+  }
   await beforeRelease?.();
   await send('touchEnd',[]);
  }finally{await session.detach();}
