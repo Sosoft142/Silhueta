@@ -158,6 +158,46 @@ try{
   assert(!await page.evaluate(()=>localStorage.getItem('silhueta.ui.lastSyncConfirmation')),'Disconnect was replaced with a cloud confirmation');
   assert(!await page.locator('#syncState').evaluate(el=>el.classList.contains('sync-ok')),'Disconnected device became green');
  },{seed:filledState(),acceptDialogs:true});
+
+ await run('Logo colors: mobile and desktop marks follow the saved accent',async({page})=>{
+  await go(page,'settings');await page.locator('#appearancePreset').selectOption('blue');
+  for(const width of [390,1440]){
+   await page.setViewportSize({width,height:844});
+   const logo=page.locator(width===390?'.brand-symbol.brand-color-mark':'.mark .brand-color-mark');
+   assert(await logo.isVisible(),'Brand mark is missing');
+   const look=await logo.evaluate(el=>({color:getComputedStyle(el).backgroundColor,mask:getComputedStyle(el).maskImage,width:el.getBoundingClientRect().width,height:el.getBoundingClientRect().height}));
+   assert(look.color==='rgb(32, 91, 215)'&&look.mask.includes('brand-mark.svg')&&look.width>20&&look.height>40,'Logo does not use the selected accent or original drawing');
+  }
+  await page.setViewportSize({width:390,height:844});
+  await page.locator('.appearance-details>summary').click();
+  await page.locator('#appearance-hex-accent').fill('#16875a');await page.locator('#appearance-hex-accent').blur();
+  await page.evaluate(()=>scrollTo({top:0,behavior:'instant'}));await snap(page,'390-logo-personalized');
+  assert(await page.locator('.brand-symbol').evaluate(el=>getComputedStyle(el).backgroundColor)==='rgb(22, 135, 90)','Logo did not update live');
+  await page.reload({waitUntil:'networkidle'});
+  assert(await page.locator('.brand-symbol').evaluate(el=>getComputedStyle(el).backgroundColor)==='rgb(22, 135, 90)','Reload lost logo color');
+  await page.locator('[data-action="resetAppearance"]').click();
+  assert(await page.locator('.brand-symbol').evaluate(el=>getComputedStyle(el).backgroundColor)==='rgb(185, 80, 127)','Reset did not restore original accent');
+ },{seed:filledState()});
+ await run('Logo colors: editing one color and saving another form retain an incomplete code',async({page})=>{
+  await go(page,'settings');await page.locator('.appearance-details>summary').click();
+  await page.locator('#appearance-hex-background').fill('#12');await page.locator('#appearance-hex-background').blur();
+  await page.locator('#appearance-hex-accent').fill('#205bd7');await page.locator('#appearance-hex-accent').blur();
+  assert(await page.locator('#appearance-hex-background').inputValue()==='#12','Changing a color erased another code');
+  assert(await page.locator('#appearance-hex-background').getAttribute('aria-invalid')==='true','Invalid-code feedback disappeared');
+  await page.locator('#startDate').fill('2026-02-01');await page.locator('[data-action="saveSettings"]').click();
+  assert(await page.locator('#appearance-hex-background').inputValue()==='#12','Saving project date discarded the color draft');
+  assert(await page.locator('#appearance-hex-background').getAttribute('aria-invalid')==='true','Rerender lost invalid-code feedback');
+  assert((await state(page)).preferences.appearance.background==='#fcfafd','An incomplete color was persisted');
+  await page.locator('#appearance-hex-background').fill('#f1f5f9');await page.locator('#appearance-hex-background').blur();
+  assert((await state(page)).preferences.appearance.background==='#f1f5f9','Completing a color failed to save');
+ },{seed:filledState(),acceptDialogs:true});
+ await run('Logo colors: importing original color values fully restores original styling',async({page})=>{
+  await go(page,'settings');await page.locator('#appearancePreset').selectOption('purple');
+  const data=await state(page);data.preferences.appearance=await page.evaluate(()=>({...SilhuettaAppearance.defaults}));
+  await page.setInputFiles('#importFile',{name:'original-colors.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify({data}))});
+  await page.waitForFunction(()=>!document.documentElement.hasAttribute('data-custom-colors'));
+  assert((await state(page)).preferences.appearance===null,'Original palette kept custom overrides');
+ },{seed:filledState(),acceptDialogs:true});
  await run('Appearance: palettes and eight colors save immediately without losing another draft',async({page})=>{
   await go(page,'settings');await page.locator('#startDate').fill('2026-03-02');
   const options=await page.locator('#appearancePreset option').count();assert(options===15,'Expected fourteen palettes and a custom option');

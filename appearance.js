@@ -35,15 +35,16 @@ const palettes=[
 ];
 function clean(value){
  if(!value||typeof value!=='object'||Array.isArray(value))return null;
- return Object.fromEntries(fields.map(([key])=>[key,hex(value[key])?value[key].toLowerCase():defaults[key]]));
+ const colors=Object.fromEntries(fields.map(([key])=>[key,hex(value[key])?value[key].toLowerCase():defaults[key]]));
+ return fields.every(([key])=>colors[key]===defaults[key])?null:colors;
 }
 function selected(value){
  if(!value)return 'original';
- const colors=clean(value);
+ const colors=clean(value)||defaults;
  return palettes.find(([, ,palette])=>fields.every(([key])=>colors[key]===palette[key]))?.[0]||'custom';
 }
 function palette(id){return id==='original'?null:palettes.find(([key])=>key===id)?.[2];}
-const cssVariables=['ink','page-ink','nav-ink','muted','page-muted','nav-muted','accent-ink','accent-page','on-accent','soft','nav-soft','secondary-ink','secondary-soft','on-soft','on-secondary-soft','on-nav-soft','control-scheme','brand-filter','nav-brand-filter'];
+const cssVariables=['ink','page-ink','nav-ink','muted','page-muted','nav-muted','accent-ink','accent-page','on-accent','soft','nav-soft','secondary-ink','secondary-soft','on-soft','on-secondary-soft','on-nav-soft','control-scheme'];
 function apply(value){
  const root=document.documentElement,colors=clean(value);
  root.toggleAttribute('data-custom-colors',!!colors);
@@ -63,8 +64,6 @@ function apply(value){
  derived['on-secondary-soft']=textOn(derived['secondary-soft'],colors.secondary);
  derived['on-nav-soft']=textOn(derived['nav-soft'],colors.accent);
  derived['control-scheme']=luminance(colors.surface)<.2?'dark':'light';
- derived['brand-filter']=luminance(colors.background)<.15?'brightness(0) invert(1)':'none';
- derived['nav-brand-filter']=luminance(colors.navigation)<.15?'brightness(0) invert(1)':'none';
  derived.muted=textOn(colors.surface,mix(derived.ink,colors.surface,.2));
  derived['page-muted']=textOn(colors.background,mix(derived['page-ink'],colors.background,.2));
  derived['nav-muted']=textOn(colors.navigation,mix(derived['nav-ink'],colors.navigation,.2));
@@ -87,10 +86,10 @@ function section(value){
   '<div class="settings-summary"><button type="button" class="btn btn-plain" data-action="resetAppearance">Restaurar cores originais</button>'+
   '<span id="appearanceStatus" class="small-muted" role="status">Salvamento automático neste aparelho. Sincroniza com a nuvem conectada.</span></div></section>';
 }
-function updateControls(value){
+function updateControls(value,changedField=null){
  const colors=clean(value)||defaults,preset=document.getElementById('appearancePreset');
  if(preset)preset.value=selected(value);
- for(const [key] of fields)for(const input of document.querySelectorAll('[data-appearance-field="'+key+'"]')){input.value=colors[key];input.removeAttribute('aria-invalid');}
+ for(const [key] of fields.filter(([key])=>!changedField||key===changedField))for(const input of document.querySelectorAll('[data-appearance-field="'+key+'"]')){input.value=colors[key];input.removeAttribute('aria-invalid');}
 }
 window.SilhuettaAppearance={defaults,fields,hex,clean,apply,section,palette,updateControls};
 })();

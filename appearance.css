@@ -56,5 +56,6 @@ html[data-custom-colors] :is(.sync-summary,.sync-caution){background:var(--theme
 
 html[data-custom-colors] .recent-week>span:last-child{color:var(--theme-muted)}
 html[data-custom-colors] :is(.field input,.field select,.field textarea,.appearance-inputs input){color-scheme:var(--theme-control-scheme)}
-html[data-custom-colors] .brand-symbol{filter:var(--theme-brand-filter)}
-html[data-custom-colors] .mark img{filter:var(--theme-nav-brand-filter)}
+
+.brand-color-mark{display:inline-block;flex:none;width:26px;height:44px;background-color:var(--theme-accent,#b9507f);-webkit-mask:url("./icons/brand-mark.svg") center/contain no-repeat;mask:url("./icons/brand-mark.svg") center/contain no-repeat}
+.mark .brand-color-mark{width:100%;height:100%}

@@ -1096,12 +1096,12 @@ form .btn,.settings-links .btn{max-width:100%;white-space:normal;text-align:cent
  .page-head .toolbar-flex .btn{max-width:100%}
 }
 </style>
-<link rel="stylesheet" href="./appearance.css" />
+<link rel="stylesheet" href="./appearance.css?v=2.9.26" />
 </head>
 <body>
 <div class="app">
- <aside class="sidebar" id="appSidebar" aria-label="Menu de navegação"><button class="sidebar-toggle" type="button" data-action="toggleSidebar" id="sidebarToggle" aria-label="Recolher barra lateral" aria-expanded="true" aria-controls="desktopNav" title="Recolher barra lateral"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m14 5-7 7 7 7"/></svg></button><div class="brand"><div class="mark" aria-hidden="true"><img src="./icons/brand-mark.svg" width="34" height="57" alt="" /></div><div><h1>Silhuetta</h1></div></div><div class="nav-label">Acompanhamento</div><nav class="nav-list" id="desktopNav"></nav><div class="sidebar-spacer"></div><nav class="nav-list sidebar-utilities" id="desktopUtilityNav" aria-label="Configurações e ajuda"></nav></aside>
- <div class="main-shell"><div class="topbar"><div class="brand-sm nav-short"><button class="mobile-menu-trigger" id="mobileMenuButton" data-action="openDrawer" aria-label="Abrir menu lateral" aria-controls="mobileDrawer" aria-expanded="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg></button><img class="brand-symbol" src="./icons/brand-mark.svg" width="26" height="44" alt="" /> <span class="brand-name">Silhuetta</span></div><div class="topbar-right"><button type="button" class="sync-trigger" id="syncTrigger" data-action="openSync" aria-haspopup="dialog" aria-controls="syncModal" aria-label="Abrir sincronização" title="Abrir sincronização"><svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2.15" aria-hidden="true" stroke-linecap="round" stroke-linejoin="round"><path d="M6.2 18h11a4.3 4.3 0 0 0 .2-8.6A5.9 5.9 0 0 0 6 10.5 3.8 3.8 0 0 0 6.2 18Z"/></svg></button></div></div><div id="storageNotice" role="status"></div><main id="main" tabindex="-1"></main></div>
+ <aside class="sidebar" id="appSidebar" aria-label="Menu de navegação"><button class="sidebar-toggle" type="button" data-action="toggleSidebar" id="sidebarToggle" aria-label="Recolher barra lateral" aria-expanded="true" aria-controls="desktopNav" title="Recolher barra lateral"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m14 5-7 7 7 7"/></svg></button><div class="brand"><div class="mark" aria-hidden="true"><span class="brand-color-mark" aria-hidden="true"></span></div><div><h1>Silhuetta</h1></div></div><div class="nav-label">Acompanhamento</div><nav class="nav-list" id="desktopNav"></nav><div class="sidebar-spacer"></div><nav class="nav-list sidebar-utilities" id="desktopUtilityNav" aria-label="Configurações e ajuda"></nav></aside>
+ <div class="main-shell"><div class="topbar"><div class="brand-sm nav-short"><button class="mobile-menu-trigger" id="mobileMenuButton" data-action="openDrawer" aria-label="Abrir menu lateral" aria-controls="mobileDrawer" aria-expanded="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg></button><span class="brand-symbol brand-color-mark" aria-hidden="true"></span> <span class="brand-name">Silhuetta</span></div><div class="topbar-right"><button type="button" class="sync-trigger" id="syncTrigger" data-action="openSync" aria-haspopup="dialog" aria-controls="syncModal" aria-label="Abrir sincronização" title="Abrir sincronização"><svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2.15" aria-hidden="true" stroke-linecap="round" stroke-linejoin="round"><path d="M6.2 18h11a4.3 4.3 0 0 0 .2-8.6A5.9 5.9 0 0 0 6 10.5 3.8 3.8 0 0 0 6.2 18Z"/></svg></button></div></div><div id="storageNotice" role="status"></div><main id="main" tabindex="-1"></main></div>
 </div>
 <nav class="mobile-nav" id="mobileNav" aria-label="Navegação principal"></nav>
 <div class="mobile-drawer" id="mobileDrawer" hidden>
@@ -1131,12 +1131,12 @@ form .btn,.settings-links .btn{max-width:100%;white-space:normal;text-align:cent
 </div>
 
 <input type="file" id="importFile" accept=".json,.csv,text/csv,application/json" hidden />
-<script src="./appearance.js"></script>
+<script src="./appearance.js?v=2.9.26"></script>
 <script src="./navigation.js"></script>
 <script>
 (()=>{'use strict';
 const Appearance=window.SilhuettaAppearance;
-const APP_VERSION='2.9.25';
+const APP_VERSION='2.9.26';
 const STORAGE_KEY='silhueta.app.v1', VERSION=7;
 const QUICK_METRIC_PREF_KEY='silhueta.ui.quickMetric';
 const MEASUREMENT_REMINDER_TIME_KEY='silhueta.ui.measurementReminderTime';
@@ -1868,10 +1868,12 @@ function captureFormDrafts(excludeForm=''){
  const forms=[...document.querySelectorAll('#main form')].filter(f=>f.id!==excludeForm).map(form=>({id:form.id,fields:[...form.elements].filter(el=>el.name&&!['submit','button','hidden'].includes(el.type)).map(el=>({id:el.id,name:el.name,type:el.type,value:el.value,checked:el.checked}))}));
  const details=[...document.querySelectorAll('#main details')].map(el=>({id:el.id,className:el.className,open:el.open}));
  const focused=document.activeElement,selection=typeof focused?.selectionStart==='number'?{start:focused.selectionStart,end:focused.selectionEnd,direction:focused.selectionDirection,top:focused.scrollTop,left:focused.scrollLeft}:null;
- return {forms,details,focusId:focused?.id||'',selection};
+ const appearance=[...document.querySelectorAll('#main [data-appearance-field]')].map(input=>({id:input.id,value:input.value,invalid:input.getAttribute('aria-invalid')}));
+ return {forms,details,appearance,focusId:focused?.id||'',selection};
 }
 function restoreFormDrafts(snapshot){
  if(!snapshot)return;
+ for(const saved of snapshot.appearance||[]){const input=document.getElementById(saved.id);if(!input)continue;input.value=saved.value;if(saved.invalid)input.setAttribute('aria-invalid',saved.invalid);}
  for(const saved of snapshot.forms){const form=document.getElementById(saved.id);if(!form)continue;for(const field of saved.fields){const el=[...form.elements].find(item=>field.id?item.id===field.id:item.name===field.name&&item.type===field.type);if(!el)continue;if(field.type==='checkbox'||field.type==='radio')el.checked=field.checked;else el.value=field.value;}}
  [...document.querySelectorAll('#main details')].forEach((el,i)=>{const saved=el.id?snapshot.details.find(item=>item.id===el.id):snapshot.details[i];if(saved&&el.className===saved.className)el.open=saved.open;});
  const focused=snapshot.focusId?document.getElementById(snapshot.focusId):null;if(focused){focused.focus({preventScroll:true});if(snapshot.selection&&typeof focused.setSelectionRange==='function'){try{focused.setSelectionRange(snapshot.selection.start,snapshot.selection.end,snapshot.selection.direction);focused.scrollTop=snapshot.selection.top;focused.scrollLeft=snapshot.selection.left;}catch{}}}
@@ -1908,10 +1910,10 @@ function fitReadableSelects(){
 function render(options={}){Appearance.apply(state.preferences.appearance);return withMetricSnapshot(()=>{MOTION_BY_ELEMENT.get(document.getElementById('main'))?.cancel();const drafts=options.preserveDrafts?captureFormDrafts(options.excludeForm):null;navRender();const views={dashboard,measure:measurement,trends,nutrition,settings,help};document.getElementById('main').innerHTML=(views[ui.view]||dashboard)();document.title=({dashboard:'Painel',measure:'Medições',trends:'Evolução',nutrition:'Nutrição',settings:'Configurações',help:'Como usar'})[ui.view]+' · Silhuetta';restoreFormDrafts(drafts);updateQuickLastMeasurement();updateMeasurementCountdown();fitHistoryCharts();fitReadableSelects();renderedNavigationScreen=captureNavigationScreen();appNavigation?.remember();});}
 
 
-function saveAppearance(value){
+function saveAppearance(value,changedField=null){
  state.preferences.appearance=Appearance.clean(value);
  Appearance.apply(state.preferences.appearance);
- Appearance.updateControls(state.preferences.appearance);
+ Appearance.updateControls(state.preferences.appearance,changedField);
  updateSelectCaptions();
  persist();
  const status=document.getElementById('appearanceStatus');
@@ -2109,7 +2111,7 @@ document.addEventListener('change',e=>{
    return;
   }
   document.querySelectorAll('[data-appearance-field="'+key+'"]').forEach(input=>input.removeAttribute('aria-invalid'));
-  saveAppearance({...Appearance.defaults,...state.preferences.appearance,[key]:e.target.value});
+  saveAppearance({...Appearance.defaults,...state.preferences.appearance,[key]:e.target.value},key);
   return;
  }
 queueMicrotask(()=>{if(observedCaptionSelects.has(e.target))updateSelectCaptions();appNavigation.remember();});if(e.target.dataset.action==='favToggle'){

@@ -19,6 +19,11 @@ if(command==='--check'){
  assert(manifest.start_url==='./index.html'&&manifest.scope==='./','PWA start URL and scope must remain stable');
  assert(html.includes('data-app-version>${APP_VERSION}</span>'),'Settings must render APP_VERSION rather than a separate version string');
  assert(readme.startsWith('# Silhuetta · versão '+current+' '),'README version differs from APP_VERSION');
+ for(const asset of ['appearance.js','appearance.css']){
+  const url='./'+asset+'?v='+current;
+  assert(html.includes(url)&&worker.includes(url),'Appearance resources must match APP_VERSION and the offline cache');
+ }
+
  console.log('PASS: release '+current+' matches Settings, cache and README; PWA identity and manifest URL remain stable');
 }else{
  const parts=current.split('.').map(Number);
@@ -29,6 +34,10 @@ if(command==='--check'){
  html=html.replace(pattern,"const APP_VERSION='"+next+"';");
  worker=worker.replace(/const VERSION='silhueta-app-v[\d.]+';/,"const VERSION='silhueta-app-v"+next+"';");
  readme=readme.replace(/^# Silhuetta · versão [\d.]+ /,'# Silhuetta · versão '+next+' ');
+ for(const asset of ['appearance.js','appearance.css']){
+  const previous='./'+asset+'?v='+current,updated='./'+asset+'?v='+next;
+  html=html.replaceAll(previous,updated);worker=worker.replaceAll(previous,updated);
+ }
  await writeFile(path.join(root,'index.html'),html);
  await writeFile(path.join(root,'service-worker.js'),worker);
  await writeFile(path.join(root,'README.md'),readme);

@@ -1,8 +1,10 @@
-# Silhuetta · versão 2.9.25 — clareza e agilidade no acompanhamento
+# Silhuetta · versão 2.9.26 — clareza e agilidade no acompanhamento
 
 Aplicativo web instalável (PWA) para acompanhar medidas corporais, composição corporal, nutrição e evolução.
 
 Na versão 2.9.22, a guia acompanha o dedo enquanto você desliza horizontalmente. Ao soltar, a próxima guia entra ou a atual retorna, conforme a distância do gesto.
+
+A versão 2.9.26 faz a marca interna acompanhar a cor de destaque, com o mesmo desenho no cabeçalho e na barra lateral. A edição das cores preserva códigos incompletos ao mudar outro campo ou salvar a data do projeto. Restaurar os valores originais remove todos os ajustes de aparência. Os arquivos de aparência acompanham a versão publicada, inclusive no cache offline.
 
 A versão 2.9.25 adiciona Configurações → Cores do aplicativo, com 14 paletas e oito cores ajustáveis. A aparência é salva automaticamente junto dos dados e incluída no backup JSON e no Gist criptografado. Os textos se adaptam aos fundos escolhidos, e é possível restaurar as cores originais.
 
